@@ -1,7 +1,7 @@
 apiVersion: v2
-name: koala-agent
-description: A Helm chart for Koala Agent
-icon: https://app.koalaops.com/_next/image?url=%2Fstatic%2Fkoala%2Fkoala-image-square.jpg&w=128&q=75
+name: skyhook-agent
+description: A Helm chart for Skyhook Agent
+icon: https://app.skyhook.io/_next/image?url=%2Fstatic%2Fskyhook%2Fskyhook-image-square.jpg&w=128&q=75
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -16,14 +16,14 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 1.2.0
+version: 1.3.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "v1.2.0"
+appVersion: "v1.3.0"
 
 maintainers:
   - name: nadaverell
-    email: nadav@koalaops.com
+    email: nadav@skyhook.io

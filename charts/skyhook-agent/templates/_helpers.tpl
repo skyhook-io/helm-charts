@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "koala-agent.name" -}}
+{{- define "skyhook-agent.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "koala-agent.fullname" -}}
+{{- define "skyhook-agent.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "koala-agent.chart" -}}
+{{- define "skyhook-agent.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "koala-agent.labels" -}}
-helm.sh/chart: {{ include "koala-agent.chart" . }}
-{{ include "koala-agent.selectorLabels" . }}
+{{- define "skyhook-agent.labels" -}}
+helm.sh/chart: {{ include "skyhook-agent.chart" . }}
+{{ include "skyhook-agent.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "koala-agent.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "koala-agent.name" . }}
+{{- define "skyhook-agent.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "skyhook-agent.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "koala-agent.serviceAccountName" -}}
+{{- define "skyhook-agent.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "koala-agent.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "skyhook-agent.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

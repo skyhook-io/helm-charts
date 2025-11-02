@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "koala-agent.fullname" . }}
+  name: {{ include "skyhook-agent.fullname" . }}
   {{- if hasKey .Release "Namespace" }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-  {{- include "koala-agent.labels" . | nindent 4 }}
+  {{- include "skyhook-agent.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "koala-agent.selectorLabels" . | nindent 6 }}
+      {{- include "skyhook-agent.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -23,13 +23,13 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "koala-agent.selectorLabels" . | nindent 8 }}
+        {{- include "skyhook-agent.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "koala-agent.serviceAccountName" . }}
+      serviceAccountName: {{ include "skyhook-agent.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -57,15 +57,15 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
-            - name: KOALA_API_KEY
+            - name: SKYHOOK_API_KEY
               valueFrom:
                 secretKeyRef:
                   {{- if .Values.existingSecret }}
                   name: {{ .Values.existingSecret | required "Existing secret name required!" }}
                   {{- else }}
-                  name: {{ include "koala-agent.name" . }}-secret
+                  name: {{ include "skyhook-agent.name" . }}-secret
                   {{- end }}
-                  key: KOALA_API_KEY
+                  key: SKYHOOK_API_KEY
             - name: POD_NAME
               valueFrom:
                 fieldRef:
