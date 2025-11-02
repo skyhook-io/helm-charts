@@ -18,4 +18,3 @@ To install the skyhook-agent chart:
 To uninstall the chart:
 
     helm delete skyhook-agent
-
