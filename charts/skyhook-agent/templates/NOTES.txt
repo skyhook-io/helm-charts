@@ -3,4 +3,4 @@ Thank you for installing {{ .Chart.Name }}.
 The agent was installed on namespace: {{ default "default" .Release.Namespace }}
 
 See the dashboard at:
-https://app.koalaops.com
+https://app.skyhook.io

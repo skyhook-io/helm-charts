@@ -2,7 +2,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ include "koala-agent.serviceAccountName" . }}
+  name: {{ include "skyhook-agent.serviceAccountName" . }}
   {{- if hasKey .Release "Namespace" }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
@@ -290,14 +290,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "koala-agent.serviceAccountName" . }}
+  name: {{ include "skyhook-agent.serviceAccountName" . }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "koala-agent.serviceAccountName" . }}
+  name: {{ include "skyhook-agent.serviceAccountName" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "koala-agent.serviceAccountName" . }}
+    name: {{ include "skyhook-agent.serviceAccountName" . }}
     {{- if hasKey .Release "Namespace" }}
     namespace: {{ .Release.Namespace }}
     {{- end }}

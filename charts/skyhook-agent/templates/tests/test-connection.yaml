@@ -15,8 +15,8 @@ spec:
         - sh
         - -c
         - |
-          echo "Fetching Koala Agent Pod IP..."
-          kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/name=koala-agent -o jsonpath='{.items[0].status.podIP}' > /tmp/koala-agent-ip
+          echo "Fetching Skyhook Agent Pod IP..."
+          kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/name=skyhook-agent -o jsonpath='{.items[0].status.podIP}' > /tmp/skyhook-agent-ip
       volumeMounts:
         - name: shared-data
           mountPath: /tmp
@@ -27,9 +27,9 @@ spec:
         - sh
         - -c
         - |
-          KOALA_AGENT_IP=$(cat /tmp/koala-agent-ip)
-          echo "Koala Agent IP: $KOALA_AGENT_IP"
-          wget --spider --timeout=5 http://$KOALA_AGENT_IP:8080 || exit 1
+          SKYHOOK_AGENT_IP=$(cat /tmp/skyhook-agent-ip)
+          echo "Skyhook Agent IP: $SKYHOOK_AGENT_IP"
+          wget --spider --timeout=5 http://$SKYHOOK_AGENT_IP:8080 || exit 1
       volumeMounts:
         - name: shared-data
           mountPath: /tmp
