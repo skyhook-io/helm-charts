@@ -8,7 +8,7 @@ image:
   repository: ghcr.io/skyhook-io/skyhook-agent
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "v1.3.0"
+  tag: "v1.3.2"
 
 imagePullSecrets: []
 nameOverride: ""
