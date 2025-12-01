@@ -15,8 +15,8 @@ spec:
         - sh
         - -c
         - |
-          echo "Fetching Skyhook Agent Pod IP..."
-          kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/name=skyhook-agent -o jsonpath='{.items[0].status.podIP}' > /tmp/skyhook-agent-ip
+          echo "Fetching Skyhook Connector Pod IP..."
+          kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/name=skyhook-connector -o jsonpath='{.items[0].status.podIP}' > /tmp/skyhook-connector-ip
       volumeMounts:
         - name: shared-data
           mountPath: /tmp
@@ -27,9 +27,9 @@ spec:
         - sh
         - -c
         - |
-          SKYHOOK_AGENT_IP=$(cat /tmp/skyhook-agent-ip)
-          echo "Skyhook Agent IP: $SKYHOOK_AGENT_IP"
-          wget --spider --timeout=5 http://$SKYHOOK_AGENT_IP:8080 || exit 1
+          SKYHOOK_CONNECTOR_IP=$(cat /tmp/skyhook-connector-ip)
+          echo "Skyhook Connector IP: $SKYHOOK_CONNECTOR_IP"
+          wget --spider --timeout=5 http://$SKYHOOK_CONNECTOR_IP:8080 || exit 1
       volumeMounts:
         - name: shared-data
           mountPath: /tmp
