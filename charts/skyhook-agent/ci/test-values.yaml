@@ -1,0 +1,17 @@
+# Test values for chart-testing (ct)
+# These values are used during CI install/upgrade tests
+
+# Use a test API key (agent will fail to connect but chart should deploy)
+apiKey: "test-api-key-for-ci"
+
+# Reduced resources for CI environments
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# Disable tolerations for CI (kind clusters are simple)
+tolerations: []
