@@ -29,7 +29,7 @@ spec:
         - |
           SKYHOOK_CONNECTOR_IP=$(cat /tmp/skyhook-connector-ip)
           echo "Skyhook Connector IP: $SKYHOOK_CONNECTOR_IP"
-          wget --spider --timeout=5 http://$SKYHOOK_CONNECTOR_IP:8080 || exit 1
+          wget --spider --timeout=5 http://$SKYHOOK_CONNECTOR_IP:{{ .Values.service.port }} || exit 1
       volumeMounts:
         - name: shared-data
           mountPath: /tmp
