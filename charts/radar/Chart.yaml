@@ -1,0 +1,18 @@
+apiVersion: v2
+name: radar
+description: Modern Kubernetes visibility — topology, traffic, and Helm management
+type: application
+version: 0.1.0
+appVersion: "0.4.2"
+keywords:
+  - kubernetes
+  - visualization
+  - monitoring
+  - kubectl
+  - dashboard
+home: https://github.com/skyhook-io/radar
+sources:
+  - https://github.com/skyhook-io/radar
+maintainers:
+  - name: Skyhook Team
+    email: support@skyhook.io
