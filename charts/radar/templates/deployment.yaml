@@ -69,17 +69,21 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if and .Values.persistence.enabled (eq .Values.timeline.storage "sqlite") }}
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if and .Values.persistence.enabled (eq .Values.timeline.storage "sqlite") }}
             - name: data
               mountPath: /data
-          {{- end }}
-      {{- if and .Values.persistence.enabled (eq .Values.timeline.storage "sqlite") }}
+            {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if and .Values.persistence.enabled (eq .Values.timeline.storage "sqlite") }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "radar.fullname" . }}
-      {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
