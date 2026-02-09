@@ -20,8 +20,18 @@ rules:
       - endpoints
     verbs: ["get", "list", "watch"]
 
-  {{- if .Values.rbac.secrets }}
-  # Secrets (opt-in - shows secrets in resource list)
+  {{- if .Values.rbac.helm }}
+  # Helm write operations require broad permissions because charts can create
+  # any Kubernetes resource type. Read access for common resources is granted
+  # by other rules in this ClusterRole. Secrets read access is auto-enabled below.
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["create", "update", "patch", "delete"]
+  {{- end }}
+
+  {{- if or .Values.rbac.secrets .Values.rbac.helm }}
+  # Secrets access - required for Helm release storage (rbac.helm)
+  # or for showing secrets in the resource browser (rbac.secrets)
   - apiGroups: [""]
     resources:
       - secrets

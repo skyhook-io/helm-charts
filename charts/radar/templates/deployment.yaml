@@ -39,14 +39,23 @@ spec:
             - --timeline-db={{ .Values.timeline.dbPath }}
             {{- end }}
             - --history-limit={{ .Values.timeline.historyLimit }}
+            {{- if .Values.traffic.prometheusUrl }}
+            - --prometheus-url={{ .Values.traffic.prometheusUrl }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
-          {{- with .Values.env }}
           env:
+            - name: HELM_CACHE_HOME
+              value: "/tmp/helm/cache"
+            - name: HELM_CONFIG_HOME
+              value: "/tmp/helm/config"
+            - name: HELM_DATA_HOME
+              value: "/tmp/helm/data"
+            {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- end }}
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
             httpGet:

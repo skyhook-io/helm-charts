@@ -31,6 +31,12 @@ rbac:
   # Privileged permissions (disabled by default for security)
   # Enable these based on features you need:
 
+  # Allow Helm write operations (install, upgrade, rollback, uninstall, apply values)
+  # Requires broad permissions - grants create/update/patch/delete on all resource types,
+  # since Helm charts can create any kind of Kubernetes resource.
+  # Automatically enables secrets read access (needed for Helm release storage).
+  helm: false
+
   # Allow reading secrets (shows secrets in resource list)
   secrets: false
 
@@ -146,6 +152,16 @@ timeline:
   dbPath: /data/timeline.db
   # Maximum number of events to retain
   historyLimit: 10000
+
+# Traffic source configuration
+traffic:
+  # Manual Prometheus/VictoriaMetrics URL (bypasses auto-discovery)
+  # Use this when auto-discovery doesn't find your metrics service.
+  # Examples:
+  #   http://prometheus-server.monitoring:80
+  #   http://vmsingle.victoria-metrics:8428
+  #   http://vmselect.victoria-metrics:8481/select/0/prometheus
+  prometheusUrl: ""
 
 # Persistence for SQLite timeline storage
 # Required when timeline.storage is "sqlite" (readOnlyRootFilesystem prevents local writes)
