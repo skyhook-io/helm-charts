@@ -81,12 +81,16 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: home
+              mountPath: /home/nonroot
             {{- if and .Values.persistence.enabled (eq .Values.timeline.storage "sqlite") }}
             - name: data
               mountPath: /data
             {{- end }}
       volumes:
         - name: tmp
+          emptyDir: {}
+        - name: home
           emptyDir: {}
         {{- if and .Values.persistence.enabled (eq .Values.timeline.storage "sqlite") }}
         - name: data
