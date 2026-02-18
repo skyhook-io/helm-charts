@@ -663,6 +663,20 @@ entries:
     version: 0.1.0
   skyhook-agent:
   - apiVersion: v2
+    appVersion: v2.3.1
+    created: "2026-02-18T00:51:07.92023552Z"
+    description: A Helm chart for Skyhook Agent
+    digest: 141851900258009b8da6cabd406caa616cff477edaa541191abad016a801a61d
+    icon: https://app.skyhook.io/_next/image?url=%2Fstatic%2Fskyhook%2Fskyhook-image-square.jpg&w=128&q=75
+    maintainers:
+    - email: nadav@skyhook.io
+      name: nadaverell
+    name: skyhook-agent
+    type: application
+    urls:
+    - https://github.com/skyhook-io/helm-charts/releases/download/skyhook-agent-1.3.14/skyhook-agent-1.3.14.tgz
+    version: 1.3.14
+  - apiVersion: v2
     appVersion: v2.3.0
     created: "2026-02-17T23:37:08.198917773Z"
     description: A Helm chart for Skyhook Agent
@@ -788,4 +802,4 @@ entries:
     urls:
     - https://skyhook-io.github.io/helm-charts/skyhook-agent-1.3.0.tgz
     version: 1.3.0
-generated: "2026-02-18T00:03:58.941938276Z"
+generated: "2026-02-18T00:51:07.92035855Z"
