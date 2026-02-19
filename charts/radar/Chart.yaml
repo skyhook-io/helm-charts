@@ -2,8 +2,8 @@ apiVersion: v2
 name: radar
 description: Modern Kubernetes visibility — topology, traffic, and Helm management
 type: application
-version: 0.9.16
-appVersion: "0.9.16"
+version: 0.9.17
+appVersion: "0.9.17"
 keywords:
   - kubernetes
   - visualization
