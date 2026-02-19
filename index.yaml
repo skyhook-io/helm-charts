@@ -2,6 +2,28 @@ apiVersion: v1
 entries:
   radar:
   - apiVersion: v2
+    appVersion: 0.9.17
+    created: "2026-02-19T01:26:48.103781446Z"
+    description: Modern Kubernetes visibility — topology, traffic, and Helm management
+    digest: 04601e7a038e05d63a53002589cd6475d1ca5b50e4e8f7769e5608b75c80b76b
+    home: https://github.com/skyhook-io/radar
+    keywords:
+    - kubernetes
+    - visualization
+    - monitoring
+    - kubectl
+    - dashboard
+    maintainers:
+    - email: support@skyhook.io
+      name: Skyhook Team
+    name: radar
+    sources:
+    - https://github.com/skyhook-io/radar
+    type: application
+    urls:
+    - https://github.com/skyhook-io/helm-charts/releases/download/radar-0.9.17/radar-0.9.17.tgz
+    version: 0.9.17
+  - apiVersion: v2
     appVersion: 0.9.15
     created: "2026-02-18T22:26:05.348878419Z"
     description: Modern Kubernetes visibility — topology, traffic, and Helm management
@@ -882,4 +904,4 @@ entries:
     urls:
     - https://skyhook-io.github.io/helm-charts/skyhook-agent-1.3.0.tgz
     version: 1.3.0
-generated: "2026-02-18T22:26:05.349205548Z"
+generated: "2026-02-19T01:26:48.104096831Z"
