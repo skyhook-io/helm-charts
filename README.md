@@ -11,11 +11,11 @@ If you had already added this repo earlier, run `helm repo update` to retrieve
 the latest versions of the packages.  You can then run `helm search repo
 skyhook` to see the charts.
 
-To install the skyhook-agent chart:
+To install the skyhook-connector chart:
 
-    helm install skyhook-agent skyhook/skyhook-agent
+    helm install skyhook-connector skyhook/skyhook-connector
 
 To uninstall the chart:
 
-    helm delete skyhook-agent
+    helm delete skyhook-connector
 
