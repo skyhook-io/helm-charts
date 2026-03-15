@@ -63,7 +63,7 @@ spec:
                   {{- if .Values.existingSecret }}
                   name: {{ .Values.existingSecret | required "Existing secret name required!" }}
                   {{- else }}
-                  name: {{ include "skyhook-agent.name" . }}-secret
+                  name: {{ include "skyhook-agent.fullname" . }}-secret
                   {{- end }}
                   key: SKYHOOK_API_KEY
             - name: POD_NAME
