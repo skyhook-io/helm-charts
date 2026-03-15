@@ -16,7 +16,7 @@ spec:
         - -c
         - |
           echo "Fetching Skyhook Connector Pod IP..."
-          kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/name=skyhook-connector -o jsonpath='{.items[0].status.podIP}' > /tmp/skyhook-connector-ip
+          kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "skyhook-agent.name" . }} -o jsonpath='{.items[0].status.podIP}' > /tmp/skyhook-connector-ip
       volumeMounts:
         - name: shared-data
           mountPath: /tmp
