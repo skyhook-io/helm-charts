@@ -1,6 +1,6 @@
 apiVersion: v2
-name: skyhook-agent
-description: A Helm chart for Skyhook Agent
+name: skyhook-connector
+description: A Helm chart for Skyhook Connector
 icon: https://app.skyhook.io/_next/image?url=%2Fstatic%2Fskyhook%2Fskyhook-image-square.jpg&w=128&q=75
 
 # A chart can be either an 'application' or a 'library' chart.

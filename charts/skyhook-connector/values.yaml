@@ -1,6 +1,4 @@
-# Default values for skyhook-agent.
-# Note: Chart name remains 'skyhook-agent' for backward compatibility,
-# but resources are named 'skyhook-connector'.
+# Default values for skyhook-connector.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
