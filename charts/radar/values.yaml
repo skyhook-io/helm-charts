@@ -175,6 +175,8 @@ auth:
     clientSecret: ""
     redirectURL: ""
     groupsClaim: "groups"
+    # URL to redirect after OIDC provider logout (must be registered with IdP)
+    postLogoutRedirectURL: ""
 
 # MCP (Model Context Protocol) server for AI tools
 mcp:
