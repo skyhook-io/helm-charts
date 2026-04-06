@@ -124,9 +124,9 @@ This overrides individual settings below. Simpler but broader — some orgs may 
 | `gcpMonitoring` | `monitoring.googleapis.com` |
 | `grafana` | `monitoring.grafana.com`, `tempo.grafana.com`, `loki.grafana.com` |
 | `istio` | `networking.istio.io`, `security.istio.io` |
-| `karpenter` | `karpenter.sh`, `karpenter.k8s.aws` |
+| `karpenter` | `karpenter.sh`, `karpenter.k8s.aws`, `karpenter.azure.com`, `karpenter.gcp.compute.com` |
 | `keda` | `keda.sh` |
-| `knative` | `serving.knative.dev`, `eventing.knative.dev` |
+| `knative` | `serving.knative.dev`, `eventing.knative.dev`, `sources.knative.dev`, `messaging.knative.dev`, `flows.knative.dev`, `networking.internal.knative.dev` |
 | `kubeshark` | `kubeshark.io` |
 | `kured` | `kured.io` |
 | `kyverno` | `kyverno.io`, `wgpolicyk8s.io`, `reports.kyverno.io` |

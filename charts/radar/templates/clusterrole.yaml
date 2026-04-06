@@ -194,7 +194,7 @@ rules:
     verbs: ["get", "list", "watch"]
   {{- end }}
   {{- if .Values.rbac.crdGroups.karpenter }}
-  - apiGroups: ["karpenter.sh", "karpenter.k8s.aws"]
+  - apiGroups: ["karpenter.sh", "karpenter.k8s.aws", "karpenter.azure.com", "karpenter.gcp.compute.com"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
@@ -204,7 +204,7 @@ rules:
     verbs: ["get", "list", "watch"]
   {{- end }}
   {{- if .Values.rbac.crdGroups.knative }}
-  - apiGroups: ["serving.knative.dev", "eventing.knative.dev"]
+  - apiGroups: ["serving.knative.dev", "eventing.knative.dev", "sources.knative.dev", "messaging.knative.dev", "flows.knative.dev", "networking.internal.knative.dev"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
