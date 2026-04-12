@@ -162,8 +162,8 @@ auth:
   # Use an existing secret for the auth HMAC key
   existingSecret: ""
   existingSecretKey: "auth-secret"
-  # Session cookie TTL
-  cookieTTL: "24h"
+  # Session cookie TTL (sliding — extends on activity, idle sessions expire after this duration)
+  cookieTTL: "4h"
   # Proxy mode settings
   proxy:
     userHeader: "X-Forwarded-User"
