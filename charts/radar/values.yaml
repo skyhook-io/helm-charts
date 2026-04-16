@@ -182,10 +182,17 @@ auth:
     groupsClaim: "groups"
     # URL to redirect after OIDC provider logout (must be registered with IdP)
     postLogoutRedirectURL: ""
+    # Prefix for OIDC username/groups to match kube-apiserver --oidc-username-prefix / --oidc-groups-prefix
+    usernamePrefix: ""
+    groupsPrefix: ""
     # Path to CA certificate file for OIDC provider TLS (e.g., /etc/radar/oidc-ca.crt)
     caCert: ""
     # Skip TLS verification for OIDC provider (insecure, dev/test only)
     insecureSkipVerify: false
+    # Enable OIDC Back-Channel Logout endpoint. When enabled, the IdP can POST
+    # a signed logout_token to /auth/backchannel-logout to revoke sessions.
+    # Single-replica only — revocations are stored in memory and lost on pod restart.
+    backchannelLogout: false
 
 # MCP (Model Context Protocol) server for AI tools
 mcp:
