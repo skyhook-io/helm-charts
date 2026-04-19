@@ -54,6 +54,11 @@ rbac:
   # Grants read access ONLY to hubble-relay-client-certs secret for TLS auth
   traffic: true
 
+  # Metrics (pods/nodes) from metrics-server (metrics.k8s.io API).
+  # Enables CPU/memory utilization widgets on the dashboard and per-resource
+  # metrics panels. Safe to enable — read-only on the aggregated metrics API.
+  metrics: true
+
   # CRD access - all common groups enabled by default
   # Granting RBAC for CRDs that don't exist has no effect.
   crdGroups:
