@@ -7,8 +7,8 @@ metadata:
   labels:
     {{- include "radar.labels" . | nindent 4 }}
 rules:
-  # Allows the hub to patch this Deployment's image via the yamux tunnel,
-  # enabling one-click upgrades from the Radar Hub UI. Scoped to this
+  # Allows Radar Cloud to patch this Deployment's image via the yamux tunnel,
+  # enabling one-click upgrades from the Radar Cloud UI. Scoped to this
   # Deployment only — no other resources or namespaces are affected.
   - apiGroups: ["apps"]
     resources: ["deployments"]
