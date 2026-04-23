@@ -98,6 +98,16 @@ Disabled by default for security:
 | Port Forward | `rbac.portForward: true` | Port forwarding to pods |
 | Logs | `rbac.podLogs: true` | View pod logs (**enabled by default**) |
 
+### In-app Agent Upgrades (enabled by default)
+
+`rbac.selfUpgrade: true` lets Radar Hub trigger one-click upgrades from the web UI — no terminal or cloud credentials needed. It creates a namespace-scoped Role (not a ClusterRole) with `get` + `patch` on this Deployment only, enforced via `resourceNames`. The endpoint additionally validates that the requested image comes from `ghcr.io/skyhook-io/radar` before issuing any patch.
+
+Disable if your org policy forbids self-patching workloads:
+
+```bash
+--set rbac.selfUpgrade=false
+```
+
 ### CRD Access
 
 Radar discovers CRDs in your cluster. All common CRD groups are enabled by default. Granting RBAC for CRDs that don't exist has no effect.
