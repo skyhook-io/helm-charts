@@ -52,7 +52,10 @@ rbac:
 
   # Allow Radar to patch its own Deployment so Radar Hub can trigger one-click
   # in-app upgrades without customers needing a terminal or cloud credentials.
-  # Creates a separate Role + RoleBinding scoped to this namespace (not cluster-wide).
+  # Security scope: namespace-scoped Role (not ClusterRole), restricted to this
+  # Deployment only via resourceNames, get+patch verbs only (no delete/create).
+  # The endpoint also validates that the requested image comes from
+  # ghcr.io/skyhook-io/radar before issuing any patch.
   # Safe to disable if your org policy forbids self-patching workloads.
   selfUpgrade: true
 
