@@ -50,15 +50,6 @@ rbac:
   # Allow port forwarding (enables port forward feature)
   portForward: false
 
-  # Allow Radar Cloud to trigger one-click in-app upgrades without customers
-  # needing a terminal or cloud credentials. Not needed for standalone/local
-  # installs — those have direct kubectl/Helm access anyway.
-  # Security scope: namespace-scoped Role (not ClusterRole), restricted to this
-  # Deployment only via resourceNames, get+patch verbs only (no delete/create).
-  # The endpoint validates that the requested image comes from
-  # ghcr.io/skyhook-io/radar before issuing any patch.
-  selfUpgrade: false
-
   # Traffic visibility (Hubble/Cilium integration)
   # Grants read access ONLY to hubble-relay-client-certs secret for TLS auth
   traffic: true
@@ -208,24 +199,60 @@ auth:
     # Single-replica only — revocations are stored in memory and lost on pod restart.
     backchannelLogout: false
 
-# Radar Hub (hosted SaaS) — outbound-only tunnel. When enabled, this Radar
-# instance dials out to a hub over WebSocket and serves its existing API
-# through yamux streams. No inbound ports required beyond the Pod's.
-# Leave disabled for standalone OSS deployments.
-hub:
+# Radar Cloud (hosted SaaS at radarhq.io) — outbound-only tunnel. When
+# enabled, this Radar instance dials out to the Cloud service over
+# WebSocket and serves its existing API through yamux streams. No inbound
+# ports required beyond the Pod's. Leave disabled for standalone OSS
+# deployments.
+cloud:
   enabled: false
-  # Hub WebSocket URL. Must start with ws:// or wss://. Example:
-  # wss://api.radar.skyhook.io/agent
+  # Cloud WebSocket URL. Must start with ws:// or wss://. Example:
+  # wss://api.radarhq.io/agent
   url: ""
-  # Human-readable cluster identifier from the hub install wizard.
+  # Human-readable cluster identifier from the Cloud install wizard.
   clusterName: ""
-  # Cluster bearer token (rhc_<random>) issued by the hub. Inline for
-  # convenience in dev; production should use existingSecret instead.
+  # Cluster bearer token (rhc_<random>) issued by the Cloud service. Inline
+  # for convenience in dev; production should use existingSecret instead.
   token: ""
   # Source the token from an existing Secret instead of inlining it above.
   # The Secret must contain a key matching existingSecretKey.
   existingSecret: ""
   existingSecretKey: "token"
+  # Default ClusterRoleBindings for Radar Cloud identity groups.
+  #
+  # How it works: Cloud injects X-Forwarded-Groups: cloud:<role>,
+  # cloud:org:<id>, cloud:user:<id> on every proxied request. Radar
+  # impersonates that identity against the K8s API on EVERY user-initiated
+  # call (REST, MCP, Helm reads and writes, workload logs, node ops, pod
+  # file browse, CAPI kubeconfig), so K8s RBAC enforces the tier — no
+  # Radar-side "permission" checks.
+  #
+  # Defaults map Cloud's tiers onto standard K8s ClusterRoles. These are
+  # ClusterRoleBindings (not namespace-scoped RoleBindings), so the grant
+  # applies in EVERY namespace:
+  #   cloud:owner   → "admin"  (full read+write in every namespace, including
+  #                            RBAC within namespaces; no writes on cluster-
+  #                            scoped resources like Nodes, CRDs, ClusterRoles)
+  #   cloud:member  → "edit"   (read+write on standard resources, no RBAC)
+  #   cloud:viewer  → "view"   (read-only)
+  #
+  # These are starting-point grants, not "fallbacks that kick in when the
+  # user has nothing else" — K8s RBAC is strictly ADDITIVE. Operator bindings
+  # stack on top of ours, they can't override or deny. To tighten a tier,
+  # set its boolean below to false (suppresses our binding) and author your
+  # own. To give an individual user extra access, bind cloud:user:<id> to
+  # an extra Role/ClusterRole — it will union with their tier's permissions.
+  # To loosen owner, set ownerClusterRole=cluster-admin.
+  defaultRbac:
+    create: true
+    owner: true
+    member: true
+    viewer: true
+    # ClusterRoles the three Cloud roles bind to. Swap for custom ClusterRoles
+    # to tighten or loosen the defaults.
+    ownerClusterRole: admin
+    memberClusterRole: edit
+    viewerClusterRole: view
 
 # MCP (Model Context Protocol) server for AI tools
 mcp:
