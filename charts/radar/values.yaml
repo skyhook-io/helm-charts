@@ -50,6 +50,12 @@ rbac:
   # Allow port forwarding (enables port forward feature)
   portForward: false
 
+  # Allow Radar to patch its own Deployment so Radar Hub can trigger one-click
+  # in-app upgrades without customers needing a terminal or cloud credentials.
+  # Creates a separate Role + RoleBinding scoped to this namespace (not cluster-wide).
+  # Safe to disable if your org policy forbids self-patching workloads.
+  selfUpgrade: true
+
   # Traffic visibility (Hubble/Cilium integration)
   # Grants read access ONLY to hubble-relay-client-certs secret for TLS auth
   traffic: true
