@@ -145,6 +145,14 @@ spec:
               {{- end }}
             {{- end }}
             {{- end }}
+            {{- if .Values.rbac.selfUpgrade }}
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MY_DEPLOYMENT_NAME
+              value: {{ include "radar.fullname" . }}
+            {{- end }}
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

@@ -50,6 +50,15 @@ rbac:
   # Allow port forwarding (enables port forward feature)
   portForward: false
 
+  # Allow Radar Cloud to trigger one-click in-app upgrades without customers
+  # needing a terminal or cloud credentials. Not needed for standalone/local
+  # installs — those have direct kubectl/Helm access anyway.
+  # Security scope: namespace-scoped Role (not ClusterRole), restricted to this
+  # Deployment only via resourceNames, get+patch verbs only (no delete/create).
+  # The endpoint validates that the requested image comes from
+  # ghcr.io/skyhook-io/radar before issuing any patch.
+  selfUpgrade: false
+
   # Traffic visibility (Hubble/Cilium integration)
   # Grants read access ONLY to hubble-relay-client-certs secret for TLS auth
   traffic: true
