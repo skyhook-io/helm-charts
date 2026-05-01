@@ -1,6 +1,64 @@
 apiVersion: v1
 entries:
   radar:
+  - annotations:
+      artifacthub.io/images: |
+        - name: radar
+          image: ghcr.io/skyhook-io/radar:1.5.7
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Website
+          url: https://radarhq.io
+        - name: Documentation
+          url: https://radarhq.io/docs
+        - name: Source
+          url: https://github.com/skyhook-io/radar
+        - name: Releases
+          url: https://github.com/skyhook-io/radar/releases
+        - name: Discord
+          url: https://radarhq.io/community/chat
+      artifacthub.io/maintainers: |
+        - name: Skyhook
+          email: support@skyhook.io
+      artifacthub.io/screenshots: |
+        - title: Multi-cluster topology
+          url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/topology-view.png
+        - title: Resource browser
+          url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/resources-view.png
+        - title: Event timeline
+          url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/timeline-view.png
+        - title: Service traffic map
+          url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/traffic-view.png
+      category: monitoring-logging
+    apiVersion: v2
+    appVersion: 1.5.7
+    created: "2026-05-01T19:44:43.671437652Z"
+    description: Modern Kubernetes visibility - topology, traffic, Helm and GitOps
+      management
+    digest: dd24fc6dac62e4fc137cca68e2c884487baaab64591d7bc7eb7b74446464d34c
+    home: https://radarhq.io
+    icon: https://radarhq.io/radar/icon-512.png
+    keywords:
+    - kubernetes
+    - kubernetes-dashboard
+    - kubernetes-ui
+    - kubernetes-monitoring
+    - visualization
+    - topology
+    - helm
+    - gitops
+    - mcp
+    maintainers:
+    - email: support@skyhook.io
+      name: Skyhook
+      url: https://radarhq.io
+    name: radar
+    sources:
+    - https://github.com/skyhook-io/radar
+    type: application
+    urls:
+    - https://github.com/skyhook-io/helm-charts/releases/download/radar-1.5.8/radar-1.5.8.tgz
+    version: 1.5.8
   - apiVersion: v2
     appVersion: 1.5.7
     created: "2026-04-28T12:52:30.759697393Z"
@@ -1835,4 +1893,4 @@ entries:
     urls:
     - https://github.com/skyhook-io/helm-charts/releases/download/skyhook-connector-1.3.15/skyhook-connector-1.3.15.tgz
     version: 1.3.15
-generated: "2026-04-28T12:52:30.76003778Z"
+generated: "2026-05-01T19:44:43.671674213Z"
