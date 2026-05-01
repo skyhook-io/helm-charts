@@ -1,0 +1,6 @@
+# Artifact Hub repository metadata file
+# https://artifacthub.io/docs/topics/repositories/
+repositoryID: 1d0f63b7-a65f-4def-92b9-21fb0f86b309
+owners:
+  - name: Skyhook
+    email: support@skyhook.io
