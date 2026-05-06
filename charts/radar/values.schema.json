@@ -62,6 +62,8 @@
             "awx": { "type": "boolean" },
             "certManager": { "type": "boolean" },
             "cloudnativePg": { "type": "boolean" },
+            "clusterApi": { "type": "boolean" },
+            "contour": { "type": "boolean" },
             "crossplane": { "type": "boolean" },
             "descheduler": { "type": "boolean" },
             "envoyGateway": { "type": "boolean" },
@@ -89,6 +91,7 @@
             "strimzi": { "type": "boolean" },
             "tekton": { "type": "boolean" },
             "traefik": { "type": "boolean" },
+            "trivy": { "type": "boolean" },
             "velero": { "type": "boolean" }
           }
         },
