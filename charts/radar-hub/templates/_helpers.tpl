@@ -58,10 +58,6 @@ Component-specific names.
 {{- printf "%s-web" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{- define "radar-hub.migrateName" -}}
-{{- printf "%s-migrate" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
 {{- define "radar-hub.secretName" -}}
 {{- printf "%s-config" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}

@@ -29,6 +29,31 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+        # cmd/migrate applies any pending schema migrations against the
+        # customer's Postgres before the hub starts. Replaces the previous
+        # Helm pre-install hook pattern: hooks fire BEFORE non-hook
+        # resources install, so the chart-managed Secret + ServiceAccount
+        # don't exist yet when the Job pod tries to mount them. An
+        # initContainer runs in the same Pod as the main hub container,
+        # mounts the same Secret refs, and blocks the main container until
+        # migrations complete. Multi-replica safe via schema_migrations.
+        - name: migrate
+          image: {{ include "radar-hub.hubImage" . }}
+          imagePullPolicy: {{ .Values.image.hub.pullPolicy }}
+          command: ["/migrate"]
+          env:
+            - name: HUB_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  {{- include "radar-hub.postgresSecretRef" . | nindent 18 }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
       containers:
         - name: hub
           image: {{ include "radar-hub.hubImage" . }}

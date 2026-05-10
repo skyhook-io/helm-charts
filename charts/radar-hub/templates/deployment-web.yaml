@@ -36,9 +36,14 @@ spec:
               protocol: TCP
           env:
             {{- /* The web image's nginx config reverse-proxies /api +
-                   /agent to this hub Service via in-cluster DNS. */}}
+                   /agent to this hub Service via in-cluster DNS.
+                   FQDN is required because nginx's `resolver` directive
+                   (used for runtime DNS of $HUB_UPSTREAM) doesn't honor
+                   the `search` domains in /etc/resolv.conf — kube-dns
+                   returns NXDOMAIN for the bare service name. The
+                   namespaced FQDN works on any standard K8s cluster. */}}
             - name: HUB_UPSTREAM
-              value: "http://{{ include "radar-hub.hubName" . }}:{{ .Values.service.hubPort }}"
+              value: "http://{{ include "radar-hub.hubName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.hubPort }}"
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
           # nginx serves the SPA bundle; / is the simplest healthy path.
