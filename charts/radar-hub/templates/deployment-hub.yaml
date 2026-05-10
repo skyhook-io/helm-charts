@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "radar-hub.hubName" . }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hub
+spec:
+  replicas: {{ .Values.hub.replicas }}
+  selector:
+    matchLabels:
+      {{- include "radar-hub.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: hub
+  template:
+    metadata:
+      annotations:
+        {{- /* Roll the pod when the chart-managed Secret changes (license,
+               cookie password, OIDC client secret, break-glass creds). */}}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.hub.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "radar-hub.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: hub
+    spec:
+      serviceAccountName: {{ include "radar-hub.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: hub
+          image: {{ include "radar-hub.hubImage" . }}
+          imagePullPolicy: {{ .Values.image.hub.pullPolicy }}
+          command: ["/hub"]
+          args:
+            - "-addr=:8080"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: RADAR_HUB_MODE
+              value: "self_hosted"
+            - name: RADAR_HUB_VERSION
+              value: {{ default .Chart.AppVersion .Values.image.hub.tag | quote }}
+            - name: RADAR_HUB_ORG_NAME
+              value: {{ .Values.hub.orgName | quote }}
+            - name: RADAR_HUB_AUDIT_RETENTION_DAYS
+              value: {{ .Values.hub.auditRetentionDays | quote }}
+            - name: RADAR_HUB_BRAND_DOCS_URL
+              value: {{ .Values.branding.docsURL | quote }}
+            - name: RADAR_HUB_BRAND_SUPPORT_EMAIL
+              value: {{ .Values.branding.supportEmail | quote }}
+            - name: RADAR_HUB_BRAND_FEEDBACK_EMAIL
+              value: {{ .Values.branding.feedbackEmail | quote }}
+            - name: HUB_FRONTEND_URL
+              value: {{ .Values.hub.publicURL | quote }}
+            - name: HUB_ALLOWED_ORIGINS
+              value: {{ .Values.hub.publicURL | quote }}
+            - name: HUB_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  {{- include "radar-hub.postgresSecretRef" . | nindent 18 }}
+            - name: HUB_COOKIE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (include "radar-hub.secretName" .) .Values.hub.cookiePasswordExistingSecret | quote }}
+                  key: cookie-password
+            - name: RADAR_HUB_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (include "radar-hub.secretName" .) .Values.license.existingSecret | quote }}
+                  key: {{ ternary "license" "license-key" (ne .Values.license.existingSecret "") | quote }}
+
+            {{- if .Values.auth.breakGlass.email }}
+            - name: RADAR_HUB_BOOTSTRAP_ADMIN_EMAIL
+              value: {{ .Values.auth.breakGlass.email | quote }}
+            {{- if .Values.auth.breakGlass.passwordHashExistingSecret }}
+            - name: RADAR_HUB_BOOTSTRAP_ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.breakGlass.passwordHashExistingSecret | quote }}
+                  key: password-hash
+            {{- else if .Values.auth.breakGlass.passwordHash }}
+            - name: RADAR_HUB_BOOTSTRAP_ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "radar-hub.secretName" . | quote }}
+                  key: break-glass-password-hash
+            {{- else if .Values.auth.breakGlass.password }}
+            - name: RADAR_HUB_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "radar-hub.secretName" . | quote }}
+                  key: break-glass-password
+            {{- end }}
+            {{- end }}
+
+            {{- if .Values.auth.oidc.issuer }}
+            - name: RADAR_HUB_OIDC_ISSUER
+              value: {{ .Values.auth.oidc.issuer | quote }}
+            - name: RADAR_HUB_OIDC_CLIENT_ID
+              value: {{ .Values.auth.oidc.clientID | quote }}
+            - name: RADAR_HUB_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (include "radar-hub.secretName" .) .Values.auth.oidc.clientSecretExistingSecret | quote }}
+                  key: {{ ternary "client-secret" "oidc-client-secret" (ne .Values.auth.oidc.clientSecretExistingSecret "") | quote }}
+            - name: RADAR_HUB_OIDC_CALLBACK_URL
+              value: {{ .Values.auth.oidc.callbackURL | quote }}
+            - name: RADAR_HUB_OIDC_GROUP_CLAIM
+              value: {{ .Values.auth.oidc.groupClaim | quote }}
+            - name: RADAR_HUB_OIDC_ADMIN_GROUPS
+              value: {{ join "," .Values.auth.oidc.adminGroups | quote }}
+            - name: RADAR_HUB_OIDC_DEFAULT_ROLE
+              value: {{ .Values.auth.oidc.defaultRole | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: {{ .Values.hub.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.hub.livenessProbe.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: {{ .Values.hub.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.hub.readinessProbe.periodSeconds }}
+          resources:
+            {{- toYaml .Values.hub.resources | nindent 12 }}
+      {{- with .Values.hub.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hub.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hub.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
