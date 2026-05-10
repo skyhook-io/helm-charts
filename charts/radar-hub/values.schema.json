@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "radar-hub values",
+  "type": "object",
+  "required": ["image", "license", "postgres", "hub", "auth", "service"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "properties": {
+        "hub": {
+          "type": "object",
+          "required": ["repository"],
+          "properties": {
+            "repository": {"type": "string", "minLength": 1},
+            "tag": {"type": "string"},
+            "pullPolicy": {"type": "string", "enum": ["Always", "IfNotPresent", "Never"]}
+          }
+        },
+        "web": {
+          "type": "object",
+          "required": ["repository"],
+          "properties": {
+            "repository": {"type": "string", "minLength": 1},
+            "tag": {"type": "string"},
+            "pullPolicy": {"type": "string", "enum": ["Always", "IfNotPresent", "Never"]}
+          }
+        }
+      }
+    },
+    "imagePullSecrets": {"type": "array"},
+    "license": {
+      "type": "object",
+      "properties": {
+        "key": {"type": "string"},
+        "existingSecret": {"type": "string"}
+      }
+    },
+    "postgres": {
+      "type": "object",
+      "properties": {
+        "dsn": {"type": "string"},
+        "existingSecret": {"type": "string"},
+        "cnpg": {
+          "type": "object",
+          "properties": {
+            "cluster": {"type": "string"},
+            "namespace": {"type": "string"},
+            "secretName": {"type": "string"}
+          }
+        }
+      }
+    },
+    "hub": {
+      "type": "object",
+      "properties": {
+        "publicURL": {"type": "string"},
+        "cookiePassword": {"type": "string"},
+        "cookiePasswordExistingSecret": {"type": "string"},
+        "orgName": {"type": "string"},
+        "auditRetentionDays": {"type": "integer", "minimum": 1},
+        "replicas": {"type": "integer", "minimum": 1},
+        "resources": {"type": "object"},
+        "podAnnotations": {"type": "object"},
+        "nodeSelector": {"type": "object"},
+        "tolerations": {"type": "array"},
+        "affinity": {"type": "object"},
+        "livenessProbe": {"type": "object"},
+        "readinessProbe": {"type": "object"}
+      }
+    },
+    "web": {
+      "type": "object",
+      "properties": {
+        "replicas": {"type": "integer", "minimum": 1},
+        "resources": {"type": "object"},
+        "podAnnotations": {"type": "object"},
+        "nodeSelector": {"type": "object"},
+        "tolerations": {"type": "array"},
+        "affinity": {"type": "object"}
+      }
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "breakGlass": {
+          "type": "object",
+          "properties": {
+            "email": {"type": "string"},
+            "password": {"type": "string"},
+            "passwordHash": {"type": "string"},
+            "passwordHashExistingSecret": {"type": "string"}
+          }
+        },
+        "oidc": {
+          "type": "object",
+          "properties": {
+            "issuer": {"type": "string"},
+            "clientID": {"type": "string"},
+            "clientSecret": {"type": "string"},
+            "clientSecretExistingSecret": {"type": "string"},
+            "callbackURL": {"type": "string"},
+            "groupClaim": {"type": "string"},
+            "adminGroups": {"type": "array", "items": {"type": "string"}},
+            "defaultRole": {"type": "string", "enum": ["owner", "member", "viewer"]}
+          }
+        }
+      }
+    },
+    "branding": {
+      "type": "object",
+      "properties": {
+        "docsURL": {"type": "string"},
+        "supportEmail": {"type": "string"},
+        "feedbackEmail": {"type": "string"}
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "className": {"type": "string"},
+        "annotations": {"type": "object"},
+        "host": {"type": "string"},
+        "tls": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "secretName": {"type": "string"}
+          }
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": {"type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
+        "hubPort": {"type": "integer"},
+        "webPort": {"type": "integer"}
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string"}
+      }
+    },
+    "nameOverride": {"type": "string"},
+    "fullnameOverride": {"type": "string"}
+  }
+}

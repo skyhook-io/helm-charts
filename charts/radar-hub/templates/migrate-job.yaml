@@ -1,0 +1,54 @@
+{{/*
+Pre-install + pre-upgrade migrate Job. Runs cmd/migrate (built into the
+hub image) against the customer's Postgres before each release rolls
+out, so the hub Deployment never starts against a stale schema.
+
+helm.sh/hook-delete-policy ensures a re-run after success — the previous
+Job is deleted on the next install/upgrade so the new one can claim the
+same name. The "before-hook-creation" policy ensures we don't leak
+historical Job objects.
+
+Idempotent — schema_migrations dedups already-applied versions.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "radar-hub.migrateName" . }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        {{- include "radar-hub.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "radar-hub.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "radar-hub.hubImage" . }}
+          imagePullPolicy: {{ .Values.image.hub.pullPolicy }}
+          command: ["/migrate"]
+          env:
+            - name: HUB_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  {{- include "radar-hub.postgresSecretRef" . | nindent 18 }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

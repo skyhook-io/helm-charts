@@ -1,0 +1,185 @@
+# radar-hub Helm chart values.
+#
+# Self-hosted deployment: API (Go) + SPA (nginx-served static) + a Helm
+# pre-install/pre-upgrade Job that runs cmd/migrate against the customer's
+# Postgres before each release. This chart does NOT install Postgres —
+# customers either supply a DSN (managed Postgres / on-cluster operator)
+# or point at an existing CloudNativePG `Cluster`.
+#
+# Required values for a working install:
+#   --set hub.publicURL=https://radar.acme.example
+#   --set license.key=<JWT>
+#   --set postgres.dsn=postgres://...   (OR existingSecret OR cnpg.*)
+#   --set auth.breakGlass.email=admin@acme.example
+#   --set auth.breakGlass.password=<changeme>   (OR passwordHash)
+#
+# OIDC and ingress are optional but typical.
+
+# ---------------------------------------------------------------------------
+# Images
+# ---------------------------------------------------------------------------
+image:
+  hub:
+    repository: ghcr.io/skyhook-io/radar-hub
+    tag: ""           # defaults to chart appVersion when empty
+    pullPolicy: IfNotPresent
+  web:
+    repository: ghcr.io/skyhook-io/radar-hub-web
+    tag: ""           # defaults to chart appVersion when empty
+    pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# ---------------------------------------------------------------------------
+# License (Skyhook-issued JWT)
+# ---------------------------------------------------------------------------
+# Either set license.key directly OR point at an existing Secret with key
+# `license`. Plain key takes precedence; existingSecret is preferred for
+# production so the JWT isn't in plaintext in your values file.
+license:
+  key: ""
+  existingSecret: ""
+
+# ---------------------------------------------------------------------------
+# Postgres (BYO required)
+# ---------------------------------------------------------------------------
+postgres:
+  # Inline DSN (postgres://user:pass@host:5432/db?sslmode=require). Lowest
+  # ops overhead for evaluation; not recommended for prod (DSN ends up in
+  # plaintext in the rendered Secret unless you use existingSecret).
+  dsn: ""
+
+  # Reference an existing Secret holding the DSN. The Secret must contain
+  # a key named `dsn`. Prefer this over `dsn` for production.
+  existingSecret: ""
+
+  # CloudNativePG integration: when set, the chart reads the connection
+  # Secret CNPG generates for an existing Cluster instead of requiring a
+  # hand-managed DSN. The chart never installs the operator — the
+  # customer manages their own CNPG Cluster.
+  cnpg:
+    cluster: ""        # CNPG Cluster name in the same namespace as this release (or override below).
+    namespace: ""      # CNPG Cluster namespace. Empty = same namespace as the release.
+    secretName: ""     # CNPG-generated app-user Secret. Defaults to "<cluster>-app".
+
+# ---------------------------------------------------------------------------
+# Hub configuration
+# ---------------------------------------------------------------------------
+hub:
+  # Public URL the SPA + agent connect to. Must include scheme + host.
+  publicURL: ""
+
+  # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.
+  cookiePassword: ""
+  cookiePasswordExistingSecret: ""
+
+  # Display name + retention.
+  orgName: "Default"
+  auditRetentionDays: 365
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # Probes hit /healthz on the hub. Adjust if you've fronted the hub with
+  # a different liveness contract.
+  livenessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 30
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+# ---------------------------------------------------------------------------
+# Web (SPA) — nginx serves the prebuilt static bundle and reverse-proxies
+# /api + /agent to the hub Service.
+# ---------------------------------------------------------------------------
+web:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+auth:
+  # Always-available bootstrap admin. Permanent, not a stopgap. Ship the
+  # bcrypt hash via passwordHash (or passwordHashExistingSecret) for
+  # production; plaintext password is hashed at boot and discarded.
+  breakGlass:
+    email: ""
+    password: ""
+    passwordHash: ""
+    passwordHashExistingSecret: ""   # Secret with key `password-hash`.
+
+  # OIDC federated login. Leaving issuer empty disables OIDC entirely;
+  # break-glass admin remains available for bootstrap.
+  oidc:
+    issuer: ""           # https://acme.okta.com (no trailing /.well-known/...)
+    clientID: ""
+    clientSecret: ""
+    clientSecretExistingSecret: ""   # Secret with key `client-secret`.
+    callbackURL: ""      # <hub.publicURL>/api/auth/oidc/callback
+    groupClaim: "groups"
+    adminGroups: []      # ["radar-admins"]
+    defaultRole: "member"
+
+# ---------------------------------------------------------------------------
+# Branding (customer-facing strings exposed via /api/config)
+# ---------------------------------------------------------------------------
+branding:
+  docsURL: "https://radarhq.io/docs"
+  supportEmail: "support@radarhq.io"
+  feedbackEmail: "feedback@radarhq.io"
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: ""              # e.g. radar.acme.example
+  tls:
+    enabled: false
+    secretName: ""      # Pre-provisioned TLS Secret (cert-manager / etc.).
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  hubPort: 8080
+  webPort: 80
+
+# ---------------------------------------------------------------------------
+# ServiceAccount + RBAC
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+
+# ---------------------------------------------------------------------------
+# Names
+# ---------------------------------------------------------------------------
+nameOverride: ""
+fullnameOverride: ""

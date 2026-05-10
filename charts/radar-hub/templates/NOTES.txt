@@ -1,0 +1,63 @@
+================================================================================
+{{ .Chart.Name }} {{ .Chart.AppVersion }} installed as release "{{ .Release.Name }}"
+================================================================================
+
+Mode:           self-hosted Radar Cloud control plane
+Hub image:      {{ include "radar-hub.hubImage" . }}
+Web image:      {{ include "radar-hub.webImage" . }}
+Public URL:     {{ default "(not set — set hub.publicURL)" .Values.hub.publicURL }}
+Org name:       {{ .Values.hub.orgName }}
+
+Postgres source:
+{{- if .Values.postgres.existingSecret }}
+  existing Secret "{{ .Values.postgres.existingSecret }}" (key: dsn)
+{{- else if .Values.postgres.cnpg.cluster }}
+  CloudNativePG cluster "{{ .Values.postgres.cnpg.cluster }}" (Secret: {{ default (printf "%s-app" .Values.postgres.cnpg.cluster) .Values.postgres.cnpg.secretName }})
+{{- else }}
+  inline DSN in chart-managed Secret "{{ include "radar-hub.secretName" . }}"
+  (consider migrating to existingSecret or CNPG before scaling beyond evaluation)
+{{- end }}
+
+Auth:
+{{- if .Values.auth.breakGlass.email }}
+  - Break-glass admin: {{ .Values.auth.breakGlass.email }}
+{{- end }}
+{{- if .Values.auth.oidc.issuer }}
+  - OIDC enabled: issuer={{ .Values.auth.oidc.issuer }} client_id={{ .Values.auth.oidc.clientID }}
+{{- if not .Values.auth.oidc.callbackURL }}
+  WARNING: auth.oidc.callbackURL is empty. Set it to {{ default "<hub.publicURL>" .Values.hub.publicURL }}/api/auth/oidc/callback
+{{- end }}
+{{- else if not .Values.auth.breakGlass.email }}
+  WARNING: no auth method configured. Set auth.breakGlass.* and/or auth.oidc.*
+{{- end }}
+
+NEXT STEPS
+----------
+1. Watch the migrate Job complete:
+     kubectl logs -n {{ .Release.Namespace }} job/{{ include "radar-hub.migrateName" . }} -f
+
+2. Once both Deployments are Ready, open:
+     {{ default "<hub.publicURL>" .Values.hub.publicURL }}
+
+3. Sign in with the break-glass admin (or OIDC if configured) and verify:
+   - The deployment-shape banner shows "self-hosted"
+   - The Billing tab is hidden
+   - The "Create organization" button is hidden
+
+4. Upgrade path:
+     helm repo update
+     helm upgrade {{ .Release.Name }} skyhook/radar-hub
+   (the migrate Job re-runs as a pre-upgrade hook).
+
+DOCS
+----
+  https://radarhq.io/docs/cloud/self-hosted
+
+LICENSE STATUS
+--------------
+The hub logs license verification at boot. Look for:
+  "license verified" — happy path
+  "license is expired (warn-only ...)" — past exp; banner shown but writes still work
+  "license verification failed" — bad signature or missing claim; investigate
+
+================================================================================

@@ -1,0 +1,28 @@
+apiVersion: v2
+name: radar-hub
+description: Radar Cloud control plane for self-hosted deployments — Go API + React SPA + BYO Postgres.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+icon: https://radarhq.io/radar/icon-512.png
+keywords:
+  - radar
+  - kubernetes
+  - observability
+  - self-hosted
+  - on-prem
+home: https://radarhq.io/self-hosted
+sources:
+  - https://github.com/skyhook-dev/radar-hub
+maintainers:
+  - name: Skyhook
+    email: support@skyhook.io
+    url: https://radarhq.io
+annotations:
+  category: monitoring-logging
+  artifacthub.io/license: Proprietary
+  artifacthub.io/links: |
+    - name: Website
+      url: https://radarhq.io/self-hosted
+    - name: Documentation
+      url: https://radarhq.io/docs/cloud/self-hosted
