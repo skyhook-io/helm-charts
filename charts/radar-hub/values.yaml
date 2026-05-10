@@ -201,15 +201,18 @@ clusterDomain: cluster.local
 # ---------------------------------------------------------------------------
 # Pod security
 # ---------------------------------------------------------------------------
-# Required to admit under Pod Security Admission `restricted`, which is
-# the default in many enterprise envs. The hub binary is distroless +
-# nonroot already; the web image is stock nginx (writes to /var/cache/nginx,
-# /var/run, /tmp — read-only-root needs an emptyDir mount if you flip it).
+# Defaults satisfy Pod Security Admission `restricted` (the default in
+# many enterprise envs). Notably we DO NOT pin runAsUser/runAsGroup —
+# the hub image runs as distroless `nonroot` (UID 65532), the web image
+# runs as nginx-unprivileged (UID 101). Pinning either at the pod level
+# would break the other container, so we leave it to each image's USER
+# directive and only enforce `runAsNonRoot: true` at the pod level.
+#
+# Customers running PSA restricted with strict UID requirements can
+# override per-container via .Values.hub.securityContext +
+# .Values.web.securityContext (TODO: surface those values knobs).
 podSecurityContext:
   runAsNonRoot: true
-  runAsUser: 65532
-  runAsGroup: 65532
-  fsGroup: 65532
   seccompProfile:
     type: RuntimeDefault
 
@@ -217,7 +220,7 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop: ["ALL"]
-  readOnlyRootFilesystem: false  # web image needs writable /var/cache/nginx + /var/run
+  readOnlyRootFilesystem: false  # web image needs writable /var/cache/nginx + /tmp/run
 
 # ---------------------------------------------------------------------------
 # Names
