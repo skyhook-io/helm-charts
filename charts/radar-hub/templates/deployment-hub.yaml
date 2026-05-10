@@ -119,13 +119,13 @@ spec:
             {{- end }}
           livenessProbe:
             httpGet:
-              path: /metrics
+              path: /healthz
               port: http
             initialDelaySeconds: {{ .Values.hub.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.hub.livenessProbe.periodSeconds }}
           readinessProbe:
             httpGet:
-              path: /metrics
+              path: /healthz
               port: http
             initialDelaySeconds: {{ .Values.hub.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.hub.readinessProbe.periodSeconds }}

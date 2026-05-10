@@ -41,6 +41,21 @@ spec:
               value: "http://{{ include "radar-hub.hubName" . }}:{{ .Values.service.hubPort }}"
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
+          # nginx serves the SPA bundle; / is the simplest healthy path.
+          # The /api/* + /agent + /c/* proxies upstream to the hub, so a
+          # 200 on / means nginx is up regardless of hub state.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
       {{- with .Values.web.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
