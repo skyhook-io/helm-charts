@@ -26,10 +26,18 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: web
           image: {{ include "radar-hub.webImage" . }}
           imagePullPolicy: {{ .Values.image.web.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 80
@@ -41,9 +49,11 @@ spec:
                    (used for runtime DNS of $HUB_UPSTREAM) doesn't honor
                    the `search` domains in /etc/resolv.conf — kube-dns
                    returns NXDOMAIN for the bare service name. The
-                   namespaced FQDN works on any standard K8s cluster. */}}
+                   namespaced FQDN works on any standard K8s cluster;
+                   `cluster.local` is the K8s default but overridable
+                   via .Values.clusterDomain for custom-domain clusters. */}}
             - name: HUB_UPSTREAM
-              value: "http://{{ include "radar-hub.hubName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.hubPort }}"
+              value: "http://{{ include "radar-hub.hubName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}:{{ .Values.service.hubPort }}"
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
           # nginx serves the SPA bundle; / is the simplest healthy path.

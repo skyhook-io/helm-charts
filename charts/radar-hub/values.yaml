@@ -56,9 +56,14 @@ postgres:
   # Secret CNPG generates for an existing Cluster instead of requiring a
   # hand-managed DSN. The chart never installs the operator — the
   # customer manages their own CNPG Cluster.
+  #
+  # The CNPG Cluster MUST live in the same namespace as this release.
+  # Kubernetes Secret refs can't cross namespaces; if you need cross-ns,
+  # use a Secret-mirroring controller (Reflector, external-secrets) to
+  # copy CNPG's app-user Secret into this namespace, then set
+  # postgres.existingSecret instead.
   cnpg:
-    cluster: ""        # CNPG Cluster name in the same namespace as this release (or override below).
-    namespace: ""      # CNPG Cluster namespace. Empty = same namespace as the release.
+    cluster: ""        # CNPG Cluster name in the SAME namespace as this release.
     secretName: ""     # CNPG-generated app-user Secret. Defaults to "<cluster>-app".
 
 # ---------------------------------------------------------------------------
@@ -177,6 +182,42 @@ service:
 serviceAccount:
   create: true
   name: ""
+  # Annotations attached to the chart-managed ServiceAccount. Most
+  # customers use this to wire cloud-provider workload identity, e.g.
+  #   eks.amazonaws.com/role-arn:  arn:aws:iam::...:role/radar-hub
+  #   iam.gke.io/gcp-service-account: radar-hub@<project>.iam.gserviceaccount.com
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# Cluster domain
+# ---------------------------------------------------------------------------
+# Used to build the in-cluster FQDN for HUB_UPSTREAM (the web container's
+# nginx proxies to it). `cluster.local` is the default on every standard
+# K8s cluster but multi-cluster mesh setups (GKE Anthos, custom kubeadm)
+# may use a different domain. Override if `kubectl exec` into a pod
+# shows a different `search ... svc.<domain>` line in /etc/resolv.conf.
+clusterDomain: cluster.local
+
+# ---------------------------------------------------------------------------
+# Pod security
+# ---------------------------------------------------------------------------
+# Required to admit under Pod Security Admission `restricted`, which is
+# the default in many enterprise envs. The hub binary is distroless +
+# nonroot already; the web image is stock nginx (writes to /var/cache/nginx,
+# /var/run, /tmp — read-only-root needs an emptyDir mount if you flip it).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: false  # web image needs writable /var/cache/nginx + /var/run
 
 # ---------------------------------------------------------------------------
 # Names

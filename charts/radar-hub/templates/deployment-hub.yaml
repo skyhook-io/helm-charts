@@ -29,6 +29,10 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         # cmd/migrate applies any pending schema migrations against the
         # customer's Postgres before the hub starts. Replaces the previous
@@ -41,6 +45,10 @@ spec:
         - name: migrate
           image: {{ include "radar-hub.hubImage" . }}
           imagePullPolicy: {{ .Values.image.hub.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           command: ["/migrate"]
           env:
             - name: HUB_DB_DSN
@@ -58,6 +66,10 @@ spec:
         - name: hub
           image: {{ include "radar-hub.hubImage" . }}
           imagePullPolicy: {{ .Values.image.hub.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           command: ["/hub"]
           args:
             - "-addr=:8080"
@@ -134,7 +146,10 @@ spec:
                   name: {{ default (include "radar-hub.secretName" .) .Values.auth.oidc.clientSecretExistingSecret | quote }}
                   key: {{ ternary "client-secret" "oidc-client-secret" (ne .Values.auth.oidc.clientSecretExistingSecret "") | quote }}
             - name: RADAR_HUB_OIDC_CALLBACK_URL
-              value: {{ .Values.auth.oidc.callbackURL | quote }}
+              {{- /* Auto-derive from publicURL when not set. Customers
+                     who terminate TLS at a separate ingress with a
+                     different host can still override this explicitly. */}}
+              value: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL | quote }}
             - name: RADAR_HUB_OIDC_GROUP_CLAIM
               value: {{ .Values.auth.oidc.groupClaim | quote }}
             - name: RADAR_HUB_OIDC_ADMIN_GROUPS
