@@ -44,7 +44,6 @@
           "type": "object",
           "properties": {
             "cluster": {"type": "string"},
-            "namespace": {"type": "string"},
             "secretName": {"type": "string"}
           }
         }
@@ -52,8 +51,9 @@
     },
     "hub": {
       "type": "object",
+      "required": ["publicURL"],
       "properties": {
-        "publicURL": {"type": "string"},
+        "publicURL": {"type": "string", "minLength": 1},
         "cookiePassword": {"type": "string"},
         "cookiePasswordExistingSecret": {"type": "string"},
         "orgName": {"type": "string"},
@@ -142,9 +142,13 @@
       "type": "object",
       "properties": {
         "create": {"type": "boolean"},
-        "name": {"type": "string"}
+        "name": {"type": "string"},
+        "annotations": {"type": "object"}
       }
     },
+    "clusterDomain": {"type": "string", "minLength": 1},
+    "podSecurityContext": {"type": "object"},
+    "securityContext": {"type": "object"},
     "nameOverride": {"type": "string"},
     "fullnameOverride": {"type": "string"}
   }
