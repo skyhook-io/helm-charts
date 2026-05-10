@@ -45,10 +45,17 @@ spec:
         - name: migrate
           image: {{ include "radar-hub.hubImage" . }}
           imagePullPolicy: {{ .Values.image.hub.pullPolicy }}
-          {{- with .Values.securityContext }}
           securityContext:
+            # runAsUser is pinned to 65532 (distroless's `nonroot`) because
+            # the image's USER directive uses the name, not a numeric UID
+            # — and `runAsNonRoot: true` requires a numeric UID to verify.
+            # The web container uses its own (UID 101) via the image's
+            # numeric USER directive.
+            runAsUser: 65532
+            runAsGroup: 65532
+            {{- with .Values.securityContext }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- end }}
           command: ["/migrate"]
           env:
             - name: HUB_DB_DSN
@@ -66,10 +73,17 @@ spec:
         - name: hub
           image: {{ include "radar-hub.hubImage" . }}
           imagePullPolicy: {{ .Values.image.hub.pullPolicy }}
-          {{- with .Values.securityContext }}
           securityContext:
+            # runAsUser is pinned to 65532 (distroless's `nonroot`) because
+            # the image's USER directive uses the name, not a numeric UID
+            # — and `runAsNonRoot: true` requires a numeric UID to verify.
+            # The web container uses its own (UID 101) via the image's
+            # numeric USER directive.
+            runAsUser: 65532
+            runAsGroup: 65532
+            {{- with .Values.securityContext }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- end }}
           command: ["/hub"]
           args:
             - "-addr=:8080"
