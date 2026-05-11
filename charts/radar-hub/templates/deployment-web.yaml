@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "radar-hub.webName" . }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      {{- include "radar-hub.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      {{- with .Values.web.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "radar-hub.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: web
+    spec:
+      serviceAccountName: {{ include "radar-hub.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: web
+          image: {{ include "radar-hub.webImage" . }}
+          imagePullPolicy: {{ .Values.image.web.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- /* The web image's nginx config reverse-proxies /api +
+                   /agent to this hub Service via in-cluster DNS.
+                   FQDN is required because nginx's `resolver` directive
+                   (used for runtime DNS of $HUB_UPSTREAM) doesn't honor
+                   the `search` domains in /etc/resolv.conf — kube-dns
+                   returns NXDOMAIN for the bare service name. The
+                   namespaced FQDN works on any standard K8s cluster;
+                   `cluster.local` is the K8s default but overridable
+                   via .Values.clusterDomain for custom-domain clusters. */}}
+            - name: HUB_UPSTREAM
+              value: "http://{{ include "radar-hub.hubName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}:{{ .Values.service.hubPort }}"
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+          # nginx serves the SPA bundle; / is the simplest healthy path.
+          # The /api/* + /agent + /c/* proxies upstream to the hub, so a
+          # 200 on / means nginx is up regardless of hub state.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+      {{- with .Values.web.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

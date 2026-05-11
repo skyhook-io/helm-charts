@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "radar-hub.hubName" . }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hub
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.hubPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "radar-hub.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: hub
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "radar-hub.webName" . }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.webPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "radar-hub.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web
