@@ -2157,6 +2157,20 @@ entries:
   skyhook-connector:
   - apiVersion: v2
     appVersion: v2.5.0
+    created: "2026-05-11T12:08:08.617063909Z"
+    description: A Helm chart for Skyhook Connector
+    digest: 9467c14aeaff9a72a4462e49250d360173393cbf28f6faee1cbcb41169bb5f1e
+    icon: https://app.skyhook.io/_next/image?url=%2Fstatic%2Fskyhook%2Fskyhook-image-square.jpg&w=128&q=75
+    maintainers:
+    - email: nadav@skyhook.io
+      name: nadaverell
+    name: skyhook-connector
+    type: application
+    urls:
+    - https://github.com/skyhook-io/helm-charts/releases/download/skyhook-connector-1.3.18/skyhook-connector-1.3.18.tgz
+    version: 1.3.18
+  - apiVersion: v2
+    appVersion: v2.5.0
     created: "2026-05-09T12:15:18.8405837Z"
     description: A Helm chart for Skyhook Connector
     digest: 02afa402103ced3c91f2e94ee623bb02d0e8950861624c824512d6b938dcc393
@@ -2197,4 +2211,4 @@ entries:
     urls:
     - https://github.com/skyhook-io/helm-charts/releases/download/skyhook-connector-1.3.15/skyhook-connector-1.3.15.tgz
     version: 1.3.15
-generated: "2026-05-10T19:22:08.160643151Z"
+generated: "2026-05-11T12:08:08.617277063Z"
