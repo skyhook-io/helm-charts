@@ -78,5 +78,14 @@ existingSecret: ""
 # Number of concurrent tasks to run.
 workerPoolSize: 5
 
+# RBAC settings.
+rbac:
+  # When true, grants the connector a namespaced Role to patch its own Deployment.
+  # Required for one-click upgrade from the Skyhook UI (the connector patches its
+  # container image and lets Kubernetes roll the pod). Scoped to the connector's
+  # own Deployment only via resourceNames; no cluster-wide write access.
+  # Set false to disable in-cluster self-upgrade (you would then helm-upgrade manually).
+  selfUpgrade: true
+
 # API key to use for the agent (to be placed in the secret). Expected to be provided during 'helm install'.
 apiKey: "placeholder"
