@@ -92,6 +92,7 @@ touches its contents.
 | `timeline.retention` | SQLite retention (Go duration; `0` disables) | `168h` |
 | `persistence.enabled` | Enable PVC for SQLite | `false` |
 | `traffic.prometheusUrl` | Manual Prometheus/VictoriaMetrics URL (skips auto-discovery) | `""` |
+| `traffic.prometheusHeaders` | HTTP headers sent with every Prometheus request (auth-protected backends) | `{}` |
 | `resources.limits.memory` | Memory limit | `512Mi` |
 | `resources.requests.memory` | Memory request | `128Mi` |
 
@@ -164,7 +165,7 @@ This overrides individual settings below. Simpler but broader — some orgs may 
 | `awx` | `awx.ansible.com` |
 | `certManager` | `cert-manager.io` |
 | `cloudnativePg` | `cloudnative-pg.io` |
-| `crossplane` | `crossplane.io`, `pkg.crossplane.io` |
+| `crossplane` | `crossplane.io`, `pkg.crossplane.io`, `apiextensions.crossplane.io`, `helm.crossplane.io`, `kubernetes.crossplane.io`. For Upbound provider groups (e.g. `s3.aws.upbound.io`, `compute.gcp.upbound.io`) use `additionalCrdGroups` — K8s RBAC has no apiGroup wildcards. |
 | `descheduler` | `descheduler.alpha.kubernetes.io` |
 | `envoyGateway` | `gateway.envoyproxy.io` |
 | `externalDns` | `externaldns.k8s.io` |

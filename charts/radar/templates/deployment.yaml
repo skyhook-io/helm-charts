@@ -24,6 +24,9 @@ spec:
       {{- end }}
       labels:
         {{- include "radar.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -52,6 +55,9 @@ spec:
             {{- if .Values.traffic.prometheusUrl }}
             - --prometheus-url={{ .Values.traffic.prometheusUrl }}
             {{- end }}
+            {{- range $k, $v := .Values.traffic.prometheusHeaders }}
+            - {{ printf "--prometheus-header=%s=%s" $k $v | quote }}
+            {{- end }}
             {{- if not .Values.mcp.enabled }}
             - --no-mcp
             {{- end }}
@@ -76,6 +82,9 @@ spec:
             {{- end }}
             {{- if .Values.auth.oidc.groupsClaim }}
             - --auth-oidc-groups-claim={{ .Values.auth.oidc.groupsClaim }}
+            {{- end }}
+            {{- if .Values.auth.oidc.scopes }}
+            - --auth-oidc-scopes={{ join "," .Values.auth.oidc.scopes }}
             {{- end }}
             {{- if .Values.auth.oidc.postLogoutRedirectURL }}
             - --auth-oidc-post-logout-redirect-url={{ .Values.auth.oidc.postLogoutRedirectURL }}

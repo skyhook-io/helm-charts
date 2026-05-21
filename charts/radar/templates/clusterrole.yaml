@@ -5,6 +5,8 @@ metadata:
   name: {{ include "radar.fullname" . }}
   labels:
     {{- include "radar.labels" . | nindent 4 }}
+# Keep default and opt-in resource rules aligned with ResourcePermissions in
+# internal/k8s/capabilities.go and the README's "Supported Resources" table.
 rules:
   # Core resources (read-only)
   - apiGroups: [""]
@@ -15,6 +17,7 @@ rules:
       - events
       - namespaces
       - nodes
+      - persistentvolumes
       - persistentvolumeclaims
       - serviceaccounts
       - endpoints
@@ -24,6 +27,12 @@ rules:
       - policy
     resources:
       - poddisruptionbudgets
+    verbs: ["get", "list", "watch"]
+
+  # Storage classes (cluster-scoped, separate API group)
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
     verbs: ["get", "list", "watch"]
 
   {{- if .Values.rbac.helm }}
@@ -189,7 +198,7 @@ rules:
     verbs: ["get", "list", "watch"]
   {{- end }}
   {{- if .Values.rbac.crdGroups.crossplane }}
-  - apiGroups: ["crossplane.io", "pkg.crossplane.io", "apiextensions.crossplane.io"]
+  - apiGroups: ["crossplane.io", "pkg.crossplane.io", "apiextensions.crossplane.io", "helm.crossplane.io", "kubernetes.crossplane.io"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
@@ -330,6 +339,11 @@ rules:
   {{- end }}
   {{- if .Values.rbac.crdGroups.velero }}
   - apiGroups: ["velero.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+  {{- if .Values.rbac.crdGroups.verticalPodAutoscaler }}
+  - apiGroups: ["autoscaling.k8s.io"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}

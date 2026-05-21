@@ -94,7 +94,7 @@ rbac:
     cloudnativePg: true     # cloudnative-pg.io
     clusterApi: true        # *.cluster.x-k8s.io (CAPI core + infrastructure / controlplane / bootstrap / addons)
     contour: true           # projectcontour.io
-    crossplane: true        # crossplane.io, pkg.crossplane.io
+    crossplane: true        # crossplane.io, pkg.crossplane.io, apiextensions.crossplane.io, helm.crossplane.io, kubernetes.crossplane.io. For Upbound provider CRDs (s3.aws.upbound.io, compute.gcp.upbound.io, etc.) list them in additionalCrdGroups — K8s RBAC has no apiGroup wildcards.
     descheduler: true       # descheduler.alpha.kubernetes.io
     envoyGateway: true      # gateway.envoyproxy.io
     externalDns: true       # externaldns.k8s.io
@@ -123,12 +123,15 @@ rbac:
     traefik: true           # traefik.io, traefik.containo.us
     trivy: true             # aquasecurity.github.io
     velero: true            # velero.io
+    verticalPodAutoscaler: true  # autoscaling.k8s.io (VPA — granted by default; no-op on clusters where VPA isn't installed)
 
   # Additional CRD API groups for custom/unlisted CRDs
   # Example: ["mycompany.io", "custom.example.com"]
   additionalCrdGroups: []
 
 podAnnotations: {}
+
+podLabels: {}
 
 podSecurityContext:
   runAsNonRoot: true
@@ -146,6 +149,7 @@ securityContext:
       - ALL
 
 service:
+  annotations: {}
   type: ClusterIP
   port: 9280
 
@@ -231,6 +235,11 @@ auth:
     clientSecretKey: "client-secret"
     redirectURL: ""
     groupsClaim: "groups"
+    # OAuth2 scopes requested at authorization. Defaults to
+    # ["openid", "profile", "email", "groups"] inside the binary when empty.
+    # Override if your IdP rejects "groups" (e.g., Google — drop it) or you
+    # need extras like "offline_access".
+    scopes: []
     # URL to redirect after OIDC provider logout (must be registered with IdP)
     postLogoutRedirectURL: ""
     # Prefix for OIDC username/groups to match kube-apiserver --oidc-username-prefix / --oidc-groups-prefix
@@ -314,6 +323,16 @@ traffic:
   #   http://vmsingle.victoria-metrics:8428
   #   http://vmselect.victoria-metrics:8481/select/0/prometheus
   prometheusUrl: ""
+  # HTTP headers sent with every Prometheus request. Required for
+  # auth-protected backends (Bearer tokens, X-Scope-OrgID multi-tenancy, etc.).
+  # Values are rendered into the pod spec — for secrets, mount them via env
+  # and reference the env var in your own values file, or template these
+  # values from an external secret store (sealed-secrets, external-secrets).
+  # Example:
+  #   prometheusHeaders:
+  #     Authorization: "Bearer <token>"
+  #     X-Scope-OrgID: "my-org"
+  prometheusHeaders: {}
 
 # Persistence for SQLite timeline storage
 # Required when timeline.storage is "sqlite" (readOnlyRootFilesystem prevents local writes)
