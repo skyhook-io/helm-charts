@@ -100,6 +100,8 @@ spec:
               value: {{ .Values.hub.orgName | quote }}
             - name: RADAR_HUB_AUDIT_RETENTION_DAYS
               value: {{ .Values.hub.auditRetentionDays | quote }}
+            - name: RADAR_HUB_BRAND_NAME
+              value: {{ .Values.branding.brandName | quote }}
             - name: RADAR_HUB_BRAND_DOCS_URL
               value: {{ .Values.branding.docsURL | quote }}
             - name: RADAR_HUB_BRAND_SUPPORT_EMAIL

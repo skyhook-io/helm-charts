@@ -109,6 +109,7 @@
     "branding": {
       "type": "object",
       "properties": {
+        "brandName": {"type": "string"},
         "docsURL": {"type": "string"},
         "supportEmail": {"type": "string"},
         "feedbackEmail": {"type": "string"}

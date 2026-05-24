@@ -152,6 +152,11 @@ auth:
 # Branding (customer-facing strings exposed via /api/config)
 # ---------------------------------------------------------------------------
 branding:
+  # Displayed wordmark in the SPA sidebar + page titles. Default "Radar"
+  # matches the OSS product name; partners under EULA terms may not
+  # remove the "Powered by Radar" footer but can override the primary
+  # wordmark to their own brand.
+  brandName: "Radar"
   docsURL: "https://radarhq.io/docs"
   supportEmail: "support@radarhq.io"
   feedbackEmail: "feedback@radarhq.io"
