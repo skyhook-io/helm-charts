@@ -1,0 +1,27 @@
+# Test values for chart-testing (ct lint + install).
+#
+# Satisfies the chart's required-field schema constraints and template
+# fail() guards so ct lint can validate without out-of-band overrides.
+# Mirrors what a real customer install needs at minimum:
+#   - hub.publicURL          (required; schema enforces minLength: 1)
+#   - hub.cookiePassword     (required; 32+ bytes)
+#   - license.key            (required)
+#   - postgres.dsn           (required when no existingSecret / cnpg)
+#   - auth.breakGlass.*      (required pairing of email + a credential)
+#
+# Values here are placeholders — never deployed against real infrastructure.
+
+hub:
+  publicURL: "https://radar.test.example"
+  cookiePassword: "test-cookie-password-32-bytes-minimum-aaaa"
+
+license:
+  key: "test-license-jwt-placeholder"
+
+postgres:
+  dsn: "postgres://hub:hub@radar-hub-postgres:5432/radar_hub?sslmode=disable"
+
+auth:
+  breakGlass:
+    email: "admin@test.example"
+    password: "test-bg-password"
