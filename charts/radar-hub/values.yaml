@@ -20,11 +20,11 @@
 # ---------------------------------------------------------------------------
 image:
   hub:
-    repository: ghcr.io/skyhook-io/radar-hub
+    repository: ghcr.io/skyhook-dev/radar-hub
     tag: ""           # defaults to chart appVersion when empty
     pullPolicy: IfNotPresent
   web:
-    repository: ghcr.io/skyhook-io/radar-hub-web
+    repository: ghcr.io/skyhook-dev/radar-hub-web
     tag: ""           # defaults to chart appVersion when empty
     pullPolicy: IfNotPresent
 imagePullSecrets: []
@@ -78,7 +78,7 @@ hub:
 
   # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.
   cookiePassword: ""
-  cookiePasswordExistingSecret: ""
+  cookiePasswordExistingSecret: ""   # Secret with key `cookie-password`.
 
   # Display name + retention.
   orgName: "Default"
