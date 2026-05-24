@@ -33,8 +33,11 @@ imagePullSecrets: []
 # License (Skyhook-issued JWT)
 # ---------------------------------------------------------------------------
 # Either set license.key directly OR point at an existing Secret with key
-# `license`. Plain key takes precedence; existingSecret is preferred for
-# production so the JWT isn't in plaintext in your values file.
+# `license`. Setting both fails the install with a clear error — the
+# deployment Pod reads via `default chartSecret existingSecret`, so an
+# existingSecret would silently win and the inline value would be
+# ignored. existingSecret is preferred for production so the JWT isn't
+# in plaintext in your values file.
 license:
   key: ""
   existingSecret: ""
