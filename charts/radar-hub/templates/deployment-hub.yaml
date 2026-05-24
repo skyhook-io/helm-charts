@@ -108,6 +108,8 @@ spec:
               value: {{ .Values.branding.supportEmail | quote }}
             - name: RADAR_HUB_BRAND_FEEDBACK_EMAIL
               value: {{ .Values.branding.feedbackEmail | quote }}
+            - name: RADAR_HUB_PUBLIC_URL
+              value: {{ .Values.hub.publicURL | quote }}
             - name: HUB_FRONTEND_URL
               value: {{ .Values.hub.publicURL | quote }}
             - name: HUB_ALLOWED_ORIGINS
