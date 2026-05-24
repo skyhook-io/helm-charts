@@ -5,6 +5,8 @@ metadata:
   name: {{ include "radar.fullname" . }}
   labels:
     {{- include "radar.labels" . | nindent 4 }}
+# Keep default and opt-in resource rules aligned with ResourcePermissions in
+# internal/k8s/capabilities.go and the README's "Supported Resources" table.
 rules:
   # Core resources (read-only)
   - apiGroups: [""]
@@ -15,9 +17,22 @@ rules:
       - events
       - namespaces
       - nodes
+      - persistentvolumes
       - persistentvolumeclaims
       - serviceaccounts
       - endpoints
+      - limitranges
+    verbs: ["get", "list", "watch"]
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs: ["get", "list", "watch"]
+
+  # Storage classes (cluster-scoped, separate API group)
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
     verbs: ["get", "list", "watch"]
 
   {{- if .Values.rbac.helm }}
@@ -29,9 +44,11 @@ rules:
     verbs: ["create", "update", "patch", "delete"]
   {{- end }}
 
-  {{- if or .Values.rbac.secrets .Values.rbac.helm }}
-  # Secrets access - required for Helm release storage (rbac.helm)
-  # or for showing secrets in the resource browser (rbac.secrets)
+  {{- if or .Values.rbac.secrets .Values.rbac.helm (ne .Values.auth.mode "none") .Values.cloud.enabled }}
+  # Secrets access - required for Helm release storage (rbac.helm),
+  # showing secrets in the resource browser (rbac.secrets),
+  # or Helm visibility when auth is enabled / cloud-mode (Helm reads use the
+  # ServiceAccount since users with the K8s 'view' role cannot list secrets)
   - apiGroups: [""]
     resources:
       - secrets
@@ -73,6 +90,20 @@ rules:
       - selfsubjectaccessreviews
     verbs: ["create"]
 
+  {{- if .Values.rbac.viewRBAC }}
+  # RBAC objects: opt-in read for the resource browser. Off by default —
+  # cache-served reads are not gated by per-user RBAC, so granting this
+  # exposes the cluster's authorization graph to anyone who can reach
+  # Radar's API regardless of their own permissions.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+
   {{- if .Values.rbac.podLogs }}
   # Pod logs (opt-in - enables log viewer)
   - apiGroups: [""]
@@ -105,6 +136,16 @@ rules:
     resourceNames:
       - hubble-relay-client-certs
     verbs: ["get"]
+  {{- end }}
+
+  {{- if .Values.rbac.metrics }}
+  # Metrics (CPU/memory utilization) from metrics-server via the
+  # metrics.k8s.io aggregated API. Read-only.
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - pods
+      - nodes
+    verbs: ["get", "list"]
   {{- end }}
 
   # CRD discovery
@@ -141,8 +182,23 @@ rules:
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
+  {{- if .Values.rbac.crdGroups.clusterApi }}
+  - apiGroups:
+      - "cluster.x-k8s.io"
+      - "infrastructure.cluster.x-k8s.io"
+      - "controlplane.cluster.x-k8s.io"
+      - "bootstrap.cluster.x-k8s.io"
+      - "addons.cluster.x-k8s.io"
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+  {{- if .Values.rbac.crdGroups.contour }}
+  - apiGroups: ["projectcontour.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
   {{- if .Values.rbac.crdGroups.crossplane }}
-  - apiGroups: ["crossplane.io", "pkg.crossplane.io", "apiextensions.crossplane.io"]
+  - apiGroups: ["crossplane.io", "pkg.crossplane.io", "apiextensions.crossplane.io", "helm.crossplane.io", "kubernetes.crossplane.io"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
@@ -192,7 +248,7 @@ rules:
     verbs: ["get", "list", "watch"]
   {{- end }}
   {{- if .Values.rbac.crdGroups.karpenter }}
-  - apiGroups: ["karpenter.sh", "karpenter.k8s.aws"]
+  - apiGroups: ["karpenter.sh", "karpenter.k8s.aws", "karpenter.azure.com", "karpenter.gcp.compute.com"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
@@ -202,7 +258,7 @@ rules:
     verbs: ["get", "list", "watch"]
   {{- end }}
   {{- if .Values.rbac.crdGroups.knative }}
-  - apiGroups: ["serving.knative.dev", "eventing.knative.dev"]
+  - apiGroups: ["serving.knative.dev", "eventing.knative.dev", "sources.knative.dev", "messaging.knative.dev", "flows.knative.dev", "networking.internal.knative.dev"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
@@ -276,8 +332,18 @@ rules:
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
+  {{- if .Values.rbac.crdGroups.trivy }}
+  - apiGroups: ["aquasecurity.github.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
   {{- if .Values.rbac.crdGroups.velero }}
   - apiGroups: ["velero.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+  {{- if .Values.rbac.crdGroups.verticalPodAutoscaler }}
+  - apiGroups: ["autoscaling.k8s.io"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
@@ -289,6 +355,19 @@ rules:
     {{- toYaml . | nindent 6 }}
     resources: ["*"]
     verbs: ["get", "list", "watch"]
+  {{- end }}
+
+  {{- if or (ne .Values.auth.mode "none") .Values.cloud.enabled }}
+  # Auth: Impersonation permissions for user-scoped operations.
+  # Required under cloud-mode too — the binary forces --auth-mode=proxy there
+  # and impersonates Cloud-injected identities to the K8s API.
+  - apiGroups: [""]
+    resources: ["users", "groups"]
+    verbs: ["impersonate"]
+  # Auth: SubjectAccessReview for per-user permission checks
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
   {{- end }}
 
   {{- with .Values.rbac.additionalRules }}

@@ -2,6 +2,8 @@
 
 Deploy Radar to your Kubernetes cluster for web-based cluster visualization and management.
 
+> **Maintainers**: this directory is the canonical source for the chart. The published copy at [`skyhook-io/helm-charts`](https://github.com/skyhook-io/helm-charts) is auto-synced by the `helm` job in [`.github/workflows/release.yml`](../../../.github/workflows/release.yml) on every Radar release — it overwrites `charts/radar/` there with the contents of this directory. Do not edit `helm-charts/charts/radar/` by hand; changes will be clobbered on the next release.
+
 > **See also:** [In-Cluster Deployment Guide](../../../docs/in-cluster.md) for ingress and DNS setup.
 
 ## Prerequisites
@@ -51,6 +53,30 @@ helm upgrade --install radar skyhook/radar \
   --set ingress.tls[0].hosts[0]=radar.example.com
 ```
 
+### Connecting to Radar Cloud
+
+To connect Radar to Radar Cloud (hosted SaaS), follow the install wizard at
+[radarhq.io](https://radarhq.io) — it generates the full command with your
+cluster's bearer token. The wizard's command follows this shape:
+
+```bash
+kubectl create namespace radar --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic radar-cloud-config -n radar \
+  --from-literal=token=$TOKEN \
+  --dry-run=client -o yaml | kubectl apply -f -
+helm upgrade --install radar skyhook/radar -n radar \
+  --set cloud.enabled=true \
+  --set cloud.url=wss://api.radarhq.io/agent \
+  --set cloud.clusterName=$CLUSTER_NAME \
+  --set cloud.existingSecret=radar-cloud-config
+```
+
+The `radar-cloud-config` Secret is managed independently of Helm, so token
+rotation is one `kubectl apply` — no `helm upgrade` required. The same
+applies to GitOps users: manage the Secret with SealedSecrets / SOPS /
+External Secrets and reference it via `cloud.existingSecret`; Helm never
+touches its contents.
+
 ## Configuration
 
 | Parameter | Description | Default |
@@ -63,12 +89,25 @@ helm upgrade --install radar skyhook/radar \
 | `ingress.enabled` | Enable ingress | `false` |
 | `ingress.className` | Ingress class name | `""` |
 | `timeline.storage` | Timeline storage (memory/sqlite) | `memory` |
+| `timeline.retention` | SQLite retention (Go duration; `0` disables) | `168h` |
 | `persistence.enabled` | Enable PVC for SQLite | `false` |
 | `traffic.prometheusUrl` | Manual Prometheus/VictoriaMetrics URL (skips auto-discovery) | `""` |
+| `traffic.prometheusHeaders` | HTTP headers sent with every Prometheus request (auth-protected backends) | `{}` |
 | `resources.limits.memory` | Memory limit | `512Mi` |
 | `resources.requests.memory` | Memory request | `128Mi` |
 
 See `values.yaml` for all configuration options.
+
+### Timeline storage: memory vs sqlite
+
+Radar's timeline records every cluster change so you can scrub backwards through "what happened, when." Two backends:
+
+- **`memory`** (default): events live in-process. Lost on pod restart. Lower memory footprint per retention window than SQLite (no indexes, no WAL). Pick this if you only need recent activity (last few hours), don't care about losing history when a pod cycles, or want the simplest setup.
+- **`sqlite`**: events persist to a PVC across restarts. Pick this if you want a multi-day audit trail, need to inspect changes that happened while you weren't looking, or run Radar in-cluster long-term. Adds operational concerns: the PVC will fill if retention is unbounded; restarting on a multi-GB DB is slower (more rows to load).
+
+**Sizing**: a busy cluster (~5k resources, active controllers) generates ~1.5 MB/min of timeline events. With the default 7-day retention, expect ~15 GB at steady state. Tune `timeline.retention` and `persistence.size` together. Set `timeline.retention=0` to disable cleanup (events grow unbounded — not recommended).
+
+`/api/diagnostics` surfaces `timeline.retentionAge`, `timeline.lastCleanupAt`, `timeline.lastCleanupDeletedRows`, `timeline.lastCleanupError`, and `timeline.storageBytes` so you can confirm cleanup is keeping up without tailing logs.
 
 ## RBAC
 
@@ -97,6 +136,18 @@ Disabled by default for security:
 | Terminal | `rbac.podExec: true` | Shell access to pods |
 | Port Forward | `rbac.portForward: true` | Port forwarding to pods |
 | Logs | `rbac.podLogs: true` | View pod logs (**enabled by default**) |
+| Helm Write | `rbac.helm: true` | Install/upgrade/rollback/uninstall Helm releases. Under auth or cloud-mode, also emits a split helm add-on ClusterRole — `radar-helm` (member-safe: CRDs, storage, namespaces) and `radar-helm-admin` (owner-only: RBAC, webhooks, ApiServices) |
+| RBAC view | `rbac.viewRBAC: true` | Show ClusterRoles, ClusterRoleBindings, Roles, RoleBindings in the resource browser. Off by default — cache-served reads bypass per-user RBAC, so this exposes the cluster's authorization graph to every authenticated Radar user |
+
+### In-app Agent Upgrades (opt-in, for Radar Cloud users)
+
+`rbac.selfUpgrade: true` lets Radar Cloud trigger one-click upgrades from the web UI — no terminal or cloud credentials needed. Disabled by default; only needed when connecting to Radar Cloud (the install wizard sets this automatically).
+
+It creates a namespace-scoped Role (not a ClusterRole) with `get` + `patch` on this Deployment only, enforced via `resourceNames`. The endpoint validates that the requested image comes from `ghcr.io/skyhook-io/radar` before issuing any patch.
+
+```bash
+--set rbac.selfUpgrade=true
+```
 
 ### CRD Access
 
@@ -114,7 +165,7 @@ This overrides individual settings below. Simpler but broader — some orgs may 
 | `awx` | `awx.ansible.com` |
 | `certManager` | `cert-manager.io` |
 | `cloudnativePg` | `cloudnative-pg.io` |
-| `crossplane` | `crossplane.io`, `pkg.crossplane.io` |
+| `crossplane` | `crossplane.io`, `pkg.crossplane.io`, `apiextensions.crossplane.io`, `helm.crossplane.io`, `kubernetes.crossplane.io`. For Upbound provider groups (e.g. `s3.aws.upbound.io`, `compute.gcp.upbound.io`) use `additionalCrdGroups` — K8s RBAC has no apiGroup wildcards. |
 | `descheduler` | `descheduler.alpha.kubernetes.io` |
 | `envoyGateway` | `gateway.envoyproxy.io` |
 | `externalDns` | `externaldns.k8s.io` |
@@ -124,9 +175,9 @@ This overrides individual settings below. Simpler but broader — some orgs may 
 | `gcpMonitoring` | `monitoring.googleapis.com` |
 | `grafana` | `monitoring.grafana.com`, `tempo.grafana.com`, `loki.grafana.com` |
 | `istio` | `networking.istio.io`, `security.istio.io` |
-| `karpenter` | `karpenter.sh`, `karpenter.k8s.aws` |
+| `karpenter` | `karpenter.sh`, `karpenter.k8s.aws`, `karpenter.azure.com`, `karpenter.gcp.compute.com` |
 | `keda` | `keda.sh` |
-| `knative` | `serving.knative.dev`, `eventing.knative.dev` |
+| `knative` | `serving.knative.dev`, `eventing.knative.dev`, `sources.knative.dev`, `messaging.knative.dev`, `flows.knative.dev`, `networking.internal.knative.dev` |
 | `kubeshark` | `kubeshark.io` |
 | `kured` | `kured.io` |
 | `kyverno` | `kyverno.io`, `wgpolicyk8s.io`, `reports.kyverno.io` |
