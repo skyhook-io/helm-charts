@@ -5,6 +5,7 @@ on:
     paths:
       - 'charts/**'
       - '.github/workflows/ci.yaml'
+      - '.github/ci/**'
   push:
     branches:
       - main
@@ -62,6 +63,18 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         uses: helm/kind-action@v1
 
+      # radar-hub is BYO-Postgres (never installs a DB). Stand up a
+      # disposable Postgres the chart's ci/test-values.yaml DSN points at,
+      # so the install test exercises migrate + hub readiness for real.
+      - name: Deploy throwaway Postgres
+        if: steps.list-changed.outputs.changed == 'true'
+        run: |
+          kubectl apply -f .github/ci/postgres.yaml
+          kubectl -n radar-hub-ci rollout status deploy/radar-hub-postgres --timeout=120s
+
+      # --namespace pins both the old (1.0.0) and current installs into the
+      # namespace that holds the Postgres above, so the bare-hostname DSN
+      # resolves for the upgrade test's old-revision install too.
       - name: Run chart-testing (install & upgrade)
         if: steps.list-changed.outputs.changed == 'true'
-        run: ct install --upgrade --target-branch ${{ github.event.repository.default_branch }}
+        run: ct install --upgrade --target-branch ${{ github.event.repository.default_branch }} --namespace radar-hub-ci
