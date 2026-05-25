@@ -39,5 +39,5 @@ spec:
               service:
                 name: {{ include "radar-hub.webName" . }}
                 port:
-                  number: {{ .Values.service.webPort }}
+                  number: {{ .Values.service.web.port }}
 {{- end }}

@@ -134,9 +134,20 @@
     "service": {
       "type": "object",
       "properties": {
-        "type": {"type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
-        "hubPort": {"type": "integer"},
-        "webPort": {"type": "integer"}
+        "web": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
+            "port": {"type": "integer"}
+          }
+        },
+        "hub": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
+            "port": {"type": "integer"}
+          }
+        }
       }
     },
     "serviceAccount": {

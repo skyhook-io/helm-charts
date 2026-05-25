@@ -53,7 +53,7 @@ spec:
                    `cluster.local` is the K8s default but overridable
                    via .Values.clusterDomain for custom-domain clusters. */}}
             - name: HUB_UPSTREAM
-              value: "http://{{ include "radar-hub.hubName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}:{{ .Values.service.hubPort }}"
+              value: "http://{{ include "radar-hub.hubName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}:{{ .Values.service.hub.port }}"
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
           # nginx serves the SPA bundle; / is the simplest healthy path.

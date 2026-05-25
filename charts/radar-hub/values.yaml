@@ -181,9 +181,18 @@ ingress:
 # Service
 # ---------------------------------------------------------------------------
 service:
-  type: ClusterIP
-  hubPort: 8080
-  webPort: 80
+  # Public traffic should normally terminate on the web Service. The web
+  # container's nginx proxies /api, /agent, /mcp, and /c/{id}/{api,mcp}
+  # to the hub Service in-cluster.
+  web:
+    type: ClusterIP
+    port: 80
+
+  # Advanced/split-origin only. Keep the hub Service internal unless you
+  # intentionally expose the raw hub API separately from the web frontend.
+  hub:
+    type: ClusterIP
+    port: 8080
 
 # ---------------------------------------------------------------------------
 # ServiceAccount + RBAC
