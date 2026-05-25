@@ -64,10 +64,4 @@ jobs:
 
       - name: Run chart-testing (install & upgrade)
         if: steps.list-changed.outputs.changed == 'true'
-        # `--excluded-charts radar-hub` is a one-shot for the first release:
-        # `ct install --upgrade` needs a previous version of each chart on
-        # the target branch to validate the upgrade path against, and
-        # radar-hub doesn't exist on main yet. Once this PR merges and
-        # chart-releaser tags radar-hub-1.0.0 onto main, drop the exclusion
-        # in a follow-up PR.
-        run: ct install --upgrade --target-branch ${{ github.event.repository.default_branch }} --excluded-charts radar-hub
+        run: ct install --upgrade --target-branch ${{ github.event.repository.default_branch }}
