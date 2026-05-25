@@ -8,6 +8,10 @@ Web image:      {{ include "radar-hub.webImage" . }}
 Public URL:     {{ default "(not set — set hub.publicURL)" .Values.hub.publicURL }}
 Org name:       {{ .Values.hub.orgName }}
 
+Services:
+  web: {{ .Values.service.web.type }} :{{ .Values.service.web.port }} (public entrypoint; nginx proxies API, agent, and MCP traffic)
+  hub: {{ .Values.service.hub.type }} :{{ .Values.service.hub.port }} (raw hub API; keep ClusterIP unless using a split-origin deployment)
+
 Postgres source:
 {{- if .Values.postgres.existingSecret }}
   existing Secret "{{ .Values.postgres.existingSecret }}" (key: dsn)
@@ -24,9 +28,7 @@ Auth:
 {{- end }}
 {{- if .Values.auth.oidc.issuer }}
   - OIDC enabled: issuer={{ .Values.auth.oidc.issuer }} client_id={{ .Values.auth.oidc.clientID }}
-{{- if not .Values.auth.oidc.callbackURL }}
-  WARNING: auth.oidc.callbackURL is empty. Set it to {{ default "<hub.publicURL>" .Values.hub.publicURL }}/api/auth/oidc/callback
-{{- end }}
+  - OIDC callback: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL }}
 {{- else if not .Values.auth.breakGlass.email }}
   WARNING: no auth method configured. Set auth.breakGlass.* and/or auth.oidc.*
 {{- end }}

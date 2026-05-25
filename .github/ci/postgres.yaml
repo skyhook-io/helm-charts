@@ -1,0 +1,70 @@
+# Throwaway Postgres for the radar-hub install/upgrade CI test ONLY.
+#
+# radar-hub is a BYO-Postgres chart — it never installs a database. To
+# exercise the real install path (migrate initContainer + hub readiness),
+# CI stands up a disposable Postgres that the chart's ci/test-values.yaml
+# DSN points at: postgres://hub:hub@radar-hub-postgres:5432/radar_hub.
+#
+# The Service name (radar-hub-postgres), db (radar_hub), and creds (hub/hub)
+# must match that DSN. ct is run with `--namespace radar-hub-ci`, so the
+# release installs into this same namespace and the bare hostname resolves
+# for both the old (1.0.0) and current chart revisions in the upgrade test.
+# Never used against real data — emptyDir storage, wiped with the cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: radar-hub-ci
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radar-hub-postgres
+  namespace: radar-hub-ci
+  labels:
+    app: radar-hub-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: radar-hub-postgres
+  template:
+    metadata:
+      labels:
+        app: radar-hub-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_DB
+              value: radar_hub
+            - name: POSTGRES_USER
+              value: hub
+            - name: POSTGRES_PASSWORD
+              value: hub
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "hub", "-d", "radar_hub"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radar-hub-postgres
+  namespace: radar-hub-ci
+spec:
+  selector:
+    app: radar-hub-postgres
+  ports:
+    - port: 5432
+      targetPort: postgres

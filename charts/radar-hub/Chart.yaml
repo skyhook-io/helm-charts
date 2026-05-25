@@ -2,7 +2,7 @@ apiVersion: v2
 name: radar-hub
 description: Radar Cloud control plane for self-hosted deployments — Go API + React web app + BYO Postgres.
 type: application
-version: 1.0.0
+version: 1.0.1
 appVersion: "1.0.0"
 icon: https://radarhq.io/radar/icon-512.png
 keywords:

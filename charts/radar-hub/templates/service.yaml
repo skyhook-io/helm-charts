@@ -1,3 +1,9 @@
+{{- if hasKey .Values.service "type" -}}
+{{- fail "service.type was replaced by service.web.type and service.hub.type. Set service.web.type for public exposure; keep service.hub.type=ClusterIP unless you intentionally expose the raw hub API." -}}
+{{- end -}}
+{{- if or (hasKey .Values.service "hubPort") (hasKey .Values.service "webPort") -}}
+{{- fail "service.hubPort/service.webPort were replaced by service.hub.port/service.web.port." -}}
+{{- end -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,9 +12,9 @@ metadata:
     {{- include "radar-hub.labels" . | nindent 4 }}
     app.kubernetes.io/component: hub
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.service.hub.type }}
   ports:
-    - port: {{ .Values.service.hubPort }}
+    - port: {{ .Values.service.hub.port }}
       targetPort: http
       protocol: TCP
       name: http
@@ -24,9 +30,9 @@ metadata:
     {{- include "radar-hub.labels" . | nindent 4 }}
     app.kubernetes.io/component: web
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.service.web.type }}
   ports:
-    - port: {{ .Values.service.webPort }}
+    - port: {{ .Values.service.web.port }}
       targetPort: http
       protocol: TCP
       name: http
