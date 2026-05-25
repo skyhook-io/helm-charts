@@ -18,6 +18,25 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# Debug feature (terminal "Debug" tab): the image used for ephemeral debug
+# containers attached to pods and for privileged node debug pods. Point this at
+# a reachable mirror in air-gapped / private-registry clusters where the default
+# busybox:latest cannot be pulled. Empty = busybox:latest.
+# Note: Radar does not attach imagePullSecrets to debug containers/pods —
+# ephemeral containers inherit the target pod's, and node debug pods rely on the
+# default namespace's ServiceAccount / node registry config — so the image must
+# be pullable without extra credentials from Radar.
+debug:
+  image: ""
+
+# Initial-sync tuning for very large clusters. When > 0, the initial LIST of
+# high-cardinality kinds (Pods, ReplicaSets) is fetched in pages of this size
+# instead of one response — avoids response-read timeouts / memory spikes during
+# startup on clusters with tens of thousands of objects. Only takes effect when
+# the apiserver lacks WatchList streaming (otherwise the initial state streams).
+# 0 = off (single LIST). Try 2000 if a large cluster fails to sync.
+listPageSize: 0
+
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
