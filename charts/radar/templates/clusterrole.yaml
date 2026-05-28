@@ -69,6 +69,27 @@ rules:
     resources:
       - ingresses
       - networkpolicies
+      - ingressclasses
+    verbs: ["get", "list", "watch"]
+
+  # Cluster-scoped infra metadata (read-only) — surfaced in the resource
+  # browser. Low sensitivity; mirrors the storageclasses / PV treatment.
+  - apiGroups: ["scheduling.k8s.io"]
+    resources:
+      - priorityclasses
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["node.k8s.io"]
+    resources:
+      - runtimeclasses
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources:
+      - mutatingwebhookconfigurations
+      - validatingwebhookconfigurations
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources:
+      - leases
     verbs: ["get", "list", "watch"]
 
   # Batch resources (read-only)
