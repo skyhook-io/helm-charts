@@ -76,6 +76,17 @@ rbac:
   # is trusted with cluster RBAC visibility.
   viewRBAC: false
 
+  # Allow reading admission webhook configurations (MutatingWebhookConfiguration,
+  # ValidatingWebhookConfiguration) so the resource browser can list them.
+  # Auto-enabled when auth is on (auth.mode != none) or in cloud mode, where
+  # every read is re-checked against the requesting user's own permissions.
+  # For no-auth installs this stays opt-in: the configurations reveal which
+  # admission controls are enforced (Gatekeeper / Kyverno policies, image
+  # scanners, DLP, etc.) and where the gaps are — reconnaissance value for a
+  # low-trust viewer. Enable only if that audience is trusted with admission
+  # plane visibility.
+  viewWebhooks: false
+
   # Allow pod exec (enables terminal feature)
   podExec: false
 
@@ -111,6 +122,7 @@ rbac:
     # Simpler but broader permissions - some orgs may not allow this
     all: false
 
+    apiRegistration: true   # apiregistration.k8s.io (APIService health for aggregated APIs)
     argo: true              # argoproj.io
     awx: true               # awx.ansible.com
     certManager: true       # cert-manager.io, acme.cert-manager.io
@@ -216,9 +228,9 @@ resources:
 #     long-lived deployment. Adds operational concerns: the PVC fills if
 #     retention is unbounded; restart on a multi-GB DB is slower.
 #
-# Sizing rule of thumb: a busy cluster (~5k resources, active controllers)
-# generates ~1.5 MB/min of timeline events. With the default 7d retention,
-# expect ~15 GB at steady state. Tune with `retention` and PVC `size` below.
+# Timeline volume depends on cluster size and controller churn. Keep `maxSize`
+# below the PVC `size` so Radar can prune before the volume fills; tune
+# `retention`, `maxSize`, and PVC `size` together.
 timeline:
   # Storage backend: "memory" or "sqlite"
   storage: memory
@@ -232,6 +244,10 @@ timeline:
   # "0" disables cleanup (events table grows unbounded — not recommended for
   # in-cluster deployments). Cleanup runs hourly + once at startup.
   retention: 168h
+  # SQLite max storage size. When the DB + WAL exceed this value, Radar prunes
+  # oldest events until storage is back under the low-water mark. Set "0" to
+  # disable size-based pruning.
+  maxSize: 800Mi
 
 # Authentication and RBAC configuration
 auth:
@@ -350,14 +366,25 @@ traffic:
   prometheusUrl: ""
   # HTTP headers sent with every Prometheus request. Required for
   # auth-protected backends (Bearer tokens, X-Scope-OrgID multi-tenancy, etc.).
-  # Values are rendered into the pod spec — for secrets, mount them via env
-  # and reference the env var in your own values file, or template these
-  # values from an external secret store (sealed-secrets, external-secrets).
+  # Values are rendered into the pod spec; use prometheusHeadersFromEnv for
+  # secrets.
   # Example:
   #   prometheusHeaders:
-  #     Authorization: "Bearer <token>"
   #     X-Scope-OrgID: "my-org"
   prometheusHeaders: {}
+  # HTTP headers sourced from environment variables at Radar startup. Use with
+  # env[].valueFrom.secretKeyRef to keep tokens out of container args and pod
+  # specs.
+  # Example:
+  #   prometheusHeadersFromEnv:
+  #     Authorization: PROMETHEUS_TOKEN
+  #   env:
+  #     - name: PROMETHEUS_TOKEN
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: prometheus-auth
+  #           key: token
+  prometheusHeadersFromEnv: {}
 
 # Persistence for SQLite timeline storage
 # Required when timeline.storage is "sqlite" (readOnlyRootFilesystem prevents local writes)
