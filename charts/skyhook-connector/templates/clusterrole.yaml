@@ -201,6 +201,12 @@ rules:
   - apiGroups:
     - authorization.k8s.io
     resources:
+    - selfsubjectaccessreviews
+    verbs:
+    - create
+  - apiGroups:
+    - authorization.k8s.io
+    resources:
     - localsubjectaccessreviews
     - selfsubjectaccessreviews
     - selfsubjectrulesreviews
