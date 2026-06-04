@@ -264,6 +264,11 @@ auth:
   proxy:
     userHeader: "X-Forwarded-User"
     groupsHeader: "X-Forwarded-Groups"
+    # URL the logout button redirects to, to tear down the upstream proxy
+    # session (e.g. oauth2-proxy's "/oauth2/sign_out"). The proxy must actually
+    # invalidate the session at this URL — Radar only clears its own cookie
+    # (Basic Auth has no logout). Empty = clear Radar's cookie only.
+    logoutURL: ""
   # OIDC mode settings
   oidc:
     issuerURL: ""

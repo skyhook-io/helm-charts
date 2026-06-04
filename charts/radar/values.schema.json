@@ -189,7 +189,8 @@
           "additionalProperties": false,
           "properties": {
             "userHeader": { "type": "string" },
-            "groupsHeader": { "type": "string" }
+            "groupsHeader": { "type": "string" },
+            "logoutURL": { "type": "string" }
           }
         },
         "oidc": {

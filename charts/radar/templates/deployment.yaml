@@ -82,6 +82,9 @@ spec:
             {{- if .Values.auth.proxy.groupsHeader }}
             - {{ printf "--auth-groups-header=%s" .Values.auth.proxy.groupsHeader | quote }}
             {{- end }}
+            {{- if .Values.auth.proxy.logoutURL }}
+            - {{ printf "--auth-proxy-logout-url=%s" .Values.auth.proxy.logoutURL | quote }}
+            {{- end }}
             {{- if .Values.auth.oidc.issuerURL }}
             - {{ printf "--auth-oidc-issuer=%s" .Values.auth.oidc.issuerURL | quote }}
             {{- end }}
