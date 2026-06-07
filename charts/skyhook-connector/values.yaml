@@ -78,6 +78,10 @@ existingSecret: ""
 # Number of concurrent tasks to run.
 workerPoolSize: 5
 
+# Watch Kubernetes Events in the connector cache and sync stream.
+# Disable for large/high-churn clusters; event lookups still use on-demand API reads.
+watchEvents: true
+
 # RBAC settings.
 rbac:
   # When true, grants the connector a namespaced Role to patch its own Deployment.
