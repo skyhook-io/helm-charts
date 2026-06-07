@@ -1,4 +1,8 @@
 apiVersion: apps/v1
+{{- $watchEvents := true -}}
+{{- if hasKey .Values "watchEvents" -}}
+{{- $watchEvents = .Values.watchEvents -}}
+{{- end }}
 kind: Deployment
 metadata:
   name: {{ include "skyhook-agent.fullname" . }}
@@ -78,6 +82,8 @@ spec:
               value: {{ include "skyhook-agent.fullname" . | quote }}
             - name: WORKER_POOL_SIZE
               value: "{{ .Values.workerPoolSize | default 5 }}"
+            - name: SKYHOOK_WATCH_EVENTS
+              value: {{ $watchEvents | quote }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
