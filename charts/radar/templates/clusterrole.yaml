@@ -319,6 +319,11 @@ rules:
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
+  {{- if .Values.rbac.crdGroups.kubevirt }}
+  - apiGroups: ["kubevirt.io", "cdi.kubevirt.io", "clone.kubevirt.io", "export.kubevirt.io", "instancetype.kubevirt.io", "migrations.kubevirt.io", "pool.kubevirt.io", "snapshot.kubevirt.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
   {{- if .Values.rbac.crdGroups.kured }}
   - apiGroups: ["kured.io"]
     resources: ["*"]
