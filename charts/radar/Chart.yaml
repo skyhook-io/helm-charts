@@ -2,8 +2,8 @@ apiVersion: v2
 name: radar
 description: Modern Kubernetes visibility - topology, traffic, Helm and GitOps management
 type: application
-version: 1.7.8
-appVersion: "1.7.8"
+version: 1.7.9
+appVersion: "1.7.9"
 icon: https://radarhq.io/radar/icon-512.png
 keywords:
   - kubernetes
@@ -38,7 +38,7 @@ annotations:
       url: https://radarhq.io/community/chat
   artifacthub.io/images: |
     - name: radar
-      image: ghcr.io/skyhook-io/radar:1.7.8
+      image: ghcr.io/skyhook-io/radar:1.7.9
   artifacthub.io/screenshots: |
     - title: Multi-cluster topology
       url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/topology-view.png
