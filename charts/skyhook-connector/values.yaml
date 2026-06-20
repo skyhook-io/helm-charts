@@ -41,16 +41,23 @@ service:
   port: 8090
 
 resources:
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # The connector watches all cluster resources via informers, so CPU/memory scale
+  # with cluster size — especially during a full sync (a CPU-heavy collect+marshal
+  # of every object). Defaults are burstable (limit >> request): the request is the
+  # guaranteed floor that keeps task serving responsive under node contention; the
+  # limit allows bursting into node headroom during sync.
+  #
+  # For very large clusters, raise the CPU limit (or remove it entirely so the agent
+  # can use whatever headroom the node has — common for informer-based agents). The
+  # connector self-throttles its background sync to prioritize interactive tasks and
+  # auto-sizes GOMEMLIMIT from the memory limit, so it stays a good guest at whatever
+  # values you set here.
   limits:
-    cpu: 0.5
-    memory: 1024Mi
+    cpu: 2
+    memory: 2Gi
   requests:
-    cpu: 0.1
-    memory: 256Mi
+    cpu: 0.4
+    memory: 512Mi
 
 autoscaling:
   enabled: false
