@@ -294,6 +294,11 @@
         "required": ["name"]
       }
     },
+    "initContainers": {
+      "type": "array",
+      "description": "Init containers to run before the main container.",
+      "items": { "type": "object" }
+    },
     "probes": {
       "type": "object",
       "additionalProperties": false,
