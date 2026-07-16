@@ -9,6 +9,7 @@
 #
 # Required values for a working install:
 #   --set hub.publicURL=https://radar.acme.example
+#   --set hub.cookiePassword=<32+ byte secret>
 #   --set license.key=<JWT>
 #   --set postgres.dsn=postgres://...   (OR existingSecret OR cnpg.*)
 #   --set auth.breakGlass.email=admin@acme.example
@@ -96,7 +97,11 @@ hub:
       memory: 1Gi
 
   podAnnotations: {}
-  nodeSelector: {}
+  # Official Hub images are linux/amd64 for appVersion 1.1.0. Override only
+  # when using a compatible custom or future multi-architecture image.
+  nodeSelector:
+    kubernetes.io/os: linux
+    kubernetes.io/arch: amd64
   tolerations: []
   affinity: {}
 
@@ -123,7 +128,11 @@ web:
       cpu: 200m
       memory: 256Mi
   podAnnotations: {}
-  nodeSelector: {}
+  # Official Web images are linux/amd64 for appVersion 1.1.0. Override only
+  # when using a compatible custom or future multi-architecture image.
+  nodeSelector:
+    kubernetes.io/os: linux
+    kubernetes.io/arch: amd64
   tolerations: []
   affinity: {}
 
