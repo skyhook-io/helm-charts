@@ -4,6 +4,64 @@ entries:
   - annotations:
       artifacthub.io/images: |
         - name: radar
+          image: ghcr.io/skyhook-io/radar:1.8.3
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Website
+          url: https://radarhq.io
+        - name: Documentation
+          url: https://radarhq.io/docs
+        - name: Source
+          url: https://github.com/skyhook-io/radar
+        - name: Releases
+          url: https://github.com/skyhook-io/radar/releases
+        - name: Discord
+          url: https://radarhq.io/community/chat
+      artifacthub.io/maintainers: |
+        - name: Skyhook
+          email: support@skyhook.io
+      artifacthub.io/screenshots: |
+        - title: Multi-cluster topology
+          url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/topology-view.png
+        - title: Resource browser
+          url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/resources-view.png
+        - title: Event timeline
+          url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/timeline-view.png
+        - title: Service traffic map
+          url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/traffic-view.png
+      category: monitoring-logging
+    apiVersion: v2
+    appVersion: 1.8.3
+    created: "2026-07-16T11:37:43.209006615Z"
+    description: Modern Kubernetes visibility - topology, traffic, Helm and GitOps
+      management
+    digest: 50aab93678c5553ad5a97973560e5fb01ab2d497bd8b25801205c98f4b6c093d
+    home: https://radarhq.io
+    icon: https://radarhq.io/radar/icon-512.png
+    keywords:
+    - kubernetes
+    - kubernetes-dashboard
+    - kubernetes-ui
+    - kubernetes-monitoring
+    - visualization
+    - topology
+    - helm
+    - gitops
+    - mcp
+    maintainers:
+    - email: support@skyhook.io
+      name: Skyhook
+      url: https://radarhq.io
+    name: radar
+    sources:
+    - https://github.com/skyhook-io/radar
+    type: application
+    urls:
+    - https://github.com/skyhook-io/helm-charts/releases/download/radar-1.8.3/radar-1.8.3.tgz
+    version: 1.8.3
+  - annotations:
+      artifacthub.io/images: |
+        - name: radar
           image: ghcr.io/skyhook-io/radar:1.8.1
       artifacthub.io/license: Apache-2.0
       artifacthub.io/links: |
@@ -3246,4 +3304,4 @@ entries:
     urls:
     - https://github.com/skyhook-io/helm-charts/releases/download/skyhook-connector-1.3.15/skyhook-connector-1.3.15.tgz
     version: 1.3.15
-generated: "2026-07-05T14:32:59.639510558Z"
+generated: "2026-07-16T11:37:43.209152467Z"
