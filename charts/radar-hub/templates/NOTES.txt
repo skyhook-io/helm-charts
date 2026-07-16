@@ -1,5 +1,5 @@
 ================================================================================
-{{ .Chart.Name }} {{ .Chart.AppVersion }} installed as release "{{ .Release.Name }}"
+{{ .Chart.Name }} chart {{ .Chart.Version }} (app {{ .Chart.AppVersion }}) installed as release "{{ .Release.Name }}"
 ================================================================================
 
 Mode:           self-hosted Radar Cloud control plane
@@ -49,18 +49,19 @@ NEXT STEPS
    - The "Create organization" button is hidden
 
 4. Connect a Kubernetes cluster with Radar CLI 1.8.3 or newer:
-     radar cloud install \
+     kubectl radar cloud install \
        --hub-url {{ .Values.hub.publicURL | quote }} \
        --context YOUR_KUBECONFIG_CONTEXT
 
    The CLI confirms the kubeconfig target, preflights native Helm changes,
    and hands verified Argo CD/Flux installations back to GitOps. Browser
    approval requires an account allowed to add clusters to this organization.
-   Guide: https://radarhq.io/docs/cloud/self-hosted/install#connect-your-first-cluster
+   Guide: https://radarhq.io/docs/cloud/self-hosted/install#5-connect-your-first-cluster
 
 5. Upgrade path:
      helm repo update
-     helm upgrade {{ .Release.Name }} skyhook/radar-hub
+     helm upgrade {{ .Release.Name }} skyhook/radar-hub \
+       --namespace {{ .Release.Namespace }}
    (the migrate initContainer re-runs on each rolling-update pod).
 
 DOCS
