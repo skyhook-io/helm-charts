@@ -23,10 +23,15 @@ NOT rotate the DB; delete the PVC to reset.
     {{- $pw = randAlphaNum 24 }}
   {{- end }}
 {{- end }}
-{{- /* URL-encode the password in the DSN (userinfo) so a user-set password with
-       special characters can't break the connection string. POSTGRES_PASSWORD
-       still uses the raw value from the Secret's `password` key. */}}
-{{- $dsn := printf "postgres://%s:%s@%s:5432/%s?sslmode=disable" $auth.username ($pw | urlquery) $name $auth.database }}
+{{- /* Percent-encode the DSN's userinfo + db path so special characters in a
+       user-set username/password/database can't break the connection string.
+       `urlquery` is form-encoding (space -> "+"), which is WRONG for a URI, so
+       fix spaces to %20; every other reserved char is already %XX. The raw
+       values still reach Postgres via POSTGRES_* env from the Secret. */}}
+{{- $u := $auth.username | urlquery | replace "+" "%20" }}
+{{- $p := $pw | urlquery | replace "+" "%20" }}
+{{- $d := $auth.database | urlquery | replace "+" "%20" }}
+{{- $dsn := printf "postgres://%s:%s@%s:5432/%s?sslmode=disable" $u $p $name $d }}
 apiVersion: v1
 kind: Secret
 metadata:
