@@ -157,8 +157,9 @@ auth:
     clientSecret: ""
     clientSecretExistingSecret: ""   # Secret with key `client-secret`.
     callbackURL: ""      # <hub.publicURL>/api/auth/oidc/callback
-    groupClaim: "groups"
-    adminGroups: []      # ["radar-admins"]
+    # Role given to new OIDC users on first sign-in (owner | member | viewer).
+    # Roles are managed in the hub by an owner afterwards; they are not synced
+    # from IdP groups.
     defaultRole: "member"
 
 # ---------------------------------------------------------------------------

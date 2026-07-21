@@ -168,10 +168,6 @@ spec:
                      who terminate TLS at a separate ingress with a
                      different host can still override this explicitly. */}}
               value: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL | quote }}
-            - name: RADAR_HUB_OIDC_GROUP_CLAIM
-              value: {{ .Values.auth.oidc.groupClaim | quote }}
-            - name: RADAR_HUB_OIDC_ADMIN_GROUPS
-              value: {{ join "," .Values.auth.oidc.adminGroups | quote }}
             - name: RADAR_HUB_OIDC_DEFAULT_ROLE
               value: {{ .Values.auth.oidc.defaultRole | quote }}
             {{- end }}
