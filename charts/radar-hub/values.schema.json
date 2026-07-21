@@ -37,7 +37,7 @@
     },
     "postgres": {
       "type": "object",
-      "additionalProperties": false,
+      "$comment": "No additionalProperties:false here so a `helm upgrade` from a pre-1.2 release (whose values may still carry the removed postgres.dsn/existingSecret/cnpg keys) doesn't hard-fail. The bundled/external sub-objects below stay strict, and secret.yaml's guard enforces exactly-one mode.",
       "properties": {
         "bundled": {
           "type": "object",
