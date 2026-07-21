@@ -1,6 +1,6 @@
 apiVersion: v2
 name: radar-hub
-description: Radar Cloud control plane for self-hosted deployments — Go API + React web app + BYO Postgres.
+description: Radar Cloud control plane for self-hosted deployments — Go API + React web app + Postgres (bundled eval DB or bring-your-own).
 type: application
 version: 1.1.1
 appVersion: "1.1.0"

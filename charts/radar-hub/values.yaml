@@ -280,9 +280,9 @@ clusterDomain: cluster.local
 # would break the other container, so we leave it to each image's USER
 # directive and only enforce `runAsNonRoot: true` at the pod level.
 #
-# Customers running PSA restricted with strict UID requirements can
-# override per-container via .Values.hub.securityContext +
-# .Values.web.securityContext (TODO: surface those values knobs).
+# Per-container securityContext override knobs (.Values.hub/web.securityContext)
+# are not surfaced yet; customers needing strict per-container UIDs would need
+# them added.
 podSecurityContext:
   runAsNonRoot: true
   seccompProfile:
