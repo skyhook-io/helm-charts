@@ -96,6 +96,15 @@ spec:
               value: "self_hosted"
             - name: RADAR_HUB_VERSION
               value: {{ default .Chart.AppVersion .Values.image.hub.tag | quote }}
+            # Non-secret deployment facts surfaced in GET /api/config (self-hosted
+            # only) so the frontend's OIDC setup command targets this install's
+            # real namespace + release instead of a hardcoded placeholder.
+            - name: RADAR_HUB_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RADAR_HUB_RELEASE_NAME
+              value: {{ .Release.Name | quote }}
             - name: RADAR_HUB_ORG_NAME
               value: {{ .Values.hub.orgName | quote }}
             - name: RADAR_HUB_AUDIT_RETENTION_DAYS
