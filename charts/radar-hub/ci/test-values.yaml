@@ -6,12 +6,12 @@
 #   - hub.publicURL          (required; schema enforces minLength: 1)
 #   - hub.cookiePassword     (required; 32+ bytes)
 #   - auth.breakGlass.*      (required pairing of email + a credential)
-# Postgres: left unset → the bundled eval DB (postgres.bundled.enabled=true)
+# Postgres: left unset -> the bundled eval DB (postgres.bundled.enabled=true)
 #   is the default, so nothing to configure here.
 # License is OPTIONAL (an unlicensed hub boots into the license-required
 #   screen), so it's omitted here.
 #
-# Values here are placeholders — never deployed against real infrastructure.
+# Values here are placeholders - never deployed against real infrastructure.
 
 hub:
   publicURL: "https://radar.test.example"

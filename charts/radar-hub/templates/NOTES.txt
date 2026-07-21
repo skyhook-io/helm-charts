@@ -25,11 +25,11 @@ Exposure:
 Postgres source:
 {{- if .Values.postgres.bundled.enabled }}
   BUNDLED (evaluation only) — in-cluster StatefulSet "{{ include "radar-hub.bundledPostgresName" . }}"
-  ⚠ Single instance, no HA, no backups; in-cluster traffic is unencrypted (sslmode=disable).
+  WARNING: single instance, no HA, no backups; in-cluster traffic is unencrypted (sslmode=disable).
     For production set postgres.bundled.enabled=false and use postgres.external.existingSecret
     (managed Postgres or a CloudNativePG cluster).
   {{- if not .Values.postgres.bundled.auth.password }}
-  ⚠ GitOps (Argo/Flux): the bundled password is auto-generated and persisted via a cluster
+  WARNING: GitOps (Argo/Flux): the bundled password is auto-generated and persisted via a cluster
     lookup, which does NOT work when the release is rendered without cluster access — each
     render would mint a new password and desync from the DB. Set postgres.bundled.auth.password
     explicitly if you manage this release declaratively.

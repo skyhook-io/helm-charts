@@ -84,14 +84,15 @@ postgres:
     # Secret holding the connection string (single key). Managed SaaS
     # (RDS / Cloud SQL / Neon), a self-run Postgres, or a CloudNativePG
     # cluster. For managed Postgres that authenticates via a proxy/IAM
-    # (Cloud SQL Auth Proxy, RDS IAM), run the proxy as a sidecar and point
-    # the DSN at localhost (sidecar hooks are a planned follow-up).
+    # (Cloud SQL Auth Proxy, RDS IAM), run the proxy alongside the hub and
+    # point the DSN at localhost. The chart does not inject sidecars; add one
+    # via your own overlay (kustomize/patch).
     existingSecret: ""
     # Key inside the Secret. Empty → "dsn" for existingSecret, "uri" for a
     # CloudNativePG <cluster>-app Secret.
     secretKey: ""
-    # Convenience for CloudNativePG: sets existingSecret to "<cluster>-app"
-    # (CNPG's generated app Secret) and the key to "uri". We do NOT deploy
+    # Convenience for CloudNativePG: reads the "<cluster>-app" Secret
+    # (CNPG's generated app Secret) with key "uri". We do NOT deploy
     # CNPG or its operator — you already operate the Cluster; the chart only
     # reads its connection Secret. Must be in the SAME namespace as this release.
     cnpgCluster: ""
@@ -220,7 +221,7 @@ ingress:
     # - secretName: radar-hub-tls
     #   hosts: [radar.acme.example]
 
-# Gateway API HTTPRoute (Istio, Envoy Gateway, Cilium, …). Mutually exclusive
+# Gateway API HTTPRoute (Istio, Envoy Gateway, Cilium, etc.). Mutually exclusive
 # with ingress. The Gateway (and its TLS listener) is managed outside this
 # chart; the route just attaches to it.
 httproute:

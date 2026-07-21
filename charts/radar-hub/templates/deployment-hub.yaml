@@ -56,7 +56,7 @@ spec:
             - >-
               until pg_isready -h {{ include "radar-hub.bundledPostgresName" . }} -p 5432
               -U {{ .Values.postgres.bundled.auth.username | quote }};
-              do echo "waiting for postgres…"; sleep 2; done
+              do echo "waiting for postgres..."; sleep 2; done
           resources:
             requests: { cpu: 10m, memory: 32Mi }
             limits: { cpu: 100m, memory: 64Mi }
