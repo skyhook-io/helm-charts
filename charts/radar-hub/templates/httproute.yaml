@@ -1,0 +1,37 @@
+{{- if .Values.httproute.enabled -}}
+{{- if .Values.ingress.enabled -}}
+{{- fail "Enable only ONE of ingress.enabled or httproute.enabled, not both." -}}
+{{- end -}}
+{{- if not .Values.httproute.parentRefs -}}
+{{- fail "httproute.enabled=true requires at least one httproute.parentRefs entry (the Gateway to attach to)." -}}
+{{- end -}}
+{{/*
+Gateway API HTTPRoute. Attaches to a Gateway the customer manages (parentRefs);
+TLS terminates at that Gateway's listener, so no tls block here. Backend is the
+web Service (same as the Ingress path). Rendered whenever enabled — if the
+Gateway API CRDs aren't installed the apiserver rejects it at apply with a clear
+error; we deliberately do NOT gate on .Capabilities (that would break
+`helm template`/lint/GitOps, where CRDs aren't in the capability set).
+*/}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "radar-hub.fullname" . }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml .Values.httproute.parentRefs | nindent 4 }}
+  {{- with .Values.httproute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "radar-hub.webName" . }}
+          port: {{ .Values.service.web.port }}
+{{- end -}}

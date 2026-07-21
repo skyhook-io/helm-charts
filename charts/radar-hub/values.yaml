@@ -200,16 +200,36 @@ branding:
   feedbackEmail: "feedback@radarhq.io"
 
 # ---------------------------------------------------------------------------
-# Ingress
+# Networking — expose the hub via traditional Ingress OR Gateway API.
+# Enable AT MOST ONE (the render fails if both are enabled). Public traffic
+# terminates on the web Service, whose nginx proxies /api, /agent, /mcp to the
+# hub Service in-cluster.
 # ---------------------------------------------------------------------------
 ingress:
   enabled: false
-  className: ""
-  annotations: {}
-  host: ""              # e.g. radar.acme.example
-  tls:
-    enabled: false
-    secretName: ""      # Pre-provisioned TLS Secret (cert-manager / etc.).
+  className: ""            # IngressClass name, e.g. nginx
+  annotations: {}          # cert-manager, nginx tuning, etc.
+  # One or more hosts, each with its paths. Host derives from hub.publicURL.
+  hosts: []
+    # - host: radar.acme.example
+    #   paths:
+    #     - path: /
+    #       pathType: Prefix
+  # TLS blocks in the native Ingress shape. Each entry needs a secretName.
+  tls: []
+    # - secretName: radar-hub-tls
+    #   hosts: [radar.acme.example]
+
+# Gateway API HTTPRoute (Istio, Envoy Gateway, Cilium, …). Mutually exclusive
+# with ingress. The Gateway (and its TLS listener) is managed outside this
+# chart; the route just attaches to it.
+httproute:
+  enabled: false
+  parentRefs: []
+    # - name: my-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+  hostnames: []            # [radar.acme.example]
 
 # ---------------------------------------------------------------------------
 # Service
