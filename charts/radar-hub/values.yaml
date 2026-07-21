@@ -2,15 +2,15 @@
 #
 # Self-hosted deployment: API (Go) + web app (nginx-served static) +
 # Postgres. Database migrations run automatically via an initContainer on
-# the hub Deployment before the main container starts. This chart does
-# NOT install Postgres —
-# customers either supply a DSN (managed Postgres / on-cluster operator)
-# or point at an existing CloudNativePG `Cluster`.
+# the hub Deployment before the main container starts. By default the chart
+# ships an in-cluster Postgres for EVALUATION (postgres.bundled); for
+# production, disable it and point at your own DB (postgres.external).
 #
 # Required values for a working install:
 #   --set hub.publicURL=https://radar.acme.example
 #   --set hub.cookiePassword=<32+ byte secret>
-#   --set postgres.dsn=postgres://...   (OR existingSecret OR cnpg.*)
+#   # Postgres: bundled eval DB is ON by default (nothing to set). For
+#   # production: --set postgres.bundled.enabled=false --set postgres.external.existingSecret=<secret>
 #   --set auth.breakGlass.email=admin@acme.example
 #   --set auth.breakGlass.password=<changeme>   (OR passwordHash)
 #
@@ -52,31 +52,49 @@ license:
   existingSecret: ""
 
 # ---------------------------------------------------------------------------
-# Postgres (BYO required)
+# Postgres — set EXACTLY ONE of `bundled` / `external`
 # ---------------------------------------------------------------------------
+#   * bundled  → the chart ships an in-cluster Postgres. EVALUATION ONLY:
+#                single instance, no HA, no backups. Default ON so a bare
+#                `helm install` gives a working eval stack.
+#   * external → bring your own Postgres (managed SaaS, self-run, or a
+#                CloudNativePG cluster). The production path.
+# The render fails if both resolve, or if neither does.
 postgres:
-  # Inline DSN (postgres://user:pass@host:5432/db?sslmode=require). Lowest
-  # ops overhead for evaluation; not recommended for prod (DSN ends up in
-  # plaintext in the rendered Secret unless you use existingSecret).
-  dsn: ""
+  bundled:
+    # Default ON: a bare install stands up an eval stack. For production, set
+    # this false and configure `external`.
+    enabled: true
+    # Docker Official Image. Override to a hardened/mirrored image if needed.
+    image: postgres:17-alpine
+    auth:
+      database: radar_hub
+      username: radar_hub
+      # Set once at FIRST install. Leave empty to generate a password and
+      # persist it across `helm upgrade`. Changing it later does NOT rotate the
+      # DB (delete the PVC to reset) — eval only. For GitOps/declarative installs
+      # (Argo/Flux), set this explicitly rather than relying on generation.
+      password: ""
+    persistence:
+      size: 10Gi
+      storageClass: ""          # cluster default when empty
+    resources: {}
 
-  # Reference an existing Secret holding the DSN. The Secret must contain
-  # a key named `dsn`. Prefer this over `dsn` for production.
-  existingSecret: ""
-
-  # CloudNativePG integration: when set, the chart reads the connection
-  # Secret CNPG generates for an existing Cluster instead of requiring a
-  # hand-managed DSN. The chart never installs the operator — the
-  # customer manages their own CNPG Cluster.
-  #
-  # The CNPG Cluster MUST live in the same namespace as this release.
-  # Kubernetes Secret refs can't cross namespaces; if you need cross-ns,
-  # use a Secret-mirroring controller (Reflector, external-secrets) to
-  # copy CNPG's app-user Secret into this namespace, then set
-  # postgres.existingSecret instead.
-  cnpg:
-    cluster: ""        # CNPG Cluster name in the SAME namespace as this release.
-    secretName: ""     # CNPG-generated app-user Secret. Defaults to "<cluster>-app".
+  external:
+    # Secret holding the connection string (single key). Managed SaaS
+    # (RDS / Cloud SQL / Neon), a self-run Postgres, or a CloudNativePG
+    # cluster. For managed Postgres that authenticates via a proxy/IAM
+    # (Cloud SQL Auth Proxy, RDS IAM), run the proxy as a sidecar and point
+    # the DSN at localhost (sidecar hooks are a planned follow-up).
+    existingSecret: ""
+    # Key inside the Secret. Empty → "dsn" for existingSecret, "uri" for a
+    # CloudNativePG <cluster>-app Secret.
+    secretKey: ""
+    # Convenience for CloudNativePG: sets existingSecret to "<cluster>-app"
+    # (CNPG's generated app Secret) and the key to "uri". We do NOT deploy
+    # CNPG or its operator — you already operate the Cluster; the chart only
+    # reads its connection Secret. Must be in the SAME namespace as this release.
+    cnpgCluster: ""
 
 # ---------------------------------------------------------------------------
 # Hub configuration

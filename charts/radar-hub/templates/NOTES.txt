@@ -13,13 +13,21 @@ Services:
   hub: {{ .Values.service.hub.type }} :{{ .Values.service.hub.port }} (raw hub API; keep ClusterIP unless using a split-origin deployment)
 
 Postgres source:
-{{- if .Values.postgres.existingSecret }}
-  existing Secret "{{ .Values.postgres.existingSecret }}" (key: dsn)
-{{- else if .Values.postgres.cnpg.cluster }}
-  CloudNativePG cluster "{{ .Values.postgres.cnpg.cluster }}" (Secret: {{ default (printf "%s-app" .Values.postgres.cnpg.cluster) .Values.postgres.cnpg.secretName }})
-{{- else }}
-  inline DSN in chart-managed Secret "{{ include "radar-hub.secretName" . }}"
-  (consider migrating to existingSecret or CNPG before scaling beyond evaluation)
+{{- if .Values.postgres.bundled.enabled }}
+  BUNDLED (evaluation only) — in-cluster StatefulSet "{{ include "radar-hub.bundledPostgresName" . }}"
+  ⚠ Single instance, no HA, no backups; in-cluster traffic is unencrypted (sslmode=disable).
+    For production set postgres.bundled.enabled=false and use postgres.external.existingSecret
+    (managed Postgres or a CloudNativePG cluster).
+  {{- if not .Values.postgres.bundled.auth.password }}
+  ⚠ GitOps (Argo/Flux): the bundled password is auto-generated and persisted via a cluster
+    lookup, which does NOT work when the release is rendered without cluster access — each
+    render would mint a new password and desync from the DB. Set postgres.bundled.auth.password
+    explicitly if you manage this release declaratively.
+  {{- end }}
+{{- else if .Values.postgres.external.existingSecret }}
+  external Secret "{{ .Values.postgres.external.existingSecret }}" (key: {{ .Values.postgres.external.secretKey | default "dsn" }})
+{{- else if .Values.postgres.external.cnpgCluster }}
+  CloudNativePG cluster "{{ .Values.postgres.external.cnpgCluster }}" (Secret: {{ .Values.postgres.external.cnpgCluster }}-app, key: {{ .Values.postgres.external.secretKey | default "uri" }})
 {{- end }}
 
 Auth:

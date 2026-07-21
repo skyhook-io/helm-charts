@@ -34,6 +34,33 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        {{- if .Values.postgres.bundled.enabled }}
+        # Bundled Postgres starts alongside this Pod; block migrate until it
+        # accepts connections so the initContainer doesn't crash-loop while the
+        # StatefulSet comes up. Only present in bundled mode — an external DB is
+        # assumed already reachable.
+        - name: wait-for-db
+          image: {{ .Values.postgres.bundled.image | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - sh
+            - -c
+            - >-
+              until pg_isready -h {{ include "radar-hub.bundledPostgresName" . }} -p 5432
+              -U {{ .Values.postgres.bundled.auth.username | quote }};
+              do echo "waiting for postgres…"; sleep 2; done
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+        {{- end }}
         # cmd/migrate applies any pending schema migrations against the
         # customer's Postgres before the hub starts. Replaces the previous
         # Helm pre-install hook pattern: hooks fire BEFORE non-hook

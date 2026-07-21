@@ -37,14 +37,41 @@
     },
     "postgres": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "dsn": {"type": "string"},
-        "existingSecret": {"type": "string"},
-        "cnpg": {
+        "bundled": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
-            "cluster": {"type": "string"},
-            "secretName": {"type": "string"}
+            "enabled": {"type": "boolean"},
+            "image": {"type": "string", "minLength": 1},
+            "auth": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "database": {"type": "string", "minLength": 1},
+                "username": {"type": "string", "minLength": 1},
+                "password": {"type": "string"}
+              }
+            },
+            "persistence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "size": {"type": "string", "minLength": 1},
+                "storageClass": {"type": "string"}
+              }
+            },
+            "resources": {"type": "object"}
+          }
+        },
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {"type": "string"},
+            "secretKey": {"type": "string"},
+            "cnpgCluster": {"type": "string"}
           }
         }
       }
