@@ -10,10 +10,14 @@
 # Required values for a working install:
 #   --set hub.publicURL=https://radar.acme.example
 #   --set hub.cookiePassword=<32+ byte secret>
-#   --set license.key=<JWT>
 #   --set postgres.dsn=postgres://...   (OR existingSecret OR cnpg.*)
 #   --set auth.breakGlass.email=admin@acme.example
 #   --set auth.breakGlass.password=<changeme>   (OR passwordHash)
+#
+# The license is OPTIONAL at install time: without one the hub starts up but
+# the web UI is gated on a license-required screen. Set license.key (below)
+# and redeploy to activate.
+#   --set license.key=<JWT>
 #
 # OIDC and ingress are optional but typical.
 
@@ -32,14 +36,17 @@ image:
 imagePullSecrets: []
 
 # ---------------------------------------------------------------------------
-# License (Skyhook-issued JWT)
+# License (Skyhook-issued JWT) — OPTIONAL
 # ---------------------------------------------------------------------------
-# Either set license.key directly OR point at an existing Secret with key
-# `license`. Setting both fails the install with a clear error — the
+# Leave both empty to install without a license: the hub boots and the web UI
+# shows a license-required screen until you set one and redeploy.
+#
+# To activate, EITHER set license.key directly OR point at an existing Secret
+# with key `license`. Setting both fails the install with a clear error — the
 # deployment Pod reads via `default chartSecret existingSecret`, so an
-# existingSecret would silently win and the inline value would be
-# ignored. existingSecret is preferred for production so the JWT isn't
-# in plaintext in your values file.
+# existingSecret would silently win and the inline value would be ignored.
+# existingSecret is preferred for production so the JWT isn't in plaintext in
+# your values file.
 license:
   key: ""
   existingSecret: ""

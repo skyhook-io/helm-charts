@@ -123,11 +123,19 @@ spec:
                 secretKeyRef:
                   name: {{ default (include "radar-hub.secretName" .) .Values.hub.cookiePasswordExistingSecret | quote }}
                   key: cookie-password
+            {{- /* License is optional. When unset, the env var is omitted, the
+                   hub boots in a blocked state, and the web UI shows the
+                   license-required screen (set license.key + redeploy to
+                   activate). Only wire the secretKeyRef when a license is
+                   actually configured so the Pod doesn't reference a missing
+                   Secret key. */}}
+            {{- if or .Values.license.key .Values.license.existingSecret }}
             - name: RADAR_HUB_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ default (include "radar-hub.secretName" .) .Values.license.existingSecret | quote }}
                   key: {{ ternary "license" "license-key" (ne .Values.license.existingSecret "") | quote }}
+            {{- end }}
 
             {{- if .Values.auth.breakGlass.email }}
             - name: RADAR_HUB_BOOTSTRAP_ADMIN_EMAIL

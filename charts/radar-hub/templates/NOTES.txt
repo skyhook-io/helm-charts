@@ -70,9 +70,14 @@ DOCS
 
 LICENSE STATUS
 --------------
+The license is optional at install. Without one the hub starts but the web UI
+shows a license-required screen — set license.key (or license.existingSecret)
+and redeploy to activate.
+
 The hub logs license verification at boot. Look for:
   "license verified" — happy path
   "license is expired (warn-only ...)" — past exp; banner shown but writes still work
-  "license verification failed" — bad signature or missing claim; investigate
+  "no license configured — hub is blocked ..." — set license.key + redeploy
+  "license is invalid ..." — bad signature or claims; check the key you pasted
 
 ================================================================================
