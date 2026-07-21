@@ -82,6 +82,10 @@ spec:
         {{- include "radar-hub.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: postgres
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
         # Forcing a non-root UID is load-bearing: the official postgres
         # entrypoint starts as root to chown PGDATA and then drops to the
