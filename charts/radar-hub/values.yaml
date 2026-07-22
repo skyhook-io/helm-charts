@@ -78,7 +78,17 @@ postgres:
     persistence:
       size: 10Gi
       storageClass: ""          # cluster default when empty
-    resources: {}
+    # Eval DB defaults. Requests keep it Burstable (guaranteed schedule) instead
+    # of BestEffort. Memory limit is 512Mi, not 256Mi: postgres:17-alpine
+    # (shared_buffers ~128Mi + WAL + connections) OOMKills under a 256Mi hard cap.
+    # Override for heavier eval loads; production uses `external` anyway.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1
+        memory: 512Mi
 
   external:
     # Secret holding the connection string (single key). Managed SaaS
@@ -183,8 +193,9 @@ auth:
     clientSecret: ""
     clientSecretExistingSecret: ""   # Secret with key `client-secret`.
     callbackURL: ""      # <hub.publicURL>/api/auth/oidc/callback
-    groupClaim: "groups"
-    adminGroups: []      # ["radar-admins"]
+    # Role given to new OIDC users on first sign-in (owner | member | viewer).
+    # Roles are managed in the hub by an owner afterwards; they are not synced
+    # from IdP groups.
     defaultRole: "member"
 
 # ---------------------------------------------------------------------------

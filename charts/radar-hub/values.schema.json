@@ -126,8 +126,6 @@
             "clientSecret": {"type": "string"},
             "clientSecretExistingSecret": {"type": "string"},
             "callbackURL": {"type": "string"},
-            "groupClaim": {"type": "string"},
-            "adminGroups": {"type": "array", "items": {"type": "string"}},
             "defaultRole": {"type": "string", "enum": ["owner", "member", "viewer"]}
           }
         }

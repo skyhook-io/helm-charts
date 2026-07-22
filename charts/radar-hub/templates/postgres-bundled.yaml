@@ -36,6 +36,14 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: {{ $name }}
+  annotations:
+    # The StatefulSet's PVC is never GC'd on `helm uninstall`, and PGDATA keeps
+    # the password the role was first initialized with. Keep this Secret too, so
+    # a reinstall against the retained PVC reuses that same password instead of
+    # generating a fresh one the already-initialized PGDATA rejects (auth failure
+    # with no obvious cause). To fully reset the eval DB, delete the PVC AND this
+    # Secret.
+    helm.sh/resource-policy: keep
   labels:
     {{- include "radar-hub.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgres

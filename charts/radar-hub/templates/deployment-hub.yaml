@@ -123,6 +123,17 @@ spec:
               value: "self_hosted"
             - name: RADAR_HUB_VERSION
               value: {{ default .Chart.AppVersion .Values.image.hub.tag | quote }}
+            # Deployment identity (namespace + Helm release name) via the downward
+            # API. The hub reflects these as non-secret facts on GET /api/config
+            # in self-hosted mode.
+            - name: RADAR_HUB_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RADAR_HUB_RELEASE_NAME
+              value: {{ .Release.Name | quote }}
+            - name: RADAR_HUB_CHART_VERSION
+              value: {{ .Chart.Version | quote }}
             - name: RADAR_HUB_ORG_NAME
               value: {{ .Values.hub.orgName | quote }}
             - name: RADAR_HUB_AUDIT_RETENTION_DAYS
@@ -203,10 +214,6 @@ spec:
                      who terminate TLS at a separate ingress with a
                      different host can still override this explicitly. */}}
               value: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL | quote }}
-            - name: RADAR_HUB_OIDC_GROUP_CLAIM
-              value: {{ .Values.auth.oidc.groupClaim | quote }}
-            - name: RADAR_HUB_OIDC_ADMIN_GROUPS
-              value: {{ join "," .Values.auth.oidc.adminGroups | quote }}
             - name: RADAR_HUB_OIDC_DEFAULT_ROLE
               value: {{ .Values.auth.oidc.defaultRole | quote }}
             {{- end }}
