@@ -1,10 +1,22 @@
 {{- if .Values.ingress.enabled -}}
+{{- if .Values.httproute.enabled -}}
+{{- fail "Enable only ONE of ingress.enabled or httproute.enabled, not both." -}}
+{{- end -}}
+{{- if not .Values.ingress.hosts -}}
+{{- fail "ingress.enabled=true requires at least one entry under ingress.hosts (each with a host + paths)." -}}
+{{- end -}}
+{{- range .Values.ingress.tls }}
+{{- if not .secretName -}}
+{{- /* required() rather than silent skip: a tls entry without secretName used
+       to drop TLS and serve plain HTTP — a security regression. */}}
+{{- fail "each ingress.tls[] entry requires a secretName." -}}
+{{- end -}}
+{{- end -}}
 {{/*
-Single-host Ingress: SPA + hub API behind one DNS name. The web image's
-nginx routes /api + /agent to the hub Service in-cluster, so the Ingress
-only needs to forward everything to the web Service. Customers wanting
-to split origins (api.acme.example + app.acme.example) can disable this
-chart's Ingress and write their own.
+Ingress for the hub. Public traffic terminates on the web Service; its nginx
+routes /api + /agent + /mcp to the hub Service in-cluster, so every path
+forwards to the web Service. Customers splitting origins (api. + app.) can
+disable this and write their own.
 */}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -17,27 +29,26 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.ingress.className }}
-  ingressClassName: {{ .Values.ingress.className }}
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
   {{- end }}
-  {{- if .Values.ingress.tls.enabled }}
+  {{- with .Values.ingress.tls }}
   tls:
-    - hosts:
-        - {{ required "ingress.host is required when ingress.enabled=true" .Values.ingress.host | quote }}
-      {{- /* required() rather than silent skip: omitting tls.secretName
-             while tls.enabled=true used to drop the TLS block entirely
-             and serve the Ingress on plain HTTP — a security regression. */}}
-      secretName: {{ required "ingress.tls.secretName is required when ingress.tls.enabled=true" .Values.ingress.tls.secretName }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
-    - host: {{ required "ingress.host is required when ingress.enabled=true" .Values.ingress.host | quote }}
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "radar-hub.webName" . }}
+                name: {{ include "radar-hub.webName" $ }}
                 port:
-                  number: {{ .Values.service.web.port }}
+                  number: {{ $.Values.service.web.port }}
+          {{- end }}
+    {{- end }}
 {{- end }}

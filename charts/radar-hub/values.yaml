@@ -2,18 +2,22 @@
 #
 # Self-hosted deployment: API (Go) + web app (nginx-served static) +
 # Postgres. Database migrations run automatically via an initContainer on
-# the hub Deployment before the main container starts. This chart does
-# NOT install Postgres —
-# customers either supply a DSN (managed Postgres / on-cluster operator)
-# or point at an existing CloudNativePG `Cluster`.
+# the hub Deployment before the main container starts. By default the chart
+# ships an in-cluster Postgres for EVALUATION (postgres.bundled); for
+# production, disable it and point at your own DB (postgres.external).
 #
 # Required values for a working install:
 #   --set hub.publicURL=https://radar.acme.example
 #   --set hub.cookiePassword=<32+ byte secret>
-#   --set license.key=<JWT>
-#   --set postgres.dsn=postgres://...   (OR existingSecret OR cnpg.*)
+#   # Postgres: bundled eval DB is ON by default (nothing to set). For
+#   # production: --set postgres.bundled.enabled=false --set postgres.external.existingSecret=<secret>
 #   --set auth.breakGlass.email=admin@acme.example
 #   --set auth.breakGlass.password=<changeme>   (OR passwordHash)
+#
+# The license is OPTIONAL at install time: without one the hub starts up but
+# the web UI is gated on a license-required screen. Set license.key (below)
+# and redeploy to activate.
+#   --set license.key=<JWT>
 #
 # OIDC and ingress are optional but typical.
 
@@ -32,44 +36,76 @@ image:
 imagePullSecrets: []
 
 # ---------------------------------------------------------------------------
-# License (Skyhook-issued JWT)
+# License (Skyhook-issued JWT) — OPTIONAL
 # ---------------------------------------------------------------------------
-# Either set license.key directly OR point at an existing Secret with key
-# `license`. Setting both fails the install with a clear error — the
+# Leave both empty to install without a license: the hub boots and the web UI
+# shows a license-required screen until you set one and redeploy.
+#
+# To activate, EITHER set license.key directly OR point at an existing Secret
+# with key `license`. Setting both fails the install with a clear error — the
 # deployment Pod reads via `default chartSecret existingSecret`, so an
-# existingSecret would silently win and the inline value would be
-# ignored. existingSecret is preferred for production so the JWT isn't
-# in plaintext in your values file.
+# existingSecret would silently win and the inline value would be ignored.
+# existingSecret is preferred for production so the JWT isn't in plaintext in
+# your values file.
 license:
   key: ""
   existingSecret: ""
 
 # ---------------------------------------------------------------------------
-# Postgres (BYO required)
+# Postgres — set EXACTLY ONE of `bundled` / `external`
 # ---------------------------------------------------------------------------
+#   * bundled  → the chart ships an in-cluster Postgres. EVALUATION ONLY:
+#                single instance, no HA, no backups. Default ON so a bare
+#                `helm install` gives a working eval stack.
+#   * external → bring your own Postgres (managed SaaS, self-run, or a
+#                CloudNativePG cluster). The production path.
+# The render fails if both resolve, or if neither does.
 postgres:
-  # Inline DSN (postgres://user:pass@host:5432/db?sslmode=require). Lowest
-  # ops overhead for evaluation; not recommended for prod (DSN ends up in
-  # plaintext in the rendered Secret unless you use existingSecret).
-  dsn: ""
+  bundled:
+    # Default ON: a bare install stands up an eval stack. For production, set
+    # this false and configure `external`.
+    enabled: true
+    # Docker Official Image. Override to a hardened/mirrored image if needed.
+    image: postgres:17-alpine
+    auth:
+      database: radar_hub
+      username: radar_hub
+      # Set once at FIRST install. Leave empty to generate a password and
+      # persist it across `helm upgrade`. Changing it later does NOT rotate the
+      # DB (delete the PVC to reset) — eval only. For GitOps/declarative installs
+      # (Argo/Flux), set this explicitly rather than relying on generation.
+      password: ""
+    persistence:
+      size: 10Gi
+      storageClass: ""          # cluster default when empty
+    # Eval DB defaults. Requests keep it Burstable (guaranteed schedule) instead
+    # of BestEffort. Memory limit is 512Mi, not 256Mi: postgres:17-alpine
+    # (shared_buffers ~128Mi + WAL + connections) OOMKills under a 256Mi hard cap.
+    # Override for heavier eval loads; production uses `external` anyway.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1
+        memory: 512Mi
 
-  # Reference an existing Secret holding the DSN. The Secret must contain
-  # a key named `dsn`. Prefer this over `dsn` for production.
-  existingSecret: ""
-
-  # CloudNativePG integration: when set, the chart reads the connection
-  # Secret CNPG generates for an existing Cluster instead of requiring a
-  # hand-managed DSN. The chart never installs the operator — the
-  # customer manages their own CNPG Cluster.
-  #
-  # The CNPG Cluster MUST live in the same namespace as this release.
-  # Kubernetes Secret refs can't cross namespaces; if you need cross-ns,
-  # use a Secret-mirroring controller (Reflector, external-secrets) to
-  # copy CNPG's app-user Secret into this namespace, then set
-  # postgres.existingSecret instead.
-  cnpg:
-    cluster: ""        # CNPG Cluster name in the SAME namespace as this release.
-    secretName: ""     # CNPG-generated app-user Secret. Defaults to "<cluster>-app".
+  external:
+    # Secret holding the connection string (single key). Managed SaaS
+    # (RDS / Cloud SQL / Neon), a self-run Postgres, or a CloudNativePG
+    # cluster. For managed Postgres that authenticates via a proxy/IAM
+    # (Cloud SQL Auth Proxy, RDS IAM), run the proxy alongside the hub and
+    # point the DSN at localhost. The chart does not inject sidecars; add one
+    # via your own overlay (kustomize/patch).
+    existingSecret: ""
+    # Key inside the Secret. Empty → "dsn" for existingSecret, "uri" for a
+    # CloudNativePG <cluster>-app Secret.
+    secretKey: ""
+    # Convenience for CloudNativePG: reads the "<cluster>-app" Secret
+    # (CNPG's generated app Secret) with key "uri". We do NOT deploy
+    # CNPG or its operator — you already operate the Cluster; the chart only
+    # reads its connection Secret. Must be in the SAME namespace as this release.
+    cnpgCluster: ""
 
 # ---------------------------------------------------------------------------
 # Hub configuration
@@ -157,8 +193,9 @@ auth:
     clientSecret: ""
     clientSecretExistingSecret: ""   # Secret with key `client-secret`.
     callbackURL: ""      # <hub.publicURL>/api/auth/oidc/callback
-    groupClaim: "groups"
-    adminGroups: []      # ["radar-admins"]
+    # Role given to new OIDC users on first sign-in (owner | member | viewer).
+    # Roles are managed in the hub by an owner afterwards; they are not synced
+    # from IdP groups.
     defaultRole: "member"
 
 # ---------------------------------------------------------------------------
@@ -175,16 +212,36 @@ branding:
   feedbackEmail: "feedback@radarhq.io"
 
 # ---------------------------------------------------------------------------
-# Ingress
+# Networking — expose the hub via traditional Ingress OR Gateway API.
+# Enable AT MOST ONE (the render fails if both are enabled). Public traffic
+# terminates on the web Service, whose nginx proxies /api, /agent, /mcp to the
+# hub Service in-cluster.
 # ---------------------------------------------------------------------------
 ingress:
   enabled: false
-  className: ""
-  annotations: {}
-  host: ""              # e.g. radar.acme.example
-  tls:
-    enabled: false
-    secretName: ""      # Pre-provisioned TLS Secret (cert-manager / etc.).
+  className: ""            # IngressClass name, e.g. nginx
+  annotations: {}          # cert-manager, nginx tuning, etc.
+  # One or more hosts, each with its paths. Host derives from hub.publicURL.
+  hosts: []
+    # - host: radar.acme.example
+    #   paths:
+    #     - path: /
+    #       pathType: Prefix
+  # TLS blocks in the native Ingress shape. Each entry needs a secretName.
+  tls: []
+    # - secretName: radar-hub-tls
+    #   hosts: [radar.acme.example]
+
+# Gateway API HTTPRoute (Istio, Envoy Gateway, Cilium, etc.). Mutually exclusive
+# with ingress. The Gateway (and its TLS listener) is managed outside this
+# chart; the route just attaches to it.
+httproute:
+  enabled: false
+  parentRefs: []
+    # - name: my-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+  hostnames: []            # [radar.acme.example]
 
 # ---------------------------------------------------------------------------
 # Service
@@ -235,9 +292,9 @@ clusterDomain: cluster.local
 # would break the other container, so we leave it to each image's USER
 # directive and only enforce `runAsNonRoot: true` at the pod level.
 #
-# Customers running PSA restricted with strict UID requirements can
-# override per-container via .Values.hub.securityContext +
-# .Values.web.securityContext (TODO: surface those values knobs).
+# Per-container securityContext override knobs (.Values.hub/web.securityContext)
+# are not surfaced yet; customers needing strict per-container UIDs would need
+# them added.
 podSecurityContext:
   runAsNonRoot: true
   seccompProfile:

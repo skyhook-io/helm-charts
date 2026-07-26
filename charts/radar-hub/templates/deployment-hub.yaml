@@ -34,6 +34,33 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        {{- if .Values.postgres.bundled.enabled }}
+        # Bundled Postgres starts alongside this Pod; block migrate until it
+        # accepts connections so the initContainer doesn't crash-loop while the
+        # StatefulSet comes up. Only present in bundled mode — an external DB is
+        # assumed already reachable.
+        - name: wait-for-db
+          image: {{ .Values.postgres.bundled.image | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - sh
+            - -c
+            - >-
+              until pg_isready -h {{ include "radar-hub.bundledPostgresName" . }} -p 5432
+              -U {{ .Values.postgres.bundled.auth.username | quote }};
+              do echo "waiting for postgres..."; sleep 2; done
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+        {{- end }}
         # cmd/migrate applies any pending schema migrations against the
         # customer's Postgres before the hub starts. Replaces the previous
         # Helm pre-install hook pattern: hooks fire BEFORE non-hook
@@ -96,6 +123,17 @@ spec:
               value: "self_hosted"
             - name: RADAR_HUB_VERSION
               value: {{ default .Chart.AppVersion .Values.image.hub.tag | quote }}
+            # Deployment identity (namespace + Helm release name) via the downward
+            # API. The hub reflects these as non-secret facts on GET /api/config
+            # in self-hosted mode.
+            - name: RADAR_HUB_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RADAR_HUB_RELEASE_NAME
+              value: {{ .Release.Name | quote }}
+            - name: RADAR_HUB_CHART_VERSION
+              value: {{ .Chart.Version | quote }}
             - name: RADAR_HUB_ORG_NAME
               value: {{ .Values.hub.orgName | quote }}
             - name: RADAR_HUB_AUDIT_RETENTION_DAYS
@@ -123,11 +161,19 @@ spec:
                 secretKeyRef:
                   name: {{ default (include "radar-hub.secretName" .) .Values.hub.cookiePasswordExistingSecret | quote }}
                   key: cookie-password
+            {{- /* License is optional. When unset, the env var is omitted, the
+                   hub boots in a blocked state, and the web UI shows the
+                   license-required screen (set license.key + redeploy to
+                   activate). Only wire the secretKeyRef when a license is
+                   actually configured so the Pod doesn't reference a missing
+                   Secret key. */}}
+            {{- if or .Values.license.key .Values.license.existingSecret }}
             - name: RADAR_HUB_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ default (include "radar-hub.secretName" .) .Values.license.existingSecret | quote }}
                   key: {{ ternary "license" "license-key" (ne .Values.license.existingSecret "") | quote }}
+            {{- end }}
 
             {{- if .Values.auth.breakGlass.email }}
             - name: RADAR_HUB_BOOTSTRAP_ADMIN_EMAIL
@@ -168,10 +214,6 @@ spec:
                      who terminate TLS at a separate ingress with a
                      different host can still override this explicitly. */}}
               value: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL | quote }}
-            - name: RADAR_HUB_OIDC_GROUP_CLAIM
-              value: {{ .Values.auth.oidc.groupClaim | quote }}
-            - name: RADAR_HUB_OIDC_ADMIN_GROUPS
-              value: {{ join "," .Values.auth.oidc.adminGroups | quote }}
             - name: RADAR_HUB_OIDC_DEFAULT_ROLE
               value: {{ .Values.auth.oidc.defaultRole | quote }}
             {{- end }}

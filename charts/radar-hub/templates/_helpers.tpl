@@ -76,26 +76,32 @@ Image tags default to the chart appVersion when not pinned.
 {{- end }}
 
 {{/*
+Name of the bundled (eval) Postgres — its Secret, headless Service, and
+StatefulSet all share this name.
+*/}}
+{{- define "radar-hub.bundledPostgresName" -}}
+{{- printf "%s-postgres" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
 Postgres DSN source resolution. Returns the secretName + key the hub
-Deployment should pull HUB_DB_DSN from. Used by deployment-hub +
-migrate-job to keep the resolution logic in one place.
+Deployment (main container + migrate initContainer) pulls HUB_DB_DSN from.
+Kept in one place so both stay in sync.
 
-Resolution order (first match wins):
-  1. .Values.postgres.existingSecret  → that Secret, key "dsn"
-  2. .Values.postgres.cnpg.cluster    → "<cluster>-app" (CNPG default), key "uri"
-  3. .Values.postgres.dsn             → chart-managed Secret, key "dsn"
-
-Validation lives in values.schema.json — at least one must be set.
+Resolution (exactly one is valid — enforced by the guard in secret.yaml):
+  1. bundled.enabled           → chart-managed bundled Secret, key "dsn"
+  2. external.existingSecret   → that Secret, key = external.secretKey | "dsn"
+  3. external.cnpgCluster      → "<cluster>-app" (CNPG default), key = external.secretKey | "uri"
 */}}
 {{- define "radar-hub.postgresSecretRef" -}}
-{{- if .Values.postgres.existingSecret -}}
-name: {{ .Values.postgres.existingSecret | quote }}
+{{- if .Values.postgres.bundled.enabled -}}
+name: {{ include "radar-hub.bundledPostgresName" . | quote }}
 key: dsn
-{{- else if .Values.postgres.cnpg.cluster -}}
-name: {{ .Values.postgres.cnpg.secretName | default (printf "%s-app" .Values.postgres.cnpg.cluster) | quote }}
-key: uri
-{{- else -}}
-name: {{ include "radar-hub.secretName" . | quote }}
-key: postgres-dsn
+{{- else if .Values.postgres.external.existingSecret -}}
+name: {{ .Values.postgres.external.existingSecret | quote }}
+key: {{ .Values.postgres.external.secretKey | default "dsn" | quote }}
+{{- else if .Values.postgres.external.cnpgCluster -}}
+name: {{ printf "%s-app" .Values.postgres.external.cnpgCluster | quote }}
+key: {{ .Values.postgres.external.secretKey | default "uri" | quote }}
 {{- end -}}
 {{- end }}

@@ -1,0 +1,163 @@
+{{- if .Values.postgres.bundled.enabled }}
+{{- /*
+Bundled Postgres — EVALUATION ONLY. Single-instance StatefulSet on the
+official postgres image, a PVC, and a chart-managed Secret. No HA, no
+backups/PITR. Production installs set postgres.bundled.enabled=false and use
+postgres.external.* instead (the guard in secret.yaml enforces exactly one).
+
+Password persistence: reuse the password already stored in the Secret across
+`helm upgrade` (via lookup) so it never desyncs from the PVC's initialized
+role. On first install (or when lookup can't read the cluster, e.g. GitOps
+templating) a fresh password is generated — set bundled.auth.password
+explicitly for declarative/GitOps installs. Changing the password later does
+NOT rotate the DB; delete the PVC to reset.
+*/}}
+{{- $name := include "radar-hub.bundledPostgresName" . }}
+{{- $auth := .Values.postgres.bundled.auth }}
+{{- $pw := $auth.password }}
+{{- if not $pw }}
+  {{- $existing := lookup "v1" "Secret" .Release.Namespace $name }}
+  {{- if and $existing $existing.data (hasKey $existing.data "password") }}
+    {{- $pw = index $existing.data "password" | b64dec }}
+  {{- else }}
+    {{- $pw = randAlphaNum 24 }}
+  {{- end }}
+{{- end }}
+{{- /* Percent-encode the DSN's userinfo + db path so special characters in a
+       user-set username/password/database can't break the connection string.
+       `urlquery` is form-encoding (space -> "+"), which is WRONG for a URI, so
+       fix spaces to %20; every other reserved char is already %XX. The raw
+       values still reach Postgres via POSTGRES_* env from the Secret. */}}
+{{- $u := $auth.username | urlquery | replace "+" "%20" }}
+{{- $p := $pw | urlquery | replace "+" "%20" }}
+{{- $d := $auth.database | urlquery | replace "+" "%20" }}
+{{- $dsn := printf "postgres://%s:%s@%s:5432/%s?sslmode=disable" $u $p $name $d }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}
+  annotations:
+    # The StatefulSet's PVC is never GC'd on `helm uninstall`, and PGDATA keeps
+    # the password the role was first initialized with. Keep this Secret too, so
+    # a reinstall against the retained PVC reuses that same password instead of
+    # generating a fresh one the already-initialized PGDATA rejects (auth failure
+    # with no obvious cause). To fully reset the eval DB, delete the PVC AND this
+    # Secret.
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+type: Opaque
+stringData:
+  password: {{ $pw | quote }}
+  dsn: {{ $dsn | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  # Headless — the StatefulSet needs stable per-pod DNS even at one replica.
+  clusterIP: None
+  selector:
+    {{- include "radar-hub.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  serviceName: {{ $name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "radar-hub.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        {{- include "radar-hub.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgres
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        # Forcing a non-root UID is load-bearing: the official postgres
+        # entrypoint starts as root to chown PGDATA and then drops to the
+        # postgres user via gosu — which PSA `restricted` forbids. Running as
+        # an explicit non-root UID makes the entrypoint skip that root path and
+        # run initdb/postgres directly; fsGroup makes the PVC group-writable so
+        # arbitrary-UID works. The value (999) is arbitrary, not the image's
+        # own UID (alpine's postgres is uid 70).
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.bundled.image | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: POSTGRES_DB
+              value: {{ $auth.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ $auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $name }}
+                  key: password
+            # The official image cannot use the volume mount root as PGDATA
+            # (lost+found / mount semantics break initdb) — use a subdirectory.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ $auth.username | quote }}, "-d", {{ $auth.database | quote }}]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          {{- /* No livenessProbe on purpose: pg_isready returns non-ready
+                 during WAL replay after a crash, and a liveness restart mid-
+                 recovery just deepens the outage. Readiness gates traffic;
+                 that's enough for a single-instance eval DB. */}}
+          resources:
+            {{- toYaml .Values.postgres.bundled.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.postgres.bundled.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.bundled.persistence.size | quote }}
+{{- end }}
