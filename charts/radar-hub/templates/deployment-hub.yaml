@@ -134,6 +134,14 @@ spec:
               value: {{ .Release.Name | quote }}
             - name: RADAR_HUB_CHART_VERSION
               value: {{ .Chart.Version | quote }}
+            {{- if .Values.web.tls.selfSigned }}
+            # Self-signed TLS (LoadBalancer trial path): the hub reflects this on
+            # GET /api/config so the connect wizard adds cloud.insecureSkipVerify=true
+            # to the generated cluster install command — a connector dialing this
+            # hub over wss:// must skip verification of the self-signed cert.
+            - name: RADAR_HUB_INSECURE_SKIP_VERIFY
+              value: "true"
+            {{- end }}
             - name: RADAR_HUB_ORG_NAME
               value: {{ .Values.hub.orgName | quote }}
             - name: RADAR_HUB_AUDIT_RETENTION_DAYS
