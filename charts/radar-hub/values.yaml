@@ -171,6 +171,13 @@ web:
     kubernetes.io/arch: amd64
   tolerations: []
   affinity: {}
+  # Self-hosted TRIAL only: serve a self-signed cert on the web pod's :8443 so a
+  # LoadBalancer-exposed hub has an https/wss endpoint without cert-manager/ACM.
+  # The Radar connector must set cloud.insecureSkipVerify=true (encrypted, not
+  # authenticated). Leave false and terminate TLS at an Ingress (cert-manager)
+  # for a browser-trusted certificate.
+  tls:
+    selfSigned: false
 
 # ---------------------------------------------------------------------------
 # Auth
@@ -253,6 +260,9 @@ service:
   web:
     type: ClusterIP
     port: 80
+    # HTTPS port on the web Service, wired to the pod's self-signed :8443
+    # listener. Only rendered when web.tls.selfSigned=true.
+    tlsPort: 443
 
   # Advanced/split-origin only. Keep the hub Service internal unless you
   # intentionally expose the raw hub API separately from the web frontend.
