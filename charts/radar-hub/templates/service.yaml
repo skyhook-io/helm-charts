@@ -36,6 +36,12 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.web.tls.selfSigned }}
+    - port: {{ .Values.service.web.tlsPort | default 443 }}
+      targetPort: https
+      protocol: TCP
+      name: https
+    {{- end }}
   selector:
     {{- include "radar-hub.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: web

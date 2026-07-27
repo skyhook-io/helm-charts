@@ -42,6 +42,11 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+            {{- if .Values.web.tls.selfSigned }}
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+            {{- end }}
           env:
             {{- /* The web image's nginx config reverse-proxies /api +
                    /agent to this hub Service via in-cluster DNS.
@@ -54,6 +59,10 @@ spec:
                    via .Values.clusterDomain for custom-domain clusters. */}}
             - name: HUB_UPSTREAM
               value: "http://{{ include "radar-hub.hubName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}:{{ .Values.service.hub.port }}"
+            {{- if .Values.web.tls.selfSigned }}
+            - name: WEB_TLS_SELF_SIGNED
+              value: "true"
+            {{- end }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
           # nginx serves the SPA bundle; / is the simplest healthy path.
