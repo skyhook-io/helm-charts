@@ -242,13 +242,25 @@ ingress:
 # Gateway API HTTPRoute (Istio, Envoy Gateway, Cilium, etc.). Mutually exclusive
 # with ingress. The Gateway (and its TLS listener) is managed outside this
 # chart; the route just attaches to it.
-httproute:
+httpRoute:
   enabled: false
+  # HTTPRoute API version. Override for clusters on an older Gateway API, e.g.
+  # gateway.networking.k8s.io/v1beta1.
+  apiVersion: gateway.networking.k8s.io/v1
+  annotations: {}
+  labels: {}
   parentRefs: []
     # - name: my-gateway
     #   namespace: gateway-system
     #   sectionName: https
   hostnames: []            # [radar.acme.example]
+  # Optional request timeout for the chart-generated default rule. Empty means
+  # the Gateway's own default applies. Set "0s" to explicitly disable it.
+  defaultTimeout: ""
+  # When empty, the chart emits a single "/" PathPrefix rule to the web Service.
+  # Non-empty rules replace that default and pass through unchanged — multiple
+  # path prefixes, per-route timeouts, filters, or alternate backends.
+  rules: []
 
 # ---------------------------------------------------------------------------
 # Service

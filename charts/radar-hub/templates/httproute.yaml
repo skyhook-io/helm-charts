@@ -1,32 +1,46 @@
-{{- if .Values.httproute.enabled -}}
+{{- if .Values.httproute -}}
+{{- fail "values key 'httproute' was renamed to 'httpRoute' (camelCase) — rename it in your values (see values.yaml)." -}}
+{{- end -}}
+{{- if .Values.httpRoute.enabled -}}
 {{- if .Values.ingress.enabled -}}
-{{- fail "Enable only ONE of ingress.enabled or httproute.enabled, not both." -}}
+{{- fail "Enable only ONE of ingress.enabled or httpRoute.enabled, not both." -}}
 {{- end -}}
-{{- if not .Values.httproute.parentRefs -}}
-{{- fail "httproute.enabled=true requires at least one httproute.parentRefs entry (the Gateway to attach to)." -}}
+{{- if not .Values.httpRoute.parentRefs -}}
+{{- fail "httpRoute.enabled=true requires at least one httpRoute.parentRefs entry (the Gateway to attach to)." -}}
 {{- end -}}
+{{- $labels := mergeOverwrite (include "radar-hub.labels" . | fromYaml) .Values.httpRoute.labels -}}
 {{/*
 Gateway API HTTPRoute. Attaches to a Gateway the customer manages (parentRefs);
-TLS terminates at that Gateway's listener, so no tls block here. Backend is the
-web Service (same as the Ingress path). Rendered whenever enabled — if the
+TLS terminates at that Gateway's listener, so no tls block here. When
+httpRoute.rules is empty the chart emits a single catch-all "/" route to the web
+Service (its nginx proxies /api, /agent, /mcp to the hub Service in-cluster); set
+rules to pass your own routes through unchanged (multiple prefixes, per-route
+timeouts, filters, alternate backends). Rendered whenever enabled — if the
 Gateway API CRDs aren't installed the apiserver rejects it at apply with a clear
 error; we deliberately do NOT gate on .Capabilities (that would break
 `helm template`/lint/GitOps, where CRDs aren't in the capability set).
 */}}
-apiVersion: gateway.networking.k8s.io/v1
+apiVersion: {{ .Values.httpRoute.apiVersion }}
 kind: HTTPRoute
 metadata:
   name: {{ include "radar-hub.fullname" . }}
   labels:
-    {{- include "radar-hub.labels" . | nindent 4 }}
+    {{- toYaml $labels | nindent 4 }}
+  {{- with .Values.httpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   parentRefs:
-    {{- toYaml .Values.httproute.parentRefs | nindent 4 }}
-  {{- with .Values.httproute.hostnames }}
+    {{- toYaml .Values.httpRoute.parentRefs | nindent 4 }}
+  {{- with .Values.httpRoute.hostnames }}
   hostnames:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
+    {{- if .Values.httpRoute.rules }}
+    {{- toYaml .Values.httpRoute.rules | nindent 4 }}
+    {{- else }}
     - matches:
         - path:
             type: PathPrefix
@@ -34,4 +48,9 @@ spec:
       backendRefs:
         - name: {{ include "radar-hub.webName" . }}
           port: {{ .Values.service.web.port }}
+      {{- with .Values.httpRoute.defaultTimeout }}
+      timeouts:
+        request: {{ . | quote }}
+      {{- end }}
+    {{- end }}
 {{- end -}}
