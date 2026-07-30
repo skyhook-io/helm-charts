@@ -15,11 +15,11 @@ Services:
 Exposure:
 {{- if .Values.ingress.enabled }}
   Ingress ({{ default "default class" .Values.ingress.className }}) → {{ range .Values.ingress.hosts }}{{ .host }} {{ end }}
-{{- else if .Values.httproute.enabled }}
-  Gateway API HTTPRoute → parentRefs: {{ range .Values.httproute.parentRefs }}{{ .name }}{{ if .namespace }}/{{ .namespace }}{{ end }}{{ if .sectionName }} (listener {{ .sectionName }}){{ end }} {{ end }}
+{{- else if .Values.httpRoute.enabled }}
+  Gateway API HTTPRoute → parentRefs: {{ range .Values.httpRoute.parentRefs }}{{ .name }}{{ if .namespace }}/{{ .namespace }}{{ end }}{{ if .sectionName }} (listener {{ .sectionName }}){{ end }} {{ end }}
 {{- else }}
   none (Service only). Front the web Service with your own LB/mesh, or enable
-  ingress.* or httproute.* (pick one). Host derives from hub.publicURL.
+  ingress.* or httpRoute.* (pick one). Host derives from hub.publicURL.
 {{- end }}
 
 Postgres source:

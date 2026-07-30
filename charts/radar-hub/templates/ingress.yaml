@@ -1,6 +1,6 @@
 {{- if .Values.ingress.enabled -}}
-{{- if .Values.httproute.enabled -}}
-{{- fail "Enable only ONE of ingress.enabled or httproute.enabled, not both." -}}
+{{- if .Values.httpRoute.enabled -}}
+{{- fail "Enable only ONE of ingress.enabled or httpRoute.enabled, not both." -}}
 {{- end -}}
 {{- if not .Values.ingress.hosts -}}
 {{- fail "ingress.enabled=true requires at least one entry under ingress.hosts (each with a host + paths)." -}}
