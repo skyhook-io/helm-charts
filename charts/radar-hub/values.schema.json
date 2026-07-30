@@ -415,7 +415,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "additionalProperties": false,
+            "additionalProperties": true,
             "required": [
               "name"
             ],
@@ -423,21 +423,6 @@
               "name": {
                 "type": "string",
                 "minLength": 1
-              },
-              "namespace": {
-                "type": "string"
-              },
-              "sectionName": {
-                "type": "string"
-              },
-              "port": {
-                "type": "integer"
-              },
-              "group": {
-                "type": "string"
-              },
-              "kind": {
-                "type": "string"
               }
             }
           }
