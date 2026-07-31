@@ -131,6 +131,9 @@ spec:
             {{- end }}
             - --cloud-url={{ required "cloud.url is required when cloud.enabled=true" .Values.cloud.url }}
             - --cluster-name={{ required "cloud.clusterName is required when cloud.enabled=true" .Values.cloud.clusterName }}
+            {{- if .Values.cloud.insecureSkipVerify }}
+            - --cloud-insecure-skip-verify
+            {{- end }}
             {{- /* cloud.token is injected via RADAR_CLOUD_TOKEN env var below, not the command line */}}
             {{- end }}
           ports:
