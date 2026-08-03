@@ -133,11 +133,11 @@ hub:
       memory: 1Gi
 
   podAnnotations: {}
-  # Official Hub images are linux/amd64 for appVersion 1.1.0. Override only
-  # when using a compatible custom or future multi-architecture image.
+  # Official images support linux/amd64 and linux/arm64, so only the OS is
+  # pinned by default. Add kubernetes.io/arch: <amd64|arm64> to constrain it;
+  # Helm merges that key with this default Linux selector.
   nodeSelector:
     kubernetes.io/os: linux
-    kubernetes.io/arch: amd64
   tolerations: []
   affinity: {}
 
@@ -164,11 +164,11 @@ web:
       cpu: 200m
       memory: 256Mi
   podAnnotations: {}
-  # Official Web images are linux/amd64 for appVersion 1.1.0. Override only
-  # when using a compatible custom or future multi-architecture image.
+  # Official images support linux/amd64 and linux/arm64, so only the OS is
+  # pinned by default. Add kubernetes.io/arch: <amd64|arm64> to constrain it;
+  # Helm merges that key with this default Linux selector.
   nodeSelector:
     kubernetes.io/os: linux
-    kubernetes.io/arch: amd64
   tolerations: []
   affinity: {}
   # Self-hosted TRIAL only: serve a self-signed cert on the web pod's :8443 so a

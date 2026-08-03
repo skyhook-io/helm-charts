@@ -33,6 +33,31 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --target-branch ${{ github.event.repository.default_branch }}
 
+      - name: Verify radar-hub architecture selectors
+        run: |
+          set -euo pipefail
+          for component in hub web; do
+            template="templates/deployment-${component}.yaml"
+
+            helm template radar-hub charts/radar-hub \
+              --values charts/radar-hub/ci/test-values.yaml \
+              --show-only "$template" > "/tmp/${component}-default.yaml"
+            grep -Fq "kubernetes.io/os: linux" "/tmp/${component}-default.yaml"
+            if grep -Fq "kubernetes.io/arch:" "/tmp/${component}-default.yaml"; then
+              echo "default ${component} nodeSelector unexpectedly pins an architecture"
+              exit 1
+            fi
+
+            for arch in amd64 arm64; do
+              helm template radar-hub charts/radar-hub \
+                --values charts/radar-hub/ci/test-values.yaml \
+                --set-json "${component}.nodeSelector={\"kubernetes.io/arch\":\"${arch}\"}" \
+                --show-only "$template" > "/tmp/${component}-${arch}.yaml"
+              grep -Fq "kubernetes.io/os: linux" "/tmp/${component}-${arch}.yaml"
+              grep -Fq "kubernetes.io/arch: ${arch}" "/tmp/${component}-${arch}.yaml"
+            done
+          done
+
   install:
     name: Install & Upgrade Test
     runs-on: ubuntu-latest
