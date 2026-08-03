@@ -2,10 +2,9 @@ apiVersion: v2
 name: radar-hub
 description: Radar Cloud control plane for self-hosted deployments — Go API + React web app + Postgres (bundled eval DB or bring-your-own).
 type: application
-version: 1.3.0
-# appVersion points at the 1.2.2 radar-hub + radar-hub-web images (the web image
-# carries the :8443 self-signed TLS listener). image.hub.tag / image.web.tag
-# default to appVersion.
+version: 1.3.1
+# The Hub image defaults to appVersion. Web is pinned separately in values.yaml
+# because the :8443 self-signed TLS listener first shipped in Web 1.2.3.
 appVersion: "1.2.2"
 icon: https://radarhq.io/radar/icon-512.png
 keywords:

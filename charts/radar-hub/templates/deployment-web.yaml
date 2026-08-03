@@ -77,7 +77,12 @@ spec:
           readinessProbe:
             httpGet:
               path: /
+              {{- if .Values.web.tls.selfSigned }}
+              port: https
+              scheme: HTTPS
+              {{- else }}
               port: http
+              {{- end }}
             initialDelaySeconds: 2
             periodSeconds: 10
       {{- with .Values.web.nodeSelector }}
