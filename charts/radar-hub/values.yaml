@@ -31,7 +31,10 @@ image:
     pullPolicy: IfNotPresent
   web:
     repository: ghcr.io/skyhook-dev/radar-hub-web
-    tag: ""           # defaults to chart appVersion when empty
+    # Web 1.2.3 is the first image with the optional :8443 self-signed TLS
+    # listener. Keep Hub on appVersion 1.2.2; this chart patch does not promote
+    # either application to the broader 1.3.0 release.
+    tag: "1.2.3"
     pullPolicy: IfNotPresent
 imagePullSecrets: []
 

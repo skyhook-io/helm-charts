@@ -1,0 +1,16 @@
+# Additional chart-testing install case for the self-signed TLS trial path.
+# The Web Deployment's HTTPS readiness probe makes chart-testing wait for the
+# image's real :8443 listener instead of accepting an HTTP-only image.
+
+hub:
+  publicURL: "https://radar.test.example"
+  cookiePassword: "test-cookie-password-32-bytes-minimum-aaaa"
+
+auth:
+  breakGlass:
+    email: "admin@test.example"
+    password: "test-bg-password"
+
+web:
+  tls:
+    selfSigned: true
