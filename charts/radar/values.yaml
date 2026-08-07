@@ -337,6 +337,10 @@ auth:
     # a signed logout_token to /auth/backchannel-logout to revoke sessions.
     # Single-replica only — revocations are stored in memory and lost on pod restart.
     backchannelLogout: false
+    # Enable PKCE (S256) for the OIDC authorization-code flow (opt-in). Default off —
+    # existing deployments are unaffected. Enable only if your IdP supports PKCE and
+    # you want the extra protection against authorization-code interception.
+    enablePKCE: false
 
 # Radar Cloud (hosted SaaS at radarhq.io) — outbound-only tunnel. When
 # enabled, this Radar instance dials out to the Cloud service over
@@ -400,9 +404,12 @@ cloud:
     ownerClusterRole: admin
     memberClusterRole: edit
     viewerClusterRole: view
-    # Grant cluster-scoped READ (Nodes, PVs, StorageClasses, IngressClasses,
-    # PriorityClasses, RuntimeClasses, CRDs, and admission webhooks) on top of
-    # the built-in view/edit/admin roles, which exclude cluster-scoped resources.
+    # Grant cluster-wide infrastructure read (Nodes, PVs, StorageClasses,
+    # IngressClasses, PriorityClasses, RuntimeClasses, CRDs, and admission
+    # webhooks) plus list-only Upgrade impact source evidence
+    # (CSIStorageCapacities, legacy PodSecurityPolicies, and API flow-control
+    # config) on top of the built-in view/edit/admin roles, which don't cover
+    # all of them.
     # When their matching collection is enabled, the add-on also grants read on
     # APIServices, PrometheusRules, Karpenter kinds, and node metrics. Per tier,
     # each default true — Radar is a cluster-wide observability tool, so by

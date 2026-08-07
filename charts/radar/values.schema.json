@@ -247,7 +247,8 @@
             "groupsPrefix": { "type": "string" },
             "caCert": { "type": "string" },
             "insecureSkipVerify": { "type": "boolean" },
-            "backchannelLogout": { "type": "boolean", "description": "Single-replica only — revocations are in-memory." }
+            "backchannelLogout": { "type": "boolean", "description": "Single-replica only — revocations are in-memory." },
+            "enablePKCE": { "type": "boolean", "description": "Enable PKCE (S256) for the OIDC authorization-code flow (opt-in, default off)." }
           }
         }
       }
