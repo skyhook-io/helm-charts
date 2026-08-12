@@ -28,17 +28,18 @@ jobs:
           version: v3.14.0
 
       - name: Run chart-releaser
+        id: cr
         uses: helm/chart-releaser-action@v1.7.0
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-      # chart-releaser packages only charts changed since the last tag into
-      # .cr-release-packages/ and leaves them there. Mirror those same packages
-      # to the GHCR OCI registry so enterprise catalogs (NKP, Rancher, Argo/Flux)
-      # can pull via oci://ghcr.io/skyhook-io/charts/<name>. The HTTP repo
-      # (gh-pages index.yaml) and Artifact Hub keep working unchanged.
+      # Mirror the charts chart-releaser just packaged (.cr-release-packages/)
+      # to the GHCR OCI registry, alongside the HTTP repo (gh-pages) and
+      # Artifact Hub, so catalogs that consume charts over OCI can pull
+      # oci://ghcr.io/skyhook-io/charts/<name>. Gated on chart-releaser's own
+      # changed_charts output so it only runs when a chart was actually released.
       - name: Push charts to GHCR (OCI)
-        if: hashFiles('.cr-release-packages/*.tgz') != ''
+        if: steps.cr.outputs.changed_charts != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
