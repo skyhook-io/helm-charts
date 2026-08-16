@@ -105,6 +105,10 @@ replacing it does NOT need a redeploy or a pod delete. Update the Secret and
 the hub picks the new license up within about a minute. Look for:
   "applied a replaced licence without a restart"
 
+On hub images older than 1.5.0 the mounted file is still read, but only at
+startup — those pods need a restart to pick up a replacement. Everything else
+in this section (self-renewal, air-gapped) also needs 1.5.0 or newer.
+
 An empty or corrupted file is ignored and the hub keeps the license it already
 verified — replacing a file badly does not take your console away mid-flight.
 
