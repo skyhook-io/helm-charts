@@ -107,7 +107,9 @@ the hub picks the new license up within about a minute. Look for:
 
 On hub images older than 1.5.0 the mounted file is still read, but only at
 startup — those pods need a restart to pick up a replacement. Everything else
-in this section (self-renewal, air-gapped) also needs 1.5.0 or newer.
+in this section (self-renewal, air-gapped) also needs 1.5.0 or newer, which is
+this chart's default image. Setting hub.airGapped against an older pinned tag
+fails the render rather than installing a hub that ignores it.
 
 An empty or corrupted file is ignored and the hub keeps the license it already
 verified — replacing a file badly does not take your console away mid-flight.

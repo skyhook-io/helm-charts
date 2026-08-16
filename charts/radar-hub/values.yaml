@@ -139,8 +139,9 @@ hub:
   # fail and are logged — but it does mean the deployment is attempting egress,
   # which is usually the thing an air-gapped install is audited on.
   #
-  # Needs hub image 1.5.0 or newer: on 1.4.0 the flag is read by nothing and
-  # the hub keeps polling GitHub.
+  # Needs hub image 1.5.0 or newer, which is this chart's appVersion. If you
+  # pin image.hub.tag to something older, the render fails rather than
+  # installing a hub that ignores this and keeps calling out.
   airGapped: false
 
   # What the UI reports as the latest available Radar version.

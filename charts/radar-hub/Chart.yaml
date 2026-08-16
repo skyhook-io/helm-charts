@@ -3,8 +3,9 @@ name: radar-hub
 description: Radar Cloud control plane for self-hosted deployments — Go API + React web app + Postgres (bundled eval DB or bring-your-own).
 type: application
 version: 1.5.0
-# image.hub.tag and image.web.tag both default to appVersion when unset. The
-# official 1.4.0 images are published for linux/amd64 and linux/arm64.
+# image.hub.tag and image.web.tag both default to appVersion when unset, so
+# appVersion is the image tag this chart installs. Images are published for
+# linux/amd64 and linux/arm64.
 appVersion: "1.5.0"
 icon: https://radarhq.io/radar/icon-512.png
 keywords:
