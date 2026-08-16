@@ -122,6 +122,41 @@ hub:
   orgName: "Default"
   auditRetentionDays: 365
 
+  # -------------------------------------------------------------------------
+  # Air-gapped installs: no outbound connections at all
+  # -------------------------------------------------------------------------
+  # Set this true for a deployment that must not talk to anything outside your
+  # network. It is NOT cosmetic — it turns off the two things this hub does on
+  # its own initiative:
+  #
+  #   * the hourly check to api.github.com for the latest Radar version
+  #     (pin `latestRadarVersion` below if you still want the UI to show one)
+  #   * the daily license renewal call to Radar Cloud
+  #
+  # An air-gapped license is issued by hand and installed as license.key, so
+  # there is nothing for the hub to renew and nobody for it to ask. Leaving
+  # this false on an isolated network does not break the hub — the calls simply
+  # fail and are logged — but it does mean the deployment is attempting egress,
+  # which is usually the thing an air-gapped install is audited on.
+  #
+  # Needs hub image 1.5.0 or newer: on 1.4.0 the flag is read by nothing and
+  # the hub keeps polling GitHub.
+  airGapped: false
+
+  # What the UI reports as the latest available Radar version.
+  #
+  # Empty means the hub asks GitHub hourly. Pin it (e.g. "1.10.0") to answer
+  # from this value instead and make no such call — required for an air-gapped
+  # install to be honest about making no outbound connections, and useful for
+  # anyone who mirrors releases internally on their own schedule.
+  latestRadarVersion: ""
+
+
+  # Where the hub asks for a renewed license. Cloud-managed installs only, and
+  # the default is correct for every customer — override only if Skyhook has
+  # given you a different endpoint. Ignored entirely when airGapped is true.
+  licenseServer: ""
+
   replicas: 1
 
   resources:

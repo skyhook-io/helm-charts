@@ -166,6 +166,18 @@
           "type": "integer",
           "minimum": 1
         },
+        "airGapped": {
+          "type": "boolean",
+          "description": "Make no outbound connections at all: no Radar version check, no license renewal. For deployments audited on having no egress."
+        },
+        "latestRadarVersion": {
+          "type": "string",
+          "description": "Pin the Radar version the UI reports as latest. Empty means ask GitHub hourly; required for an air-gapped install to show a version at all."
+        },
+        "licenseServer": {
+          "type": "string",
+          "description": "Where the hub asks for a renewed license. Empty means the Skyhook default. Ignored when airGapped is true."
+        },
         "replicas": {
           "type": "integer",
           "minimum": 1

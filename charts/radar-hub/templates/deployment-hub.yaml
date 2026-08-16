@@ -132,6 +132,26 @@ spec:
                   fieldPath: metadata.namespace
             - name: RADAR_HUB_RELEASE_NAME
               value: {{ .Release.Name | quote }}
+            {{- /* Air-gapped: the two calls the hub makes on its own
+                   initiative are the version poll and the license renewal.
+                   Pinning the version answers the first from config instead of
+                   from api.github.com; an empty license server stops the
+                   second. Without this the chart offered no way to turn either
+                   off, so "makes no outbound connections" was not true of any
+                   install that could be sold on it (S52). */}}
+            {{- if .Values.hub.latestRadarVersion }}
+            - name: HUB_LATEST_RADAR_VERSION
+              value: {{ .Values.hub.latestRadarVersion | quote }}
+            {{- end }}
+            {{- if not .Values.hub.airGapped }}
+            {{- if .Values.hub.licenseServer }}
+            - name: RADAR_HUB_LICENSE_SERVER
+              value: {{ .Values.hub.licenseServer | quote }}
+            {{- end }}
+            {{- else }}
+            - name: RADAR_HUB_AIR_GAPPED
+              value: "true"
+            {{- end }}
             - name: RADAR_HUB_CHART_VERSION
               value: {{ .Chart.Version | quote }}
             {{- if .Values.web.tls.selfSigned }}
@@ -169,19 +189,19 @@ spec:
                 secretKeyRef:
                   name: {{ default (include "radar-hub.secretName" .) .Values.hub.cookiePasswordExistingSecret | quote }}
                   key: cookie-password
-            {{- /* License is optional. When unset, the env var is omitted, the
+            {{- /* License is optional. When unset, nothing is mounted, the
                    hub boots in a blocked state, and the web UI shows the
-                   license-required screen (set license.key + redeploy to
-                   activate). Only wire the secretKeyRef when a license is
-                   actually configured so the Pod doesn't reference a missing
-                   Secret key. */}}
-            {{- if or .Values.license.key .Values.license.existingSecret }}
-            - name: RADAR_HUB_LICENSE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ default (include "radar-hub.secretName" .) .Values.license.existingSecret | quote }}
-                  key: {{ ternary "license" "license-key" (ne .Values.license.existingSecret "") | quote }}
-            {{- end }}
+                   license-required screen.
+
+                   MOUNTED AS A FILE, not passed as an env var. An env var is
+                   fixed for the life of a process, so rotating the JWT inside
+                   an existingSecret — the path this chart recommends — changed
+                   nothing until somebody deleted the pod, and the deployment
+                   checksum below only covers the Secret the CHART renders. A
+                   mounted Secret is updated in place by the kubelet, and the
+                   hub re-reads this path, so replacing a license takes effect
+                   on its own. That matters most for air-gapped installs, which
+                   have no other mechanism. */}}
 
             {{- if .Values.auth.breakGlass.email }}
             - name: RADAR_HUB_BOOTSTRAP_ADMIN_EMAIL
@@ -239,6 +259,25 @@ spec:
             periodSeconds: {{ .Values.hub.readinessProbe.periodSeconds }}
           resources:
             {{- toYaml .Values.hub.resources | nindent 12 }}
+          {{- if or .Values.license.key .Values.license.existingSecret }}
+          volumeMounts:
+            - name: license
+              mountPath: /etc/radar-hub
+              readOnly: true
+          {{- end }}
+      {{- if or .Values.license.key .Values.license.existingSecret }}
+      volumes:
+        - name: license
+          secret:
+            {{- /* The chart's own Secret stores it under license-key; an
+                   existingSecret uses `license`, which is the key name
+                   documented for customers. Both are projected to the same
+                   filename, so the hub reads one path either way. */}}
+            secretName: {{ default (include "radar-hub.secretName" .) .Values.license.existingSecret | quote }}
+            items:
+              - key: {{ ternary "license" "license-key" (ne .Values.license.existingSecret "") | quote }}
+                path: license
+      {{- end }}
       {{- with .Values.hub.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

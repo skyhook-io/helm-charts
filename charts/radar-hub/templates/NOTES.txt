@@ -98,4 +98,38 @@ The hub logs license verification at boot. Look for:
   "no license configured — hub is blocked ..." — set license.key + redeploy
   "license is invalid ..." — bad signature or claims; check the key you pasted
 
+REPLACING A LICENSE
+-------------------
+The license is mounted as a file, not passed as an environment variable, so
+replacing it does NOT need a redeploy or a pod delete. Update the Secret and
+the hub picks the new license up within about a minute. Look for:
+  "applied a replaced licence without a restart"
+
+An empty or corrupted file is ignored and the hub keeps the license it already
+verified — replacing a file badly does not take your console away mid-flight.
+
+WHICH LICENSE WINS
+------------------
+A hub that is NOT air-gapped renews its own license daily and remembers the
+result. So there can be two: the one in your values file and the one this hub
+fetched. The later expiry wins; on the same expiry, the fetched one wins if the
+terms differ, because that is what a mid-period change looks like — buying more
+self-hosted clusters keeps the same period end.
+
+This is the one place your values file is not the last word. It is deliberate:
+without it, every restart would hand back capacity you had already paid for.
+Pasting a genuinely newer key still wins, because a newer license expires later.
+
+AIR-GAPPED INSTALLS
+-------------------
+Set hub.airGapped=true for a deployment that must not talk to anything outside
+your network. It stops the two calls the hub makes on its own initiative: the
+hourly check to api.github.com for the latest Radar version, and the daily
+license renewal. Pin hub.latestRadarVersion if you still want a version shown;
+unpinned, the hub reports none rather than guessing.
+
+An air-gapped license is issued by hand, carries no org id, and is replaced the
+way described above. Changing how many clusters it covers is a conversation
+with us — there is no self-serve path, by design.
+
 ================================================================================
