@@ -66,7 +66,10 @@ rbac:
   # Automatically enables secrets read access (needed for Helm release storage).
   helm: false
 
-  # Allow reading secrets (shows secrets in resource list)
+  # Allow reading secrets (shows secrets in resource list). RBAC cannot scope a
+  # list/watch by Secret type, so this grants read on every Secret in the
+  # cluster. Helm release listing needs it too, since Helm stores releases as
+  # Secrets - rbac.helm turns it on for that reason.
   secrets: false
 
   # Allow reading RBAC objects (Roles, RoleBindings, ClusterRoles, ClusterRoleBindings)
