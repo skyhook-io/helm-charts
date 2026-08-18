@@ -57,3 +57,56 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: keeps Secrets access opt-in when auth is enabled
+    set:
+      auth:
+        mode: oidc
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-radar
+    asserts:
+      - notContains:
+          path: rules[?(@.resources[?(@ == "secrets")])].verbs
+          content: list
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resourceNames: ["hubble-relay-client-certs"]
+            resources: ["secrets"]
+            verbs: ["get"]
+
+  - it: grants Secrets access when rbac.secrets is set, with auth enabled
+    set:
+      auth:
+        mode: oidc
+      rbac:
+        secrets: true
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-radar
+    asserts:
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: ["secrets"]
+            verbs: ["get", "list", "watch"]
+
+  - it: grants Secrets access when rbac.helm is set, with auth enabled
+    set:
+      auth:
+        mode: oidc
+      rbac:
+        helm: true
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-radar
+    asserts:
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: ["secrets"]
+            verbs: ["get", "list", "watch"]
