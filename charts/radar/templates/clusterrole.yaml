@@ -68,11 +68,11 @@ rules:
     verbs: ["create", "update", "patch", "delete"]
   {{- end }}
 
-  {{- if or .Values.rbac.secrets .Values.rbac.helm (ne .Values.auth.mode "none") .Values.cloud.enabled }}
-  # Secrets access - required for Helm release storage (rbac.helm),
-  # showing secrets in the resource browser (rbac.secrets),
-  # or Helm visibility when auth is enabled / cloud-mode (Helm reads use the
-  # ServiceAccount since users with the K8s 'view' role cannot list secrets)
+  {{- if or .Values.rbac.secrets .Values.rbac.helm }}
+  # Secrets access - required for Helm release storage (rbac.helm) or for
+  # showing secrets in the resource browser (rbac.secrets). RBAC cannot scope
+  # a list/watch by Secret type, so this necessarily covers every Secret in the
+  # cluster - keep it behind an explicit opt-in.
   - apiGroups: [""]
     resources:
       - secrets
