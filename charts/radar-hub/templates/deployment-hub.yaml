@@ -136,9 +136,8 @@ spec:
                    initiative are the version poll and the license renewal.
                    Pinning the version answers the first from config instead of
                    from api.github.com; an empty license server stops the
-                   second. Without this the chart offered no way to turn either
-                   off, so "makes no outbound connections" was not true of any
-                   install that could be sold on it (S52). */}}
+                   second. Both switches are needed for an air-gapped install
+                   to genuinely make no outbound connections. */}}
             {{- if .Values.hub.latestRadarVersion }}
             - name: HUB_LATEST_RADAR_VERSION
               value: {{ .Values.hub.latestRadarVersion | quote }}
