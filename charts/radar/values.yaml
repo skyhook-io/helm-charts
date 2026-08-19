@@ -130,9 +130,10 @@ rbac:
     apiRegistration: true   # apiregistration.k8s.io (APIService health for aggregated APIs)
     argo: true              # argoproj.io
     awx: true               # awx.ansible.com
+    calico: true            # projectcalico.org, crd.projectcalico.org (Calico policies, IPPools, HostEndpoints, Tiers)
     certManager: true       # cert-manager.io, acme.cert-manager.io
     cilium: true            # cilium.io (CiliumClusterwideNetworkPolicy etc. in topology)
-    cloudnativePg: true     # postgresql.cnpg.io (CloudNativePG: Clusters, Poolers, Backups)
+    cloudnativePg: true     # postgresql.cnpg.io, barmancloud.cnpg.io (CloudNativePG: Clusters, Poolers, Backups, ObjectStores)
     clusterApi: true        # *.cluster.x-k8s.io (CAPI core + infrastructure / controlplane / bootstrap / addons)
     contour: true           # projectcontour.io
     crossplane: true        # crossplane.io, pkg.crossplane.io, apiextensions.crossplane.io, helm.crossplane.io, kubernetes.crossplane.io. For Upbound provider CRDs (s3.aws.upbound.io, compute.gcp.upbound.io, etc.) list them in additionalCrdGroups — K8s RBAC has no apiGroup wildcards.

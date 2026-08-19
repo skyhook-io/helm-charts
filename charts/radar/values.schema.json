@@ -61,6 +61,7 @@
             "apiRegistration": { "type": "boolean" },
             "argo": { "type": "boolean" },
             "awx": { "type": "boolean" },
+            "calico": { "type": "boolean" },
             "certManager": { "type": "boolean" },
             "cloudnativePg": { "type": "boolean" },
             "clusterApi": { "type": "boolean" },
