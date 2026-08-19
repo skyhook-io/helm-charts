@@ -142,6 +142,13 @@ hub:
   # Needs hub image 1.5.0 or newer, which is this chart's appVersion. If you
   # pin image.hub.tag to something older, the render fails rather than
   # installing a hub that ignores this and keeps calling out.
+  #
+  # REQUIRES A LICENSE THAT PERMITS IT. Air-gapped operation is part of a
+  # Custom contract; Enterprise buys self-hosting, which is the same product
+  # renewing its license once a day. Setting this with an Enterprise license
+  # makes the hub refuse to start, naming the reason — the chart cannot check
+  # it here, because the permission is a signed claim inside the license and
+  # verifying a signature is not something Helm templating can do.
   airGapped: false
 
   # What the UI reports as the latest available Radar version.
