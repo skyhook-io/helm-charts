@@ -35,7 +35,8 @@
                 "Never"
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "web": {
           "type": "object",
@@ -58,9 +59,11 @@
                 "Never"
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "imagePullSecrets": {
       "type": "array"
@@ -74,7 +77,8 @@
         "existingSecret": {
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "postgres": {
       "type": "object",
@@ -203,7 +207,8 @@
         "readinessProbe": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "web": {
       "type": "object",
@@ -233,9 +238,11 @@
             "selfSigned": {
               "type": "boolean"
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "auth": {
       "type": "object",
@@ -255,7 +262,8 @@
             "passwordHashExistingSecret": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "oidc": {
           "type": "object",
@@ -283,9 +291,11 @@
                 "viewer"
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "branding": {
       "type": "object",
@@ -302,7 +312,8 @@
         "feedbackEmail": {
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "ingress": {
       "type": "object",
@@ -461,7 +472,8 @@
             "tlsPort": {
               "type": "integer"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "hub": {
           "type": "object",
@@ -477,9 +489,11 @@
             "port": {
               "type": "integer"
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "serviceAccount": {
       "type": "object",
@@ -493,7 +507,8 @@
         "annotations": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "clusterDomain": {
       "type": "string",
@@ -511,5 +526,6 @@
     "fullnameOverride": {
       "type": "string"
     }
-  }
+  },
+  "additionalProperties": false
 }
