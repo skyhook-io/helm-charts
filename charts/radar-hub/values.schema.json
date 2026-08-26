@@ -11,6 +11,11 @@
     "service"
   ],
   "properties": {
+    "global": {
+      "type": "object",
+      "description": "Helm's reserved umbrella-chart namespace. Left open on purpose: a parent chart writes arbitrary keys here and this chart does not own the shape.",
+      "additionalProperties": true
+    },
     "image": {
       "type": "object",
       "properties": {
