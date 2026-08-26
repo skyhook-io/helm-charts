@@ -5,6 +5,16 @@ on:
     branches:
       - main
 
+# Serialise chart publishing. chart-releaser creates a git tag and a GitHub
+# Release per new chart version; two runs overlapping on the same commit race,
+# and the loser dies on `422 Validation Failed [tag_name already_exists]` — which
+# has already happened (runs 31591099966 / 31591103039, same sha, 3s apart).
+# cancel-in-progress stays false: a cancelled run can leave a chart packaged and
+# tagged but not indexed, which is worse than a queued one.
+concurrency:
+  group: release-charts
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
