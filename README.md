@@ -33,7 +33,7 @@ helm search repo skyhook
 helm install radar skyhook/radar
 ```
 
-For configuration options and in-cluster deployment guidance, see the [Radar Helm chart README](charts/radar/README.md) and the [in-cluster deployment docs](https://radarhq.io/docs/configuration/in-cluster).
+For configuration options and in-cluster deployment guidance, see the [Radar Helm chart README](charts/radar/README.md) and the [in-cluster deployment docs](https://radarhq.io/docs/configuration/in-cluster). For the self-hosted control plane, including how its chart version and `appVersion` relate, see the [Radar Hub Helm chart README](charts/radar-hub/README.md).
 
 ### Install self-hosted Radar Cloud
 
