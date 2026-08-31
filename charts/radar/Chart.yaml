@@ -7,8 +7,8 @@ type: application
 # so published chart versions always match their git tag. Do not bump these
 # manually. Installing straight from this checkout requires setting image.tag
 # to a published release, since no 0.0.0-dev image exists.
-version: 1.12.1
-appVersion: "1.12.1"
+version: 1.12.2
+appVersion: "1.12.2"
 icon: https://radarhq.io/radar/icon-512.png
 keywords:
   - kubernetes
@@ -43,7 +43,7 @@ annotations:
       url: https://radarhq.io/community/chat
   artifacthub.io/images: |
     - name: radar
-      image: ghcr.io/skyhook-io/radar:1.12.1
+      image: ghcr.io/skyhook-io/radar:1.12.2
   artifacthub.io/screenshots: |
     - title: Multi-cluster topology
       url: https://github.com/skyhook-io/radar/raw/main/docs/screenshots/topology-view.png
