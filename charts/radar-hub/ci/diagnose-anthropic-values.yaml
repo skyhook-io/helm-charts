@@ -1,0 +1,29 @@
+# Exercises the AI Diagnose path: sandbox Namespace, credential Secret,
+# Role/RoleBinding, NetworkPolicy, and the provider-specific hub env.
+#
+# The bundled Postgres password is pinned deliberately — the chart refuses to
+# derive a sandbox DSN from a generated one, so leaving it empty here would fail
+# the render rather than test it.
+#
+# Placeholder values; never deployed against real infrastructure.
+
+hub:
+  publicURL: "https://radar.test.example"
+  cookiePassword: "test-cookie-password-32-bytes-minimum-aaaa"
+  diagnose:
+    enabled: true
+    provider: anthropic
+    engineLabel: "Claude (via Agent SDK)"
+    credentials:
+      apiKey: "sk-ant-test-placeholder"
+
+postgres:
+  bundled:
+    enabled: true
+    auth:
+      password: "test-bundled-postgres-password"
+
+auth:
+  breakGlass:
+    email: "admin@test.example"
+    password: "test-bg-password"

@@ -33,6 +33,15 @@ image:
     repository: ghcr.io/skyhook-dev/radar-hub-web
     tag: ""           # defaults to chart appVersion when empty
     pullPolicy: IfNotPresent
+  # Per-turn sandbox image for AI Diagnose (hub.diagnose). Only pulled when
+  # hub.diagnose.enabled=true. Version-locked to the hub image: the turn
+  # contract, the sessions RPC and the DB transport table are all hub-side, so
+  # this tag tracks appVersion and should not be pinned independently.
+  # No pullPolicy knob — the hub hardcodes PullIfNotPresent on the Job spec,
+  # which is why the tag must be an immutable version, never a moving one.
+  diagnoseSandbox:
+    repository: ghcr.io/skyhook-dev/radar-hub-diagnose-sandbox
+    tag: ""           # defaults to chart appVersion when empty
 imagePullSecrets: []
 
 # ---------------------------------------------------------------------------
@@ -117,6 +126,97 @@ hub:
   # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.
   cookiePassword: ""
   cookiePasswordExistingSecret: ""   # Secret with key `cookie-password`.
+
+  # -------------------------------------------------------------------------
+  # AI Diagnose (optional, OFF by default)
+  # -------------------------------------------------------------------------
+  # Each investigation turn runs as a short-lived, network-restricted k8s Job in
+  # its own namespace. The pod holds no cluster credentials (its ServiceAccount
+  # token is not mounted); it reads the cluster over the hub's MCP tunnel and
+  # reaches the model through a sidecar broker that attaches the API key. The
+  # pod itself never sees that key.
+  #
+  # Enabling this creates, in the sandbox namespace: the Namespace, a Secret
+  # holding the model key + the pod-reachable DSN, a NetworkPolicy pinning
+  # egress, and a Role/RoleBinding letting the hub's ServiceAccount manage Jobs
+  # there. Nothing is created when enabled=false.
+  diagnose:
+    enabled: false
+
+    # Which model provider the sidecar broker forwards to.
+    #   anthropic → api.anthropic.com with an Anthropic API key (sk-ant-…).
+    #               Works from any cloud; no AWS account needed.
+    #   bedrock   → bedrock-runtime.<region>.amazonaws.com with an IAM
+    #               service-specific credential for bedrock.amazonaws.com.
+    # Only the selected provider's broker is mounted in the pod and only its
+    # credential is injected, so the other egress path does not exist there.
+    provider: anthropic
+
+    # Human-facing engine name shown on the investigation panel (e.g.
+    # "Claude (via Agent SDK)"). Empty hides the chip.
+    engineLabel: ""
+
+    # Credentials reaching the Job pod. Every one is delivered by SecretKeyRef;
+    # there is no by-value path into the Job object.
+    credentials:
+      # Point at a Secret you manage (sealed-secrets, external-secrets, SOPS).
+      # It MUST live in the sandbox namespace below and carry:
+      #   HUB_AGENT_DB_DSN                 (always)
+      #   HUB_AGENT_ANTHROPIC_API_KEY      (provider: anthropic)
+      #   HUB_AGENT_BEDROCK_API_KEY        (provider: bedrock)
+      # Set this OR the two inline values below — not both.
+      existingSecret: ""
+
+      # Model API key. Written under the key matching `provider`, so flipping
+      # provider is one value change and the unselected provider's key never
+      # exists in the cluster.
+      apiKey: ""
+
+      # DSN the SANDBOX POD resolves — not the one the hub uses. Leave empty
+      # with the bundled eval Postgres and the chart derives the cross-namespace
+      # FQDN form (this needs postgres.bundled.auth.password set explicitly;
+      # a generated password cannot be read back at render time). With an
+      # external database, set this or credentials.existingSecret — the chart
+      # cannot read the contents of your Postgres Secret to rewrite the host.
+      podDSN: ""
+
+    # Anthropic first-party API. Read only under provider: anthropic.
+    anthropic:
+      # Bare model id — NOT the us.anthropic.* inference-profile form.
+      model: "claude-sonnet-4-6"
+
+    # Amazon Bedrock. Read only under provider: bedrock.
+    bedrock:
+      region: "us-east-1"
+      # Inference-profile id, not the bare model id.
+      model: "us.anthropic.claude-sonnet-4-6"
+
+    sandbox:
+      # Namespace the per-turn Jobs land in. Empty → "<fullname>-sandbox", which
+      # is release-scoped so two installs in one cluster cannot collide and a
+      # bare install cannot adopt an unrelated namespace that already exists.
+      namespace: ""
+      # Create the Namespace as part of the release. Set false to run the Jobs
+      # in a namespace you already manage — the Role, RoleBinding, Secret and
+      # NetworkPolicy are still rendered into it. Helm refuses to install over
+      # an existing namespace it does not own, so a name collision fails the
+      # install rather than silently taking it over.
+      create: true
+
+      networkPolicy:
+        # The Job pods ingest untrusted cluster logs and events, so egress is
+        # restricted to what a turn needs: DNS, the model endpoint over 443,
+        # the hub, and Postgres. Enforcement is CNI-dependent — kindnet does
+        # NOT enforce NetworkPolicy; a hard guarantee needs Calico, Cilium, or
+        # a cloud CNI. Ingress is denied outright.
+        enabled: true
+        # Port the sandbox reaches Postgres on. Change it if your database
+        # listens elsewhere (e.g. a pooler on 6432).
+        postgresPort: 5432
+        # Extra egress rules appended verbatim, in the NetworkPolicy shape.
+        # Needed for a database behind a non-standard port, an egress proxy, or
+        # a private model endpoint.
+        extraEgress: []
 
   # Display name + retention.
   orgName: "Default"

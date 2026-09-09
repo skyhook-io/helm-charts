@@ -1,0 +1,137 @@
+{{/*
+Cluster-side prerequisites for AI Diagnose. Nothing here renders unless
+hub.diagnose.enabled — an install that leaves the feature off gets no extra
+namespace, no extra RBAC, and no extra Secret.
+
+Each investigation turn is a k8s Job the hub creates in the sandbox namespace.
+The pod runs without a mounted ServiceAccount token and reads the cluster only
+over the hub's MCP tunnel, so the isolation that matters is egress (the
+NetworkPolicy) and credential delivery (the Secret, consumed by SecretKeyRef in
+a sidecar the pod cannot read from).
+*/}}
+{{- if .Values.hub.diagnose.enabled }}
+{{- $ns := include "radar-hub.diagnoseNamespace" . }}
+
+{{- if .Values.hub.diagnose.sandbox.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  {{- /* Job pods run as nonroot with no added capabilities, so the sandbox
+         meets `restricted` — the strictest level, set here rather than left to
+         the cluster default because this is where untrusted input is processed. */}}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+{{- end }}
+
+{{- /* Chart-managed credential Secret. Skipped when the operator points at
+       their own object, which must already exist in the sandbox namespace. */}}
+{{- if not .Values.hub.diagnose.credentials.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "radar-hub.diagnoseSecretName" . }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  {{ include "radar-hub.diagnoseKeyName" . }}: {{ .Values.hub.diagnose.credentials.apiKey | quote }}
+  HUB_AGENT_DB_DSN: {{ include "radar-hub.diagnosePodDSN" . | quote }}
+---
+{{- end }}
+
+{{- /* The hub's ServiceAccount lives in the release namespace and needs to
+       create/delete Jobs and read Pods in the sandbox namespace — nothing
+       cluster-wide, and nothing in its own namespace. `pods` is for the
+       boot-failure probe that turns an ImagePullBackOff into a readable
+       error instead of a turn that never reports. */}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "radar-hub.fullname" . }}-diagnose
+  namespace: {{ $ns }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "delete", "deletecollection", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "radar-hub.fullname" . }}-diagnose
+  namespace: {{ $ns }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "radar-hub.fullname" . }}-diagnose
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "radar-hub.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+
+{{- if .Values.hub.diagnose.sandbox.networkPolicy.enabled }}
+---
+{{/*
+Egress lock on the per-turn pods (the hub labels them app=diagnose-turn).
+Enforcement is CNI-dependent: kindnet ignores NetworkPolicy entirely, so this
+is a defence-in-depth layer, not the isolation boundary. The boundary is that
+the model credential lives only in the sidecar and the broker gates what it is
+attached to.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "radar-hub.fullname" . }}-diagnose-sandbox
+  namespace: {{ $ns }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: diagnose-turn
+  policyTypes: [Egress, Ingress]
+  ingress: []
+  egress:
+    - to: []
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    {{- /* Model endpoint. Neither api.anthropic.com nor bedrock-runtime.* has
+           pinnable IPs, so 443 is open to the internet here; narrowing it needs
+           an egress proxy or a PrivateLink endpoint, wired via extraEgress. */}}
+    - to: []
+      ports:
+        - { protocol: TCP, port: 443 }
+    {{- /* The hub, for the MCP tunnel the turn reads the cluster through. */}}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              {{- include "radar-hub.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: hub
+      ports:
+        - { protocol: TCP, port: 8080 }
+    {{- /* Postgres: the session store and the event transport back to the hub.
+           Not narrowed by selector — an external/managed database is off-cluster
+           and has no pod to select. */}}
+    - to: []
+      ports:
+        - { protocol: TCP, port: {{ .Values.hub.diagnose.sandbox.networkPolicy.postgresPort }} }
+    {{- with .Values.hub.diagnose.sandbox.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+{{- end }}

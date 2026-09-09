@@ -2,7 +2,7 @@ apiVersion: v2
 name: radar-hub
 description: Radar Cloud control plane for self-hosted deployments — Go API + React web app + Postgres (bundled eval DB or bring-your-own).
 type: application
-version: 1.5.1
+version: 1.6.0
 # The Hub release this chart installs. image.hub.tag and image.web.tag both
 # default to it when unset. Deliberately independent of `version` above — see
 # README.md. Rewritten by the release job in skyhook-dev/radar-hub; do not carry

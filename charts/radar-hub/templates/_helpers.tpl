@@ -105,3 +105,66 @@ name: {{ printf "%s-app" .Values.postgres.external.cnpgCluster | quote }}
 key: {{ .Values.postgres.external.secretKey | default "uri" | quote }}
 {{- end -}}
 {{- end }}
+
+{{- define "radar-hub.diagnoseSandboxImage" -}}
+{{- $tag := default .Chart.AppVersion .Values.image.diagnoseSandbox.tag -}}
+{{- printf "%s:%s" .Values.image.diagnoseSandbox.repository $tag -}}
+{{- end }}
+
+{{/*
+Namespace the per-turn Diagnose Jobs run in. Release-scoped by default so two
+installs in one cluster get separate sandboxes and neither adopts a namespace
+that happens to already exist under a generic name.
+*/}}
+{{- define "radar-hub.diagnoseNamespace" -}}
+{{- default (printf "%s-sandbox" (include "radar-hub.fullname" .)) .Values.hub.diagnose.sandbox.namespace | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "radar-hub.diagnoseSecretName" -}}
+{{- default (printf "%s-diagnose" (include "radar-hub.fullname" .)) .Values.hub.diagnose.credentials.existingSecret | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Hub URL as resolved from OUTSIDE the release namespace. HUB_SELF_URL is the
+back-channel the sandbox pod dials for the MCP tunnel, so unlike publicURL it
+must be an in-cluster FQDN, and unlike the bundled Postgres DSN it cannot be a
+bare Service name.
+*/}}
+{{- define "radar-hub.hubSelfURL" -}}
+{{- printf "http://%s.%s.svc.%s:%d" (include "radar-hub.hubName" .) .Release.Namespace .Values.clusterDomain (int .Values.service.hub.port) -}}
+{{- end }}
+
+{{/*
+Key the model credential is written under, inside the sandbox Secret. Named by
+provider (jobengine/launcher.go), so flipping hub.diagnose.provider moves the
+key rather than needing a second Secret — and the unselected provider's key
+never exists in the cluster.
+*/}}
+{{- define "radar-hub.diagnoseKeyName" -}}
+{{- if eq .Values.hub.diagnose.provider "anthropic" -}}
+HUB_AGENT_ANTHROPIC_API_KEY
+{{- else -}}
+HUB_AGENT_BEDROCK_API_KEY
+{{- end -}}
+{{- end }}
+
+{{/*
+DSN the SANDBOX POD resolves. Explicit value wins. Otherwise derived for the
+bundled eval Postgres, whose own `dsn` key is a bare Service name and therefore
+unresolvable from another namespace.
+
+The bundled password is deliberately NOT re-derived here: postgres-bundled.yaml
+generates one with randAlphaNum when it cannot look up the existing Secret, and
+a second generate call would produce a different string. The guard in
+secret.yaml requires an explicit postgres.bundled.auth.password before this
+path is reachable.
+*/}}
+{{- define "radar-hub.diagnosePodDSN" -}}
+{{- if .Values.hub.diagnose.credentials.podDSN -}}
+{{- .Values.hub.diagnose.credentials.podDSN -}}
+{{- else -}}
+{{- $auth := .Values.postgres.bundled.auth -}}
+{{- $host := printf "%s.%s.svc.%s" (include "radar-hub.bundledPostgresName" .) .Release.Namespace .Values.clusterDomain -}}
+{{- printf "postgres://%s:%s@%s:5432/%s?sslmode=disable" $auth.username $auth.password $host $auth.database -}}
+{{- end -}}
+{{- end }}

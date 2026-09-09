@@ -61,3 +61,55 @@ the same tag — a mismatched Hub and Web pair is not a tested combination.
 See [`values.yaml`](values.yaml) for the full set, and
 [`values.schema.json`](values.schema.json) for the enforced schema. Invalid
 values are rejected at install time rather than surfacing as a broken pod.
+
+## AI Diagnose
+
+Off by default. When enabled, each investigation turn runs as a short-lived
+Kubernetes Job in its own namespace: the pod has no mounted ServiceAccount
+token, reads the cluster only through the Hub's MCP tunnel, and reaches the
+model through a sidecar broker that attaches the API key — the pod itself never
+holds it.
+
+Pick a provider. `anthropic` talks to `api.anthropic.com` with an Anthropic API
+key and works from any cloud; `bedrock` talks to `bedrock-runtime.<region>.amazonaws.com`
+with an IAM service-specific credential for `bedrock.amazonaws.com`. Only the
+selected provider's broker is mounted and only its credential is written, so
+the other egress path does not exist in the pod.
+
+```bash
+helm upgrade --install radar-hub skyhook/radar-hub \
+  --set hub.diagnose.enabled=true \
+  --set hub.diagnose.provider=anthropic \
+  --set hub.diagnose.credentials.apiKey=sk-ant-… \
+  --set hub.diagnose.credentials.podDSN='postgres://…'
+```
+
+`credentials.podDSN` is the DSN the **sandbox pod** resolves, which is not the
+one the Hub uses — the pod runs in another namespace, so a bare Service name
+will not resolve. It can be omitted only with the bundled evaluation Postgres,
+and then only when `postgres.bundled.auth.password` is set explicitly: a
+generated password cannot be read back at render time, so the chart refuses to
+derive a DSN that would not match the database.
+
+For a sealed-secrets or external-secrets workflow, skip both inline values and
+set `hub.diagnose.credentials.existingSecret` to an object you manage. It must
+live in the sandbox namespace and carry `HUB_AGENT_DB_DSN` plus
+`HUB_AGENT_ANTHROPIC_API_KEY` or `HUB_AGENT_BEDROCK_API_KEY`, matching the
+provider.
+
+### The sandbox namespace
+
+Jobs land in `<release>-radar-hub-sandbox` unless `hub.diagnose.sandbox.namespace`
+says otherwise. The default is release-scoped so two installs in one cluster get
+separate sandboxes, and so a bare install cannot adopt an unrelated namespace
+that already happens to exist. Helm will not install over a namespace it does
+not own, so a name collision fails the install rather than quietly taking it
+over — set `hub.diagnose.sandbox.create=false` to run in a namespace you
+already manage, and the Role, RoleBinding, Secret and NetworkPolicy are still
+rendered into it.
+
+The NetworkPolicy restricts the turn pods to DNS, the model endpoint over 443,
+the Hub, and Postgres. **Enforcement is CNI-dependent** — kindnet ignores
+NetworkPolicy entirely, so on such a cluster this is documentation rather than a
+control. Use `hub.diagnose.sandbox.networkPolicy.extraEgress` for a database on
+a non-standard port, an egress proxy, or a private model endpoint.
