@@ -7,7 +7,7 @@ Each investigation turn is a k8s Job the hub creates in the sandbox namespace.
 The pod runs without a mounted ServiceAccount token and reads the cluster only
 over the hub's MCP tunnel, so the isolation that matters is egress (the
 NetworkPolicy) and credential delivery (the Secret, consumed by SecretKeyRef in
-a sidecar the pod cannot read from).
+the sidecar container, not the agent container in the same pod).
 */}}
 {{- if .Values.hub.aiAgent.enabled }}
 {{- $ns := include "radar-hub.aiAgentNamespace" . }}

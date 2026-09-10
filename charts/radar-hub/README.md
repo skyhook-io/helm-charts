@@ -73,8 +73,8 @@ of the Hub image pipeline. Hub `1.5.0` does not support this configuration.
 Off by default. When enabled, each investigation turn runs as a short-lived
 Kubernetes Job in its own namespace: the pod has no mounted ServiceAccount
 token, reads the cluster only through the Hub's MCP tunnel, and reaches the
-model through a sidecar broker that attaches the API key — the pod itself never
-holds it.
+model through a sidecar broker that attaches the API key. The key is injected
+only into the sidecar container, not the agent container in the same pod.
 
 Pick a provider. `anthropic` talks to `api.anthropic.com` with an Anthropic API
 key and works from any cloud; `bedrock` talks to `bedrock-runtime.<region>.amazonaws.com`
@@ -114,8 +114,10 @@ over — set `hub.aiAgent.sandbox.create=false` to run in a namespace you
 already manage, and the Role, RoleBinding, Secret and NetworkPolicy are still
 rendered into it.
 
-The NetworkPolicy restricts the turn pods to DNS, the model endpoint over 443,
-the Hub, and Postgres. **Enforcement is CNI-dependent** — kindnet ignores
+The NetworkPolicy allows DNS, outbound HTTPS on port 443, the Hub, and Postgres.
+The HTTPS rule is not restricted to model-provider destinations; tighter
+destination control requires an egress proxy or CNI-specific policy.
+**Enforcement is CNI-dependent** — kindnet ignores
 NetworkPolicy entirely, so on such a cluster this is documentation rather than a
 control. Use `hub.aiAgent.sandbox.networkPolicy.extraEgress` for a database on
 a non-standard port, an egress proxy, or a private model endpoint.

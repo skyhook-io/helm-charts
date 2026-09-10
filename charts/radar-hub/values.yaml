@@ -131,10 +131,10 @@ hub:
   # AI agent (optional, OFF by default)
   # -------------------------------------------------------------------------
   # Each investigation turn runs as a short-lived, network-restricted k8s Job in
-  # its own namespace. The pod holds no cluster credentials (its ServiceAccount
-  # token is not mounted); it reads the cluster over the hub's MCP tunnel and
-  # reaches the model through a sidecar broker that attaches the API key. The
-  # pod itself never sees that key.
+  # its own namespace. The pod has no mounted ServiceAccount token; it reads
+  # the cluster over the hub's MCP tunnel and reaches the model through a
+  # sidecar broker that attaches the API key. Only the sidecar container
+  # receives that key, not the agent container.
   #
   # Enabling this creates, in the sandbox namespace: the Namespace, a Secret
   # holding the model key + the pod-reachable DSN, a NetworkPolicy pinning
@@ -205,10 +205,11 @@ hub:
 
       networkPolicy:
         # The Job pods ingest untrusted cluster logs and events, so egress is
-        # restricted to what a turn needs: DNS, the model endpoint over 443,
-        # the hub, and Postgres. Enforcement is CNI-dependent — kindnet does
-        # NOT enforce NetworkPolicy; a hard guarantee needs Calico, Cilium, or
-        # a cloud CNI. Ingress is denied outright.
+        # allowed for DNS, outbound HTTPS on port 443, the hub, and Postgres.
+        # HTTPS is not limited to model-provider destinations; tighter control
+        # needs an egress proxy or CNI-specific policy. Enforcement is
+        # CNI-dependent — use a CNI with NetworkPolicy enforcement enabled.
+        # kindnet does NOT enforce it. Ingress is denied outright.
         enabled: true
         # Port the sandbox reaches Postgres on. Change it if your database
         # listens elsewhere (e.g. a pooler on 6432).
