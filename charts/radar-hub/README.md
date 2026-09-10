@@ -84,10 +84,10 @@ the other egress path does not exist in the pod.
 
 ```bash
 helm upgrade --install radar-hub skyhook/radar-hub \
-  --set hub.aiAgent.enabled=true \
-  --set hub.aiAgent.provider=anthropic \
-  --set hub.aiAgent.credentials.apiKey=sk-ant-… \
-  --set hub.aiAgent.credentials.podDSN='postgres://…'
+  --set hub.agent.enabled=true \
+  --set hub.agent.provider=anthropic \
+  --set hub.agent.credentials.apiKey=sk-ant-… \
+  --set hub.agent.credentials.podDSN='postgres://…'
 ```
 
 `credentials.podDSN` is the DSN the **sandbox pod** resolves, which is not the
@@ -98,19 +98,19 @@ generated password cannot be read back at render time, so the chart refuses to
 derive a DSN that would not match the database.
 
 For a sealed-secrets or external-secrets workflow, skip both inline values and
-set `hub.aiAgent.credentials.existingSecret` to an object you manage. It must
+set `hub.agent.credentials.existingSecret` to an object you manage. It must
 live in the sandbox namespace and carry `HUB_AGENT_DB_DSN` plus
 `HUB_AGENT_ANTHROPIC_API_KEY` or `HUB_AGENT_BEDROCK_API_KEY`, matching the
 provider.
 
 ### The sandbox namespace
 
-Jobs land in `<release>-radar-hub-sandbox` unless `hub.aiAgent.sandbox.namespace`
+Jobs land in `<release>-radar-hub-sandbox` unless `hub.agent.sandbox.namespace`
 says otherwise. The default is release-scoped so two installs in one cluster get
 separate sandboxes, and so a bare install cannot adopt an unrelated namespace
 that already happens to exist. Helm will not install over a namespace it does
 not own, so a name collision fails the install rather than quietly taking it
-over — set `hub.aiAgent.sandbox.create=false` to run in a namespace you
+over — set `hub.agent.sandbox.create=false` to run in a namespace you
 already manage, and the Role, RoleBinding, Secret and NetworkPolicy are still
 rendered into it.
 
@@ -119,17 +119,17 @@ The HTTPS rule is not restricted to model-provider destinations; tighter
 destination control requires an egress proxy or CNI-specific policy.
 **Enforcement is CNI-dependent** — kindnet ignores
 NetworkPolicy entirely, so on such a cluster this is documentation rather than a
-control. Use `hub.aiAgent.sandbox.networkPolicy.extraEgress` for a database on
+control. Use `hub.agent.sandbox.networkPolicy.extraEgress` for a database on
 a non-standard port, an egress proxy, or a private model endpoint.
 
 ### Private image mirrors
 
-`image.aiAgentSandbox.repository` can select a mirror, but the chart's top-level
+`image.agentSandbox.repository` can select a mirror, but the chart's top-level
 `imagePullSecrets` applies only to its static workloads, **not** the sandbox Jobs.
 Those Jobs use the `default` ServiceAccount in the sandbox namespace. For a
 private mirror, pre-provision that namespace and its registry pull Secret, attach
 the pull Secret to its `default` ServiceAccount, and set
-`hub.aiAgent.sandbox.create=false`. The pull Secret must exist in the sandbox
+`hub.agent.sandbox.create=false`. The pull Secret must exist in the sandbox
 namespace; a Secret in the Hub namespace cannot be referenced across namespaces.
 Node-level registry authentication is another option. No Kubernetes API token is
 mounted in the sandbox pods.

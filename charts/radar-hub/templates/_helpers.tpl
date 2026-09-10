@@ -106,9 +106,9 @@ key: {{ .Values.postgres.external.secretKey | default "uri" | quote }}
 {{- end -}}
 {{- end }}
 
-{{- define "radar-hub.aiAgentSandboxImage" -}}
-{{- $tag := default .Chart.AppVersion .Values.image.aiAgentSandbox.tag -}}
-{{- printf "%s:%s" .Values.image.aiAgentSandbox.repository $tag -}}
+{{- define "radar-hub.agentSandboxImage" -}}
+{{- $tag := default .Chart.AppVersion .Values.image.agentSandbox.tag -}}
+{{- printf "%s:%s" .Values.image.agentSandbox.repository $tag -}}
 {{- end }}
 
 {{/*
@@ -116,12 +116,12 @@ Namespace the per-turn AI agent Jobs run in. Release-scoped by default so two
 installs in one cluster get separate sandboxes and neither adopts a namespace
 that happens to already exist under a generic name.
 */}}
-{{- define "radar-hub.aiAgentNamespace" -}}
-{{- default (printf "%s-sandbox" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-") .Values.hub.aiAgent.sandbox.namespace }}
+{{- define "radar-hub.agentNamespace" -}}
+{{- default (printf "%s-sandbox" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-") .Values.hub.agent.sandbox.namespace }}
 {{- end }}
 
-{{- define "radar-hub.aiAgentSecretName" -}}
-{{- default (printf "%s-ai-agent" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-") .Values.hub.aiAgent.credentials.existingSecret }}
+{{- define "radar-hub.agentSecretName" -}}
+{{- default (printf "%s-agent" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-") .Values.hub.agent.credentials.existingSecret }}
 {{- end }}
 
 {{/*
@@ -136,12 +136,12 @@ bare Service name.
 
 {{/*
 Key the model credential is written under, inside the sandbox Secret. Named by
-provider (jobengine/launcher.go), so flipping hub.aiAgent.provider moves the
+provider (jobengine/launcher.go), so flipping hub.agent.provider moves the
 key rather than needing a second Secret — and the unselected provider's key
 never exists in the cluster.
 */}}
-{{- define "radar-hub.aiAgentKeyName" -}}
-{{- if eq .Values.hub.aiAgent.provider "anthropic" -}}
+{{- define "radar-hub.agentKeyName" -}}
+{{- if eq .Values.hub.agent.provider "anthropic" -}}
 HUB_AGENT_ANTHROPIC_API_KEY
 {{- else -}}
 HUB_AGENT_BEDROCK_API_KEY
@@ -159,9 +159,9 @@ a second generate call would produce a different string. The guard in
 secret.yaml requires an explicit postgres.bundled.auth.password before this
 path is reachable.
 */}}
-{{- define "radar-hub.aiAgentPodDSN" -}}
-{{- if .Values.hub.aiAgent.credentials.podDSN -}}
-{{- .Values.hub.aiAgent.credentials.podDSN -}}
+{{- define "radar-hub.agentPodDSN" -}}
+{{- if .Values.hub.agent.credentials.podDSN -}}
+{{- .Values.hub.agent.credentials.podDSN -}}
 {{- else -}}
 {{- $auth := .Values.postgres.bundled.auth -}}
 {{- $host := printf "%s.%s.svc.%s" (include "radar-hub.bundledPostgresName" .) .Release.Namespace .Values.clusterDomain -}}

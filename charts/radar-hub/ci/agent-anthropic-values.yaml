@@ -10,7 +10,7 @@
 hub:
   publicURL: "https://radar.test.example"
   cookiePassword: "test-cookie-password-32-bytes-minimum-aaaa"
-  aiAgent:
+  agent:
     enabled: true
     provider: anthropic
     engineLabel: "Claude (via Agent SDK)"

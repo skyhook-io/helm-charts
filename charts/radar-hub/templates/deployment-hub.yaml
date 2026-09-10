@@ -232,38 +232,38 @@ spec:
               value: {{ .Values.auth.oidc.defaultRole | quote }}
             {{- end }}
 
-            {{- if .Values.hub.aiAgent.enabled }}
-            {{- /* Public chart values and backend configuration use aiAgent;
+            {{- if .Values.hub.agent.enabled }}
+            {{- /* Public chart values and backend configuration use agent;
                    the diagnose-turn pod label remains the runtime contract.
                    ENABLED is the switch; JOB_IMAGE selects the runtime. */}}
-            - name: HUB_AI_AGENT_ENABLED
+            - name: HUB_AGENT_ENABLED
               value: "true"
-            - name: HUB_AI_AGENT_JOB_IMAGE
-              value: {{ include "radar-hub.aiAgentSandboxImage" . | quote }}
-            - name: HUB_AI_AGENT_JOB_NAMESPACE
-              value: {{ include "radar-hub.aiAgentNamespace" . | quote }}
-            - name: HUB_AI_AGENT_PROVIDER
-              value: {{ .Values.hub.aiAgent.provider | quote }}
+            - name: HUB_AGENT_JOB_IMAGE
+              value: {{ include "radar-hub.agentSandboxImage" . | quote }}
+            - name: HUB_AGENT_JOB_NAMESPACE
+              value: {{ include "radar-hub.agentNamespace" . | quote }}
+            - name: HUB_AGENT_PROVIDER
+              value: {{ .Values.hub.agent.provider | quote }}
             {{- /* Secret NAMES, not values — every credential reaches the Job
                    pod by SecretKeyRef and none is ever inlined into the Job
                    object. All three point at the same object by default. */}}
-            - name: HUB_AI_AGENT_POD_DB_DSN_SECRET
-              value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
-            {{- if eq .Values.hub.aiAgent.provider "anthropic" }}
-            - name: HUB_AI_AGENT_ANTHROPIC_API_KEY_SECRET
-              value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
-            - name: HUB_AI_AGENT_ANTHROPIC_MODEL
-              value: {{ .Values.hub.aiAgent.anthropic.model | quote }}
+            - name: HUB_AGENT_POD_DB_DSN_SECRET
+              value: {{ include "radar-hub.agentSecretName" . | quote }}
+            {{- if eq .Values.hub.agent.provider "anthropic" }}
+            - name: HUB_AGENT_ANTHROPIC_API_KEY_SECRET
+              value: {{ include "radar-hub.agentSecretName" . | quote }}
+            - name: HUB_AGENT_ANTHROPIC_MODEL
+              value: {{ .Values.hub.agent.anthropic.model | quote }}
             {{- else }}
-            - name: HUB_AI_AGENT_BEDROCK_API_KEY_SECRET
-              value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
-            - name: HUB_AI_AGENT_BEDROCK_MODEL
-              value: {{ .Values.hub.aiAgent.bedrock.model | quote }}
-            - name: HUB_AI_AGENT_BEDROCK_REGION
-              value: {{ .Values.hub.aiAgent.bedrock.region | quote }}
+            - name: HUB_AGENT_BEDROCK_API_KEY_SECRET
+              value: {{ include "radar-hub.agentSecretName" . | quote }}
+            - name: HUB_AGENT_BEDROCK_MODEL
+              value: {{ .Values.hub.agent.bedrock.model | quote }}
+            - name: HUB_AGENT_BEDROCK_REGION
+              value: {{ .Values.hub.agent.bedrock.region | quote }}
             {{- end }}
-            {{- with .Values.hub.aiAgent.engineLabel }}
-            - name: HUB_AI_AGENT_ENGINE_LABEL
+            {{- with .Values.hub.agent.engineLabel }}
+            - name: HUB_AGENT_ENGINE_LABEL
               value: {{ . | quote }}
             {{- end }}
             {{- end }}

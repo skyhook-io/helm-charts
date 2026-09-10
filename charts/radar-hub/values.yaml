@@ -33,13 +33,13 @@ image:
     repository: ghcr.io/skyhook-dev/radar-hub-web
     tag: ""           # defaults to chart appVersion when empty
     pullPolicy: IfNotPresent
-  # Per-turn sandbox image for AI agent (hub.aiAgent). Only pulled when
-  # hub.aiAgent.enabled=true. Version-locked to the hub image: the turn
+  # Per-turn sandbox image for AI agent (hub.agent). Only pulled when
+  # hub.agent.enabled=true. Version-locked to the hub image: the turn
   # contract, the sessions RPC and the DB transport table are all hub-side, so
   # this tag tracks appVersion and should not be pinned independently.
   # No pullPolicy knob — the hub hardcodes PullIfNotPresent on the Job spec,
   # which is why the tag must be an immutable version, never a moving one.
-  aiAgentSandbox:
+  agentSandbox:
     repository: ghcr.io/skyhook-dev/radar-hub-ai-agent-sandbox
     tag: ""           # defaults to chart appVersion when empty
 imagePullSecrets: []
@@ -140,7 +140,7 @@ hub:
   # holding the model key + the pod-reachable DSN, a NetworkPolicy pinning
   # egress, and a Role/RoleBinding letting the hub's ServiceAccount manage Jobs
   # there. Nothing is created when enabled=false.
-  aiAgent:
+  agent:
     enabled: false
 
     # Which model provider the sidecar broker forwards to.
