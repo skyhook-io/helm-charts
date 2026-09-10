@@ -59,6 +59,21 @@
               ]
             }
           }
+        },
+        "agentSandbox": {
+          "type": "object",
+          "required": [
+            "repository"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tag": {
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -190,6 +205,92 @@
         },
         "readinessProbe": {
           "type": "object"
+        },
+        "agent": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "provider"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "anthropic",
+                "bedrock"
+              ]
+            },
+            "engineLabel": {
+              "type": "string"
+            },
+            "credentials": {
+              "type": "object",
+              "properties": {
+                "existingSecret": {
+                  "type": "string"
+                },
+                "apiKey": {
+                  "type": "string"
+                },
+                "podDSN": {
+                  "type": "string"
+                }
+              }
+            },
+            "anthropic": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                }
+              }
+            },
+            "bedrock": {
+              "type": "object",
+              "properties": {
+                "region": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                }
+              }
+            },
+            "sandbox": {
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                "create": {
+                  "type": "boolean"
+                },
+                "networkPolicy": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "postgresPort": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 65535
+                    },
+                    "extraEgress": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

@@ -33,6 +33,9 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --target-branch ${{ github.event.repository.default_branch }}
 
+      - name: Verify AI agent chart configuration
+        run: bash .github/ci/agent-test.sh
+
       # The default nodeSelector must pin the OS but NOT the architecture --
       # the official images are amd64+arm64, and an arch pin silently makes an
       # unmodified install unschedulable on arm64 nodes. Also assert that an
