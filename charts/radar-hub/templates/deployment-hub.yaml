@@ -233,37 +233,37 @@ spec:
             {{- end }}
 
             {{- if .Values.hub.aiAgent.enabled }}
-            {{- /* Public chart values use aiAgent; HUB_DIAGNOSE_* and the
-                   diagnose-turn pod label remain the backend runtime contract.
+            {{- /* Public chart values and backend configuration use aiAgent;
+                   the diagnose-turn pod label remains the runtime contract.
                    ENABLED is the switch; JOB_IMAGE selects the runtime. */}}
-            - name: HUB_DIAGNOSE_ENABLED
+            - name: HUB_AI_AGENT_ENABLED
               value: "true"
-            - name: HUB_DIAGNOSE_JOB_IMAGE
+            - name: HUB_AI_AGENT_JOB_IMAGE
               value: {{ include "radar-hub.aiAgentSandboxImage" . | quote }}
-            - name: HUB_DIAGNOSE_JOB_NAMESPACE
+            - name: HUB_AI_AGENT_JOB_NAMESPACE
               value: {{ include "radar-hub.aiAgentNamespace" . | quote }}
-            - name: HUB_DIAGNOSE_PROVIDER
+            - name: HUB_AI_AGENT_PROVIDER
               value: {{ .Values.hub.aiAgent.provider | quote }}
             {{- /* Secret NAMES, not values — every credential reaches the Job
                    pod by SecretKeyRef and none is ever inlined into the Job
                    object. All three point at the same object by default. */}}
-            - name: HUB_DIAGNOSE_POD_DB_DSN_SECRET
+            - name: HUB_AI_AGENT_POD_DB_DSN_SECRET
               value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
             {{- if eq .Values.hub.aiAgent.provider "anthropic" }}
-            - name: HUB_DIAGNOSE_ANTHROPIC_API_KEY_SECRET
+            - name: HUB_AI_AGENT_ANTHROPIC_API_KEY_SECRET
               value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
-            - name: HUB_DIAGNOSE_ANTHROPIC_MODEL
+            - name: HUB_AI_AGENT_ANTHROPIC_MODEL
               value: {{ .Values.hub.aiAgent.anthropic.model | quote }}
             {{- else }}
-            - name: HUB_DIAGNOSE_BEDROCK_API_KEY_SECRET
+            - name: HUB_AI_AGENT_BEDROCK_API_KEY_SECRET
               value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
-            - name: HUB_DIAGNOSE_BEDROCK_MODEL
+            - name: HUB_AI_AGENT_BEDROCK_MODEL
               value: {{ .Values.hub.aiAgent.bedrock.model | quote }}
-            - name: HUB_DIAGNOSE_BEDROCK_REGION
+            - name: HUB_AI_AGENT_BEDROCK_REGION
               value: {{ .Values.hub.aiAgent.bedrock.region | quote }}
             {{- end }}
             {{- with .Values.hub.aiAgent.engineLabel }}
-            - name: HUB_DIAGNOSE_ENGINE_LABEL
+            - name: HUB_AI_AGENT_ENGINE_LABEL
               value: {{ . | quote }}
             {{- end }}
             {{- end }}

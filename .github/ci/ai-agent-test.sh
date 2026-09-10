@@ -36,27 +36,27 @@ enabled=$(render)
 version=$(awk '/^appVersion:/ {gsub(/"/, "", $2); print $2}' "$chart/Chart.yaml")
 contains "$enabled" "ghcr.io/skyhook-dev/radar-hub-ai-agent-sandbox:$version"
 contains "$enabled" "ghcr.io/skyhook-dev/radar-hub:$version"
-contains "$enabled" 'HUB_DIAGNOSE_ENABLED'
-contains "$enabled" 'HUB_DIAGNOSE_PROVIDER'
+contains "$enabled" 'HUB_AI_AGENT_ENABLED'
+contains "$enabled" 'HUB_AI_AGENT_PROVIDER'
 contains "$enabled" 'HUB_AGENT_ANTHROPIC_API_KEY:'
 contains "$enabled" 'app: diagnose-turn' # Existing launcher contract, not a public value.
 contains "$enabled" 'pod-security.kubernetes.io/enforce: restricted'
 contains "$enabled" 'http://review-radar-hub-hub.agent-test.svc.cluster.local:8080'
 absent "$enabled" 'HUB_AGENT_BEDROCK_API_KEY:'
-absent "$enabled" 'HUB_DIAGNOSE_BEDROCK_MODEL'
+absent "$enabled" 'HUB_AI_AGENT_BEDROCK_MODEL'
 
 off=$(render --set hub.aiAgent.enabled=false)
-absent "$off" 'HUB_DIAGNOSE_'
+absent "$off" 'HUB_AI_AGENT_'
 absent "$off" 'kind: NetworkPolicy'
 absent "$off" 'kind: Namespace'
 absent "$off" 'kind: RoleBinding'
 
 bedrock=$(render --set hub.aiAgent.provider=bedrock)
 contains "$bedrock" 'HUB_AGENT_BEDROCK_API_KEY:'
-contains "$bedrock" 'HUB_DIAGNOSE_BEDROCK_API_KEY_SECRET'
-contains "$bedrock" 'HUB_DIAGNOSE_BEDROCK_MODEL'
+contains "$bedrock" 'HUB_AI_AGENT_BEDROCK_API_KEY_SECRET'
+contains "$bedrock" 'HUB_AI_AGENT_BEDROCK_MODEL'
 absent "$bedrock" 'HUB_AGENT_ANTHROPIC_API_KEY:'
-absent "$bedrock" 'HUB_DIAGNOSE_ANTHROPIC_MODEL'
+absent "$bedrock" 'HUB_AI_AGENT_ANTHROPIC_MODEL'
 
 encoded=$(render --set-string 'postgres.bundled.auth.username=user/name' \
   --set-string 'postgres.bundled.auth.password=a/b#c@d +%' \
