@@ -1,6 +1,6 @@
 {{/*
-Cluster-side prerequisites for AI Diagnose. Nothing here renders unless
-hub.diagnose.enabled — an install that leaves the feature off gets no extra
+Cluster-side prerequisites for the AI agent. Nothing here renders unless
+hub.aiAgent.enabled — an install that leaves the feature off gets no extra
 namespace, no extra RBAC, and no extra Secret.
 
 Each investigation turn is a k8s Job the hub creates in the sandbox namespace.
@@ -9,10 +9,10 @@ over the hub's MCP tunnel, so the isolation that matters is egress (the
 NetworkPolicy) and credential delivery (the Secret, consumed by SecretKeyRef in
 a sidecar the pod cannot read from).
 */}}
-{{- if .Values.hub.diagnose.enabled }}
-{{- $ns := include "radar-hub.diagnoseNamespace" . }}
+{{- if .Values.hub.aiAgent.enabled }}
+{{- $ns := include "radar-hub.aiAgentNamespace" . }}
 
-{{- if .Values.hub.diagnose.sandbox.create }}
+{{- if .Values.hub.aiAgent.sandbox.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -29,18 +29,18 @@ metadata:
 
 {{- /* Chart-managed credential Secret. Skipped when the operator points at
        their own object, which must already exist in the sandbox namespace. */}}
-{{- if not .Values.hub.diagnose.credentials.existingSecret }}
+{{- if not .Values.hub.aiAgent.credentials.existingSecret }}
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "radar-hub.diagnoseSecretName" . }}
+  name: {{ include "radar-hub.aiAgentSecretName" . }}
   namespace: {{ $ns }}
   labels:
     {{- include "radar-hub.labels" . | nindent 4 }}
 type: Opaque
 stringData:
-  {{ include "radar-hub.diagnoseKeyName" . }}: {{ .Values.hub.diagnose.credentials.apiKey | quote }}
-  HUB_AGENT_DB_DSN: {{ include "radar-hub.diagnosePodDSN" . | quote }}
+  {{ include "radar-hub.aiAgentKeyName" . }}: {{ .Values.hub.aiAgent.credentials.apiKey | quote }}
+  HUB_AGENT_DB_DSN: {{ include "radar-hub.aiAgentPodDSN" . | quote }}
 ---
 {{- end }}
 
@@ -52,7 +52,7 @@ stringData:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "radar-hub.fullname" . }}-diagnose
+  name: {{ include "radar-hub.fullname" . }}-ai-agent
   namespace: {{ $ns }}
   labels:
     {{- include "radar-hub.labels" . | nindent 4 }}
@@ -67,20 +67,20 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "radar-hub.fullname" . }}-diagnose
+  name: {{ include "radar-hub.fullname" . }}-ai-agent
   namespace: {{ $ns }}
   labels:
     {{- include "radar-hub.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "radar-hub.fullname" . }}-diagnose
+  name: {{ include "radar-hub.fullname" . }}-ai-agent
 subjects:
   - kind: ServiceAccount
     name: {{ include "radar-hub.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 
-{{- if .Values.hub.diagnose.sandbox.networkPolicy.enabled }}
+{{- if .Values.hub.aiAgent.sandbox.networkPolicy.enabled }}
 ---
 {{/*
 Egress lock on the per-turn pods (the hub labels them app=diagnose-turn).
@@ -92,7 +92,7 @@ attached to.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "radar-hub.fullname" . }}-diagnose-sandbox
+  name: {{ include "radar-hub.fullname" . }}-ai-agent-sandbox
   namespace: {{ $ns }}
   labels:
     {{- include "radar-hub.labels" . | nindent 4 }}
@@ -129,8 +129,8 @@ spec:
            and has no pod to select. */}}
     - to: []
       ports:
-        - { protocol: TCP, port: {{ .Values.hub.diagnose.sandbox.networkPolicy.postgresPort }} }
-    {{- with .Values.hub.diagnose.sandbox.networkPolicy.extraEgress }}
+        - { protocol: TCP, port: {{ .Values.hub.aiAgent.sandbox.networkPolicy.postgresPort }} }
+    {{- with .Values.hub.aiAgent.sandbox.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}

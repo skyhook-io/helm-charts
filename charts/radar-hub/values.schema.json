@@ -60,7 +60,7 @@
             }
           }
         },
-        "diagnoseSandbox": {
+        "aiAgentSandbox": {
           "type": "object",
           "required": [
             "repository"
@@ -206,7 +206,7 @@
         "readinessProbe": {
           "type": "object"
         },
-        "diagnose": {
+        "aiAgent": {
           "type": "object",
           "required": [
             "enabled",

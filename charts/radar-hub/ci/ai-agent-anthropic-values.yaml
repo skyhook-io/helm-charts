@@ -1,4 +1,4 @@
-# Exercises the AI Diagnose path: sandbox Namespace, credential Secret,
+# Exercises the AI agent template path: sandbox Namespace, credential Secret,
 # Role/RoleBinding, NetworkPolicy, and the provider-specific hub env.
 #
 # The bundled Postgres password is pinned deliberately — the chart refuses to
@@ -10,7 +10,7 @@
 hub:
   publicURL: "https://radar.test.example"
   cookiePassword: "test-cookie-password-32-bytes-minimum-aaaa"
-  diagnose:
+  aiAgent:
     enabled: true
     provider: anthropic
     engineLabel: "Claude (via Agent SDK)"

@@ -164,7 +164,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   {{- include "radar-hub.postgresSecretRef" . | nindent 18 }}
-            {{- /* Back-channel URL the Diagnose sandbox pod dials for the MCP
+            {{- /* Back-channel URL the AI agent sandbox pod dials for the MCP
                    tunnel. Distinct from publicURL: it is resolved from another
                    namespace, so it must be the in-cluster FQDN. The hub's own
                    default is http://localhost:9091, which is never right here. */}}
@@ -232,38 +232,37 @@ spec:
               value: {{ .Values.auth.oidc.defaultRole | quote }}
             {{- end }}
 
-            {{- if .Values.hub.diagnose.enabled }}
-            {{- /* Intent and mechanism stay separate: ENABLED is the switch,
-                   JOB_IMAGE is what it launches. The hub refuses to boot when
-                   the switch is on and the image is empty, so a values-layering
-                   accident fails loudly instead of silently disabling AI. */}}
+            {{- if .Values.hub.aiAgent.enabled }}
+            {{- /* Public chart values use aiAgent; HUB_DIAGNOSE_* and the
+                   diagnose-turn pod label remain the backend runtime contract.
+                   ENABLED is the switch; JOB_IMAGE selects the runtime. */}}
             - name: HUB_DIAGNOSE_ENABLED
               value: "true"
             - name: HUB_DIAGNOSE_JOB_IMAGE
-              value: {{ include "radar-hub.diagnoseSandboxImage" . | quote }}
+              value: {{ include "radar-hub.aiAgentSandboxImage" . | quote }}
             - name: HUB_DIAGNOSE_JOB_NAMESPACE
-              value: {{ include "radar-hub.diagnoseNamespace" . | quote }}
+              value: {{ include "radar-hub.aiAgentNamespace" . | quote }}
             - name: HUB_DIAGNOSE_PROVIDER
-              value: {{ .Values.hub.diagnose.provider | quote }}
+              value: {{ .Values.hub.aiAgent.provider | quote }}
             {{- /* Secret NAMES, not values — every credential reaches the Job
                    pod by SecretKeyRef and none is ever inlined into the Job
                    object. All three point at the same object by default. */}}
             - name: HUB_DIAGNOSE_POD_DB_DSN_SECRET
-              value: {{ include "radar-hub.diagnoseSecretName" . | quote }}
-            {{- if eq .Values.hub.diagnose.provider "anthropic" }}
+              value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
+            {{- if eq .Values.hub.aiAgent.provider "anthropic" }}
             - name: HUB_DIAGNOSE_ANTHROPIC_API_KEY_SECRET
-              value: {{ include "radar-hub.diagnoseSecretName" . | quote }}
+              value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
             - name: HUB_DIAGNOSE_ANTHROPIC_MODEL
-              value: {{ .Values.hub.diagnose.anthropic.model | quote }}
+              value: {{ .Values.hub.aiAgent.anthropic.model | quote }}
             {{- else }}
             - name: HUB_DIAGNOSE_BEDROCK_API_KEY_SECRET
-              value: {{ include "radar-hub.diagnoseSecretName" . | quote }}
+              value: {{ include "radar-hub.aiAgentSecretName" . | quote }}
             - name: HUB_DIAGNOSE_BEDROCK_MODEL
-              value: {{ .Values.hub.diagnose.bedrock.model | quote }}
+              value: {{ .Values.hub.aiAgent.bedrock.model | quote }}
             - name: HUB_DIAGNOSE_BEDROCK_REGION
-              value: {{ .Values.hub.diagnose.bedrock.region | quote }}
+              value: {{ .Values.hub.aiAgent.bedrock.region | quote }}
             {{- end }}
-            {{- with .Values.hub.diagnose.engineLabel }}
+            {{- with .Values.hub.aiAgent.engineLabel }}
             - name: HUB_DIAGNOSE_ENGINE_LABEL
               value: {{ . | quote }}
             {{- end }}
