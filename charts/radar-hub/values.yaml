@@ -321,6 +321,19 @@ auth:
     # commonly uses "group" or a URI-style claim type such as
     # "http://schemas.xmlsoap.org/claims/Group".
     #
+    # Group VALUES that cannot be represented verbatim in the forwarded header
+    # are DROPPED rather than escaped, because a value that can't round-trip
+    # can't be bound accurately in RBAC either. A value is forwarded only if it
+    # is printable ASCII with no whitespace and no comma, and at most 128 bytes;
+    # at most 64 groups are forwarded per user. This matters for Active
+    # Directory: display names like "Domain Admins" contain a space and are
+    # dropped. Emit stable group IDs (Entra object IDs, Okta group IDs) rather
+    # than display names — they are also immune to a group being renamed, which
+    # would otherwise silently repoint or break every binding.
+    #
+    # Requires a Hub image that understands RADAR_HUB_OIDC_GROUP_CLAIM. On an
+    # older Hub the variable is ignored and no group subjects reach clusters.
+    #
     # Off by default because enabling it adds the "groups" scope to the
     # authorization request, and a few IdPs reject unknown scopes (Google) —
     # an upgrade must not change how existing logins behave. A wrong claim name
