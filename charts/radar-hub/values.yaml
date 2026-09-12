@@ -305,6 +305,30 @@ auth:
     # Roles are managed in the hub by an owner afterwards; they are not synced
     # from IdP groups.
     defaultRole: "member"
+    # Name of the ID-token claim holding the user's IdP groups. Empty (default)
+    # disables group passthrough entirely.
+    #
+    # Set it and each group value is forwarded to your connected clusters as a
+    # `radar:idp:<group>` subject, so you can bind Kubernetes RBAC to the groups
+    # you already manage in your IdP instead of re-authoring per-user bindings:
+    #
+    #   subjects:
+    #     - kind: Group
+    #       name: radar:idp:<group-value-exactly-as-your-IdP-emits-it>
+    #       apiGroup: rbac.authorization.k8s.io
+    #
+    # Claim name varies by IdP: "groups" for Okta, Keycloak and Entra; ADFS
+    # commonly uses "group" or a URI-style claim type such as
+    # "http://schemas.xmlsoap.org/claims/Group".
+    #
+    # Off by default because enabling it adds the "groups" scope to the
+    # authorization request, and a few IdPs reject unknown scopes (Google) —
+    # an upgrade must not change how existing logins behave. A wrong claim name
+    # is not fatal: you simply get no group subjects, sign-in is unaffected.
+    #
+    # This does NOT affect hub roles. Roles stay hub-authoritative (defaultRole
+    # above, then managed by an owner in the hub).
+    groupsClaim: ""
 
 # ---------------------------------------------------------------------------
 # Branding (customer-facing strings exposed via /api/config)

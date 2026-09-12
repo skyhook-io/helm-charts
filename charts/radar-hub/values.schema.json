@@ -371,6 +371,9 @@
                 "member",
                 "viewer"
               ]
+            },
+            "groupsClaim": {
+              "type": "string"
             }
           }
         }

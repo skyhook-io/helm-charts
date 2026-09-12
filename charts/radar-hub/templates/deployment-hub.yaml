@@ -230,6 +230,13 @@ spec:
               value: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL | quote }}
             - name: RADAR_HUB_OIDC_DEFAULT_ROLE
               value: {{ .Values.auth.oidc.defaultRole | quote }}
+            {{- with .Values.auth.oidc.groupsClaim }}
+            {{- /* Only emitted when set: an empty value would still be an
+                   empty env var, but keeping the var absent makes "group
+                   passthrough is off" obvious in `kubectl describe pod`. */}}
+            - name: RADAR_HUB_OIDC_GROUP_CLAIM
+              value: {{ . | quote }}
+            {{- end }}
             {{- end }}
 
             {{- if .Values.hub.agent.enabled }}
