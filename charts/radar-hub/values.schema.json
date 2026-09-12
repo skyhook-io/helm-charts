@@ -374,6 +374,12 @@
             },
             "groupsClaim": {
               "type": "string"
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         }

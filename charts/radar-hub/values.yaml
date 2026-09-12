@@ -329,6 +329,15 @@ auth:
     # This does NOT affect hub roles. Roles stay hub-authoritative (defaultRole
     # above, then managed by an owner in the hub).
     groupsClaim: ""
+    # Extra OIDC scopes on top of openid+email. Setting groupsClaim above does
+    # NOT add a scope, because providers differ in how they are asked for
+    # groups and guessing breaks logins:
+    #   Okta, Keycloak  -> gate the groups claim behind a scope: add "groups"
+    #   Entra ID        -> emits groups from the app's Token configuration and
+    #                      REJECTS an unknown "groups" scope (AADSTS70011).
+    #                      Leave this empty.
+    #   Google          -> emits no groups and rejects the scope. Leave empty.
+    scopes: []
 
 # ---------------------------------------------------------------------------
 # Branding (customer-facing strings exposed via /api/config)
