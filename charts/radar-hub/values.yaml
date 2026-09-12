@@ -334,10 +334,11 @@ auth:
     # Requires a Hub image that understands RADAR_HUB_OIDC_GROUP_CLAIM. On an
     # older Hub the variable is ignored and no group subjects reach clusters.
     #
-    # Off by default because enabling it adds the "groups" scope to the
-    # authorization request, and a few IdPs reject unknown scopes (Google) —
-    # an upgrade must not change how existing logins behave. A wrong claim name
-    # is not fatal: you simply get no group subjects, sign-in is unaffected.
+    # Off by default so an upgrade does not start forwarding a new identity
+    # attribute to clusters under a working install. A wrong claim name is not
+    # fatal: you simply get no group subjects, and sign-in is unaffected.
+    #
+    # Setting this does NOT change the scopes requested — see `scopes` below.
     #
     # This does NOT affect hub roles. Roles stay hub-authoritative (defaultRole
     # above, then managed by an owner in the hub).
