@@ -121,6 +121,15 @@ postgres:
 # ---------------------------------------------------------------------------
 hub:
   # Public URL the web app + agent connect to. Must include scheme + host.
+  #
+  # MUST be https://. An http:// URL installs cleanly and passes readiness, but
+  # nothing can sign in and no cluster can connect:
+  #   - the OIDC state cookie is __Host- prefixed, so it carries Secure and is
+  #     never sent back over plain HTTP. Sign-in bounces to
+  #     /login?error=session_expired and the hub logs "state cookie missing".
+  #   - in-cluster Radar refuses a ws:// tunnel to any non-loopback host.
+  # Terminate TLS at your Ingress, or set web.tls.selfSigned=true for a trial
+  # (pair it with cloud.insecureSkipVerify=true on the agent).
   publicURL: ""
 
   # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.

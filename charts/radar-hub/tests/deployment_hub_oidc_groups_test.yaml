@@ -1,0 +1,231 @@
+# OIDC group-passthrough values: auth.oidc.groupsClaim + auth.oidc.scopes.
+#
+# Cross-repo contract (M8): the env NAMES asserted literally below are what
+# cmd/hub/main.go reads — RADAR_HUB_OIDC_GROUP_CLAIM (singular GROUP, unlike
+# the plural values key groupsClaim) and RADAR_HUB_OIDC_SCOPES. A rename on
+# either side compiles and renders but silently disables the feature, so
+# these tests pin the exact strings.
+#
+# Scopes wire format: the chart emits `join "," .Values.auth.oidc.scopes`;
+# the hub parses it with strings.Split(s, ",") + TrimSpace (splitCSV).
+# Comma is therefore a reserved character INSIDE a scope item — see the
+# "comma inside one item" case below.
+#
+# secret.yaml is listed because deployment-hub.yaml includes it for the
+# checksum/secret annotation; every test scopes its assertions to the
+# deployment via `template:`.
+suite: hub deployment OIDC group passthrough env
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  # S11.01 trivial variant: nothing configured -> the entire OIDC env block
+  # is gated on auth.oidc.issuer, so no OIDC env at all. Upgrade safety for
+  # existing installs that never set auth.oidc.
+  - it: emits no OIDC env when auth.oidc is untouched
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_ISSUER
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_GROUP_CLAIM
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_SCOPES
+          any: true
+
+  # S11.01 discriminating variant (W5): issuer SET, groupsClaim/scopes unset.
+  # The other OIDC envs must be present while the two new ones stay absent —
+  # this is the variant that actually exercises the per-value gates instead
+  # of riding the issuer gate.
+  - it: with issuer set but groupsClaim and scopes unset, emits the other OIDC envs and omits the two new ones
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_ISSUER
+            value: https://idp.test.example
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLIENT_ID
+            value: radar-hub
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CALLBACK_URL
+            value: https://radar.test.example/api/auth/oidc/callback
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_DEFAULT_ROLE
+            value: member
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_GROUP_CLAIM
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_SCOPES
+          any: true
+
+  # S11.02 + M8: groupsClaim set -> exact env name (singular GROUP) and value.
+  - it: emits RADAR_HUB_OIDC_GROUP_CLAIM with the exact claim name when groupsClaim is set
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.groupsClaim: groups
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_GROUP_CLAIM
+            value: groups
+      # groupsClaim alone must not smuggle in a scopes env.
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_SCOPES
+          any: true
+
+  # S11.02 variant: ADFS-style URI claim name passes through verbatim.
+  - it: passes a URI-style claim name through unmangled
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.groupsClaim: http://schemas.xmlsoap.org/claims/Group
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_GROUP_CLAIM
+            value: http://schemas.xmlsoap.org/claims/Group
+
+  # S11.03 + M8: scopes list -> comma-joined string, the exact format
+  # cmd/hub/main.go splitCSV parses back into ["groups","profile"].
+  - it: emits RADAR_HUB_OIDC_SCOPES comma-joined in splitCSV wire format
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.scopes:
+        - groups
+        - profile
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_SCOPES
+            value: groups,profile
+
+  # M7 content case 1: a SPACE inside one item survives the chart verbatim
+  # ("groups profile" stays one splitCSV token). Downstream the hub appends
+  # it as one Go string, but the OAuth2 authorize request space-joins the
+  # scope parameter, so the IdP still receives two scopes "groups" and
+  # "profile". Misconfiguration that happens to behave like the two-item
+  # list; no error anywhere. Pinned as actual behaviour, not endorsed.
+  - it: keeps a space inside one scope item verbatim (one splitCSV token)
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.scopes:
+        - groups profile
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_SCOPES
+            value: groups profile
+
+  # M7 content case 2 — FINDING: a COMMA inside one item is indistinguishable
+  # from two items after join(","). scopes: ["a,b"] renders "a,b", and the
+  # hub's splitCSV turns it back into TWO scopes "a" and "b". The operator's
+  # single malformed scope silently becomes two scopes on the authorize
+  # request; no schema rule, template check, or hub-side error flags it.
+  # Pinning actual behaviour; fixing belongs in chart validation, not here.
+  - it: renders a comma inside one scope item ambiguously (hub will split it into two scopes)
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.scopes:
+        - a,b
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_SCOPES
+            value: a,b
+
+  # M6b — partial config: groupsClaim set but issuer EMPTY. The issuer gate
+  # swallows the whole OIDC block: no env at all, groupsClaim included.
+  # Pinned silence. NOTE (finding, not fixed here): nothing renders, warns,
+  # or fails — the operator who sets only groupsClaim gets a hub with group
+  # passthrough off and no diagnosable signal anywhere in the chart output.
+  - it: emits nothing at all when groupsClaim is set but issuer is empty
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.groupsClaim: groups
+      auth.oidc.scopes:
+        - groups
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_GROUP_CLAIM
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_SCOPES
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_ISSUER
+          any: true
+
+  # Empty-string groupsClaim and empty scopes list behave like unset: the
+  # `with` gates treat them as falsy, so no empty-valued env vars appear.
+  - it: treats explicit empty groupsClaim and empty scopes as unset
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.groupsClaim: ""
+      auth.oidc.scopes: []
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_ISSUER
+            value: https://idp.test.example
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_GROUP_CLAIM
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_SCOPES
+          any: true

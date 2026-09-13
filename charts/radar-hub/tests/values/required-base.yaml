@@ -1,0 +1,6 @@
+# Minimum values that satisfy the chart's fail-guards (secret.yaml) so
+# deployment-hub.yaml renders. No auth.oidc values on purpose — suites layer
+# those per test. Placeholders only, never deployed.
+hub:
+  publicURL: "https://radar.test.example"
+  cookiePassword: "test-cookie-password-32-bytes-minimum-aaaa"
