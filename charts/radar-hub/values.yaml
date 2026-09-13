@@ -351,8 +351,13 @@ auth:
     # Group VALUES that cannot be represented verbatim in the forwarded header
     # are DROPPED rather than escaped, because a value that can't round-trip
     # can't be bound accurately in RBAC either. A value is forwarded only if it
-    # is printable ASCII with no whitespace and no comma, and at most 128 bytes;
-    # at most 64 groups are forwarded per user. This matters for Active
+    # is printable ASCII with no whitespace and no comma, and at most 128 bytes
+    # measured on the value AS THE IdP EMITS IT — a provider prefix counts, so
+    # a Keycloak group (which arrives as "/name") has 127. At most 64 groups
+    # are forwarded per user, though the session cookie is usually the real
+    # limit: the whole ID token is sealed into it, so roughly 31 36-character
+    # group IDs fit and past that the hub REFUSES the sign-in (HTTP 431) rather
+    # than dropping groups silently. This matters for Active
     # Directory: display names like "Domain Admins" contain a space and are
     # dropped. Emit stable group IDs (Entra object IDs, Okta group IDs) rather
     # than display names — they are also immune to a group being renamed, which
@@ -373,11 +378,19 @@ auth:
     # Extra OIDC scopes on top of openid+email. Setting groupsClaim above does
     # NOT add a scope, because providers differ in how they are asked for
     # groups and guessing breaks logins:
-    #   Okta, Keycloak  -> gate the groups claim behind a scope: add "groups"
-    #   Entra ID        -> emits groups from the app's Token configuration and
-    #                      REJECTS an unknown "groups" scope (AADSTS70011).
-    #                      Leave this empty.
-    #   Google          -> emits no groups and rejects the scope. Leave empty.
+    #   Okta      -> gates the claim behind a scope on a CUSTOM authorization
+    #                server: add "groups" only if your server defines it.
+    #   Keycloak  -> depends on where the group-membership mapper sits. On the
+    #                client's DEDICATED scope the claim is always present:
+    #                leave this empty. On an OPTIONAL client scope named
+    #                "groups": add "groups".
+    #   Entra ID  -> emits groups from the app's Token configuration and
+    #                REJECTS an unknown "groups" scope (AADSTS70011). Leave empty.
+    #   Google    -> emits no groups and rejects the scope. Leave empty.
+    #
+    # Asking for a scope the provider does not define does NOT merely omit the
+    # groups — it fails the whole sign-in (Keycloak: "invalid_scope"). When in
+    # doubt leave this empty and check whether groups arrive before adding one.
     scopes: []
 
 # ---------------------------------------------------------------------------
