@@ -37,54 +37,46 @@ jobs:
         with:
           version: v3.14.0
 
-      # Decide whether this run may claim GitHub's "Latest" badge. A prerelease
-      # (e.g. 1.7.0-rc.1) must not: Helm already hides prereleases from
-      # `helm install` unless --devel is passed, but the Latest badge is the
-      # first thing a human sees on the releases page, so an unbadged
-      # prerelease is the difference between "shipped" and "staged".
-      #
-      # chart-releaser publishes every chart whose <name>-<version> tag is
-      # missing, so the same rule decides what is pending here.
-      #
-      # The badge is withheld whenever ANY pending chart is a prerelease, not
-      # merely when all of them are. mark_as_latest is a single option for the
-      # whole run and chart-releaser applies it to every release it creates,
-      # so on a mixed run the badge would land on whichever release is created
-      # last - possibly the prerelease, which is the exact outcome this is
-      # meant to prevent. Erring this way costs a stable release its badge on
-      # a mixed run; erring the other way ships an rc as Latest. It also makes
-      # the scan's breadth harmless: a chart left untagged by an earlier failed
-      # release can only ever withhold the badge, never wrongly grant it.
-      - name: Decide whether this run claims the Latest badge
-        id: latest
-        run: |
-          pending_prerelease=0
-          for f in charts/*/Chart.yaml; do
-            [ -f "$f" ] || continue
-            name=$(awk '/^name:/ {print $2; exit}' "$f")
-            ver=$(awk '/^version:/ {print $2; exit}' "$f")
-            if git rev-parse -q --verify "refs/tags/${name}-${ver}" >/dev/null; then
-              continue   # already released
-            fi
-            case "$ver" in
-              *-*) echo "pending prerelease: ${name}-${ver}"; pending_prerelease=1 ;;
-              *)   echo "pending stable: ${name}-${ver}" ;;
-            esac
-          done
-          if [ "$pending_prerelease" = 1 ]; then
-            echo "A prerelease is pending - withholding the Latest badge for this run."
-            echo "mark=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "mark=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Run chart-releaser
         id: cr
         uses: helm/chart-releaser-action@v1.7.0
-        with:
-          mark_as_latest: ${{ steps.latest.outputs.mark }}
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      # Label prerelease chart versions as prereleases on GitHub.
+      #
+      # Helm already hides a prerelease (1.7.0-rc.1) from `helm install` unless
+      # --devel is passed, so it cannot reach anyone by the normal path. GitHub
+      # has no such rule: chart-releaser creates an ordinary release and marks
+      # it latest, so an rc would sit at the top of the releases page looking
+      # shipped. chart-releaser v1.7.0 cannot express this itself - its only
+      # related option is the run-wide --make-release-latest - so the labelling
+      # happens here, after the fact.
+      #
+      # Driven off the packaged charts rather than off Chart.yaml: these are
+      # exactly the charts chart-releaser just released, and `helm show chart`
+      # normalises the version, so a quoted `version: "1.7.0-rc.1"` cannot
+      # produce a value that silently fails to match its own tag.
+      #
+      # Marking a release as a prerelease makes GitHub keep the Latest badge on
+      # the newest stable release instead, which is the behaviour we want and
+      # is why no run-wide badge suppression is needed.
+      - name: Label prerelease charts on GitHub
+        if: steps.cr.outputs.changed_charts != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for pkg in .cr-release-packages/*.tgz; do
+            [ -f "$pkg" ] || continue
+            name="$(helm show chart "$pkg" | awk '/^name:/ {print $2; exit}')"
+            ver="$(helm show chart "$pkg" | awk '/^version:/ {print $2; exit}')"
+            case "$ver" in
+              *-*) ;;                 # prerelease: 1.7.0-rc.1
+              *)   continue ;;        # stable: leave it exactly as released
+            esac
+            echo "::notice::Marking ${name}-${ver} as a prerelease (staged, not shipped)"
+            gh release edit "${name}-${ver}" --prerelease --latest=false
+          done
 
       # Mirror the charts chart-releaser just packaged (.cr-release-packages/)
       # to the GHCR OCI registry, alongside the HTTP repo (gh-pages) and
