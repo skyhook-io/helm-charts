@@ -1,0 +1,33 @@
+# Exercises the AI agent template path under provider: vertex: the service-account
+# key JSON lands in the sandbox Secret under HUB_AGENT_VERTEX_CREDENTIALS, and the
+# hub gets the Vertex project/location/model env instead of an API-key provider's.
+#
+# The bundled Postgres password is pinned deliberately — the chart refuses to
+# derive a sandbox DSN from a generated one, so leaving it empty here would fail
+# the render rather than test it.
+#
+# Placeholder values; never deployed against real infrastructure.
+
+hub:
+  publicURL: "https://radar.test.example"
+  cookiePassword: "test-cookie-password-32-bytes-minimum-aaaa"
+  agent:
+    enabled: true
+    provider: vertex
+    engineLabel: "Claude (via Vertex AI)"
+    credentials:
+      serviceAccountJSON: '{"type":"service_account","project_id":"test-project","client_email":"radar@test-project.iam.gserviceaccount.com","private_key":"placeholder"}'
+    vertex:
+      project: "test-project"
+      location: "global"
+
+postgres:
+  bundled:
+    enabled: true
+    auth:
+      password: "test-bundled-postgres-password"
+
+auth:
+  breakGlass:
+    email: "admin@test.example"
+    password: "test-bg-password"

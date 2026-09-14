@@ -143,6 +143,8 @@ never exists in the cluster.
 {{- define "radar-hub.agentKeyName" -}}
 {{- if eq .Values.hub.agent.provider "anthropic" -}}
 HUB_AGENT_ANTHROPIC_API_KEY
+{{- else if eq .Values.hub.agent.provider "vertex" -}}
+HUB_AGENT_VERTEX_CREDENTIALS
 {{- else -}}
 HUB_AGENT_BEDROCK_API_KEY
 {{- end -}}

@@ -65,7 +65,7 @@ values are rejected at install time rather than surfacing as a broken pod.
 ## AI agent
 
 Release prerequisite: this feature requires a Hub release with Anthropic provider
-support and a public `radar-hub-ai-agent-sandbox` image at the same version as
+support (and, for `provider: vertex`, Vertex provider support) and a public `radar-hub-ai-agent-sandbox` image at the same version as
 Hub. Chart maintainers must select that verified version in `appVersion` before
 publishing this chart; merging chart changes publishes immediately, independently
 of the Hub image pipeline. Hub `1.5.0` does not support this configuration.
@@ -78,7 +78,8 @@ only into the sidecar container, not the agent container in the same pod.
 
 Pick a provider. `anthropic` talks to `api.anthropic.com` with an Anthropic API
 key and works from any cloud; `bedrock` talks to `bedrock-runtime.<region>.amazonaws.com`
-with an IAM service-specific credential for `bedrock.amazonaws.com`. Only the
+with an IAM service-specific credential for `bedrock.amazonaws.com`; `vertex`
+talks to Claude on Google Cloud Vertex AI with a service-account key. Only the
 selected provider's broker is mounted and only its credential is written, so
 the other egress path does not exist in the pod.
 
@@ -97,10 +98,26 @@ and then only when `postgres.bundled.auth.password` is set explicitly: a
 generated password cannot be read back at render time, so the chart refuses to
 derive a DSN that would not match the database.
 
-For a sealed-secrets or external-secrets workflow, skip both inline values and
+For Vertex, the credential is a GCP service-account key in JSON rather than an
+API key, so it goes in `credentials.serviceAccountJSON` (`apiKey` is refused
+under this provider). `vertex.project` is required and has no default; the
+account needs `roles/aiplatform.user` (or equivalent) on that project.
+
+```bash
+helm upgrade --install radar-hub skyhook/radar-hub \
+  --set hub.agent.enabled=true \
+  --set hub.agent.provider=vertex \
+  --set hub.agent.vertex.project=my-gcp-project \
+  --set hub.agent.vertex.location=global \
+  --set-file hub.agent.credentials.serviceAccountJSON=./sa-key.json \
+  --set hub.agent.credentials.podDSN='postgres://…'
+```
+
+For a sealed-secrets or external-secrets workflow, skip the inline values and
 set `hub.agent.credentials.existingSecret` to an object you manage. It must
 live in the sandbox namespace and carry `HUB_AGENT_DB_DSN` plus
-`HUB_AGENT_ANTHROPIC_API_KEY` or `HUB_AGENT_BEDROCK_API_KEY`, matching the
+`HUB_AGENT_ANTHROPIC_API_KEY`, `HUB_AGENT_BEDROCK_API_KEY` or
+`HUB_AGENT_VERTEX_CREDENTIALS` (the service-account key JSON), matching the
 provider.
 
 ### The sandbox namespace

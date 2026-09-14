@@ -220,7 +220,8 @@
               "type": "string",
               "enum": [
                 "anthropic",
-                "bedrock"
+                "bedrock",
+                "vertex"
               ]
             },
             "engineLabel": {
@@ -233,6 +234,9 @@
                   "type": "string"
                 },
                 "apiKey": {
+                  "type": "string"
+                },
+                "serviceAccountJSON": {
                   "type": "string"
                 },
                 "podDSN": {
@@ -252,6 +256,20 @@
               "type": "object",
               "properties": {
                 "region": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                }
+              }
+            },
+            "vertex": {
+              "type": "object",
+              "properties": {
+                "project": {
+                  "type": "string"
+                },
+                "location": {
                   "type": "string"
                 },
                 "model": {
