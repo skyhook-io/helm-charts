@@ -340,7 +340,7 @@ auth:
     # sign-in is unaffected. Nothing reaches a cluster until you write a
     # RoleBinding naming one of the subjects below.
     #
-    # Set it and each group value is forwarded to your connected clusters as a
+    # Each group value is forwarded to your connected clusters as a
     # `radar:idp:<group>` subject, so you can bind Kubernetes RBAC to the groups
     # you already manage in your IdP instead of re-authoring per-user bindings:
     #
@@ -377,11 +377,10 @@ auth:
     # Requires a Hub image that understands RADAR_HUB_OIDC_GROUP_CLAIM. On an
     # older Hub the variable is ignored and no group subjects reach clusters.
     #
-    # Enabling this does not change what is requested from your IdP, so it
-    # cannot affect sign-in or token size — it only decides whether the groups
-    # already in the ID token are read and forwarded.
-    #
-    # Setting this does NOT change the scopes requested — see `scopes` below.
+    # This does not change what is requested from your IdP, so it cannot
+    # affect sign-in or token size: it only decides whether the groups already
+    # present in the ID token are read and forwarded. In particular it does NOT
+    # change the scopes requested — see `scopes` below.
     #
     # This does NOT affect hub roles. Roles stay hub-authoritative (defaultRole
     # above, then managed by an owner in the hub).
