@@ -37,9 +37,47 @@ jobs:
         with:
           version: v3.14.0
 
+      # Decide whether this run may claim GitHub's "Latest" badge. A prerelease
+      # (e.g. 1.7.0-rc.1) must not: Helm already hides prereleases from
+      # `helm install` unless --devel is passed, but the Latest badge is the
+      # first thing a human sees on the releases page, so an unbadged
+      # prerelease is the difference between "shipped" and "staged".
+      #
+      # chart-releaser publishes every chart whose <name>-<version> tag is
+      # missing, so the same rule decides what is pending here. The badge is
+      # withheld only when EVERY pending chart is a prerelease; a run that
+      # ships any stable chart still marks it, since that stable release is
+      # genuinely the latest.
+      - name: Decide whether this run claims the Latest badge
+        id: latest
+        run: |
+          pending_any=0
+          pending_stable=0
+          for f in charts/*/Chart.yaml; do
+            [ -f "$f" ] || continue
+            name=$(awk '/^name:/ {print $2; exit}' "$f")
+            ver=$(awk '/^version:/ {print $2; exit}' "$f")
+            if git rev-parse -q --verify "refs/tags/${name}-${ver}" >/dev/null; then
+              continue   # already released
+            fi
+            pending_any=1
+            case "$ver" in
+              *-*) echo "pending prerelease: ${name}-${ver}" ;;
+              *)   echo "pending stable: ${name}-${ver}"; pending_stable=1 ;;
+            esac
+          done
+          if [ "$pending_any" = 1 ] && [ "$pending_stable" = 0 ]; then
+            echo "Only prereleases pending - withholding the Latest badge."
+            echo "mark=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "mark=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run chart-releaser
         id: cr
         uses: helm/chart-releaser-action@v1.7.0
+        with:
+          mark_as_latest: ${{ steps.latest.outputs.mark }}
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
