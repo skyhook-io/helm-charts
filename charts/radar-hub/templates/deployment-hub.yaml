@@ -254,6 +254,15 @@ spec:
               value: {{ include "radar-hub.agentSecretName" . | quote }}
             - name: HUB_AGENT_ANTHROPIC_MODEL
               value: {{ .Values.hub.agent.anthropic.model | quote }}
+            {{- else if eq .Values.hub.agent.provider "vertex" }}
+            - name: HUB_AGENT_VERTEX_CREDENTIALS_SECRET
+              value: {{ include "radar-hub.agentSecretName" . | quote }}
+            - name: HUB_AGENT_VERTEX_PROJECT
+              value: {{ .Values.hub.agent.vertex.project | quote }}
+            - name: HUB_AGENT_VERTEX_LOCATION
+              value: {{ .Values.hub.agent.vertex.location | quote }}
+            - name: HUB_AGENT_VERTEX_MODEL
+              value: {{ .Values.hub.agent.vertex.model | quote }}
             {{- else }}
             - name: HUB_AGENT_BEDROCK_API_KEY_SECRET
               value: {{ include "radar-hub.agentSecretName" . | quote }}

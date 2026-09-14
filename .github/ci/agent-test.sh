@@ -62,6 +62,40 @@ contains "$bedrock" 'HUB_AGENT_BEDROCK_MODEL'
 absent "$bedrock" 'HUB_AGENT_ANTHROPIC_API_KEY:'
 absent "$bedrock" 'HUB_AGENT_ANTHROPIC_MODEL'
 
+vertex() { render --set hub.agent.provider=vertex --set-string hub.agent.credentials.apiKey= \
+  --set-string hub.agent.vertex.project=test-project \
+  --set-json 'hub.agent.credentials.serviceAccountJSON="{\"type\":\"service_account\"}"' "$@"; }
+vx=$(vertex)
+contains "$vx" 'HUB_AGENT_VERTEX_CREDENTIALS: "{\"type\":\"service_account\"}"'
+contains "$vx" 'HUB_AGENT_VERTEX_CREDENTIALS_SECRET'
+contains "$vx" 'HUB_AGENT_VERTEX_PROJECT'
+contains "$vx" 'value: "test-project"'
+contains "$vx" 'HUB_AGENT_VERTEX_LOCATION'
+contains "$vx" 'HUB_AGENT_VERTEX_MODEL'
+absent "$vx" 'HUB_AGENT_ANTHROPIC_'
+absent "$vx" 'HUB_AGENT_BEDROCK_'
+absent "$bedrock" 'HUB_AGENT_VERTEX_'
+absent "$enabled" 'HUB_AGENT_VERTEX_'
+vx_existing=$(vertex --set-string hub.agent.credentials.serviceAccountJSON= \
+  --set-string hub.agent.credentials.existingSecret=vertex-creds)
+contains "$vx_existing" 'value: "vertex-creds"'
+absent "$vx_existing" 'HUB_AGENT_VERTEX_CREDENTIALS:'
+reject_vertex() {
+  local message=$1 output
+  shift
+  if output=$(vertex "$@" 2>&1); then
+    printf 'FAIL: expected rejection: %s\n' "$message" >&2
+    exit 1
+  fi
+  contains "$output" "$message"
+}
+reject_vertex 'hub.agent.vertex.project is required' --set-string hub.agent.vertex.project=
+reject_vertex 'hub.agent.vertex.location is required' --set-string hub.agent.vertex.location=
+reject_vertex 'hub.agent.vertex.model is required' --set-string hub.agent.vertex.model=
+reject_vertex 'hub.agent.credentials.apiKey is not read under provider: vertex' --set-string hub.agent.credentials.apiKey=sk-ant-x
+reject_vertex 'hub.agent.enabled is true but no model credential' --set-string hub.agent.credentials.serviceAccountJSON=
+reject 'serviceAccountJSON is only read under provider: vertex' --set-string hub.agent.credentials.serviceAccountJSON=stale
+
 encoded=$(render --set-string 'postgres.bundled.auth.username=user/name' \
   --set-string 'postgres.bundled.auth.password=a/b#c@d +%' \
   --set-string 'postgres.bundled.auth.database=db/name')

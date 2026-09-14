@@ -39,7 +39,11 @@ metadata:
     {{- include "radar-hub.labels" . | nindent 4 }}
 type: Opaque
 stringData:
+  {{- if eq .Values.hub.agent.provider "vertex" }}
+  {{ include "radar-hub.agentKeyName" . }}: {{ .Values.hub.agent.credentials.serviceAccountJSON | quote }}
+  {{- else }}
   {{ include "radar-hub.agentKeyName" . }}: {{ .Values.hub.agent.credentials.apiKey | quote }}
+  {{- end }}
   HUB_AGENT_DB_DSN: {{ include "radar-hub.agentPodDSN" . | quote }}
 ---
 {{- end }}
@@ -107,7 +111,8 @@ spec:
       ports:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
-    {{- /* Model endpoint. Neither api.anthropic.com nor bedrock-runtime.* has
+    {{- /* Model endpoint. None of api.anthropic.com, bedrock-runtime.* or the Vertex
+           *aiplatform.googleapis.com / oauth2.googleapis.com hosts has
            pinnable IPs, so 443 is open to the internet here; narrowing it needs
            an egress proxy or a PrivateLink endpoint, wired via extraEgress. */}}
     - to: []

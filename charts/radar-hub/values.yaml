@@ -148,6 +148,8 @@ hub:
     #               Works from any cloud; no AWS account needed.
     #   bedrock   → bedrock-runtime.<region>.amazonaws.com with an IAM
     #               service-specific credential for bedrock.amazonaws.com.
+    #   vertex    → Claude on Google Cloud Vertex AI with a GCP service-account
+    #               key (JSON). Needs a Hub release with Vertex support.
     # Only the selected provider's broker is mounted in the pod and only its
     # credential is injected, so the other egress path does not exist there.
     provider: anthropic
@@ -164,13 +166,19 @@ hub:
       #   HUB_AGENT_DB_DSN                 (always)
       #   HUB_AGENT_ANTHROPIC_API_KEY      (provider: anthropic)
       #   HUB_AGENT_BEDROCK_API_KEY        (provider: bedrock)
-      # Set this OR the two inline values below — not both.
+      #   HUB_AGENT_VERTEX_CREDENTIALS     (provider: vertex; the SA key JSON)
+      # Set this OR the inline values below — not both.
       existingSecret: ""
 
       # Model API key. Written under the key matching `provider`, so flipping
       # provider is one value change and the unselected provider's key never
       # exists in the cluster.
       apiKey: ""
+
+      # GCP service-account key, as the JSON document. Read only under
+      # provider: vertex, where it replaces apiKey. The account needs
+      # roles/aiplatform.user (or an equivalent) on vertex.project.
+      serviceAccountJSON: ""
 
       # DSN the SANDBOX POD resolves — not the one the hub uses. Leave empty
       # with the bundled eval Postgres and the chart derives the cross-namespace
@@ -190,6 +198,16 @@ hub:
       region: "us-east-1"
       # Inference-profile id, not the bare model id.
       model: "us.anthropic.claude-sonnet-4-6"
+
+    # Claude on Google Cloud Vertex AI. Read only under provider: vertex.
+    vertex:
+      # GCP project id the model is invoked in. Required; there is no default.
+      project: ""
+      # global (recommended — widest model availability), us, eu, or a region
+      # such as us-east5.
+      location: "global"
+      # Bare model id, same form as anthropic.model (dated snapshots use `@`).
+      model: "claude-sonnet-4-6"
 
     sandbox:
       # Namespace the per-turn Jobs land in. Empty → "<fullname>-sandbox", which
