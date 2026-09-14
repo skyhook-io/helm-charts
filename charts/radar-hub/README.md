@@ -56,6 +56,40 @@ helm show chart skyhook/radar-hub --version 1.5.1 | grep appVersion
 left empty. Set them only to stage a specific release, and always set both to
 the same tag — a mismatched Hub and Web pair is not a tested combination.
 
+### Staging a chart change before the Hub release exists
+
+Merging to `main` publishes: chart-releaser packages any chart whose version has
+no matching tag. That is a problem when a chart change depends on a Hub build
+that has not shipped yet — a published chart would offer a value its default
+image ignores.
+
+Give the chart a **prerelease version** instead:
+
+```yaml
+version: 1.7.0-rc.1     # staged, not offered to users
+appVersion: "1.5.0"     # unchanged until the Hub release exists
+```
+
+Helm excludes prerelease versions from `helm install`, `helm upgrade` and
+`helm search` unless `--devel` is passed or the exact version is named. So the
+chart is published and reviewable, and an ordinary install still resolves to the
+newest stable version:
+
+```bash
+helm search repo skyhook/radar-hub            # newest stable
+helm search repo skyhook/radar-hub --devel    # includes staged versions
+helm install radar-hub skyhook/radar-hub --version 1.7.0-rc.1   # opt in
+```
+
+The release job marks such versions as **Pre-release** on GitHub, so the Latest
+badge stays on the newest stable release.
+
+**Promoting it.** When the Hub release lands, bump `version` to the stable
+number and `appVersion` to that Hub version in the same change. Do not promote a
+staged chart without moving `appVersion` — `image.hub.tag` defaults to it, so the
+published chart would install a Hub that predates the feature the chart
+configures.
+
 ## Values
 
 See [`values.yaml`](values.yaml) for the full set, and
