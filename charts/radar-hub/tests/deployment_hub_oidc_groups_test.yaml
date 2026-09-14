@@ -86,9 +86,11 @@ tests:
             name: RADAR_HUB_OIDC_SCOPES
           any: true
 
-  # Passthrough is turned OFF by emptying the claim, and the env then
-  # disappears rather than being emitted empty.
-  - it: groupsClaim set empty disables passthrough and emits no claim env
+  # Passthrough is turned OFF by emptying the claim. The variable must still
+  # be EMITTED, empty: the hub reads an explicitly empty value as "off", but
+  # folds a missing variable into its own default of "groups". Omitting it
+  # here would silently leave the feature on.
+  - it: groupsClaim set empty still emits the env, empty, so the hub sees the off-switch
     template: templates/deployment-hub.yaml
     values:
       - values/oidc-base.yaml
@@ -100,11 +102,11 @@ tests:
           content:
             name: RADAR_HUB_OIDC_ISSUER
             value: https://idp.test.example
-      - notContains:
+      - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: RADAR_HUB_OIDC_GROUP_CLAIM
-          any: true
+            value: ""
 
   # S11.02 + M8: groupsClaim set -> exact env name (singular GROUP) and value.
   - it: emits RADAR_HUB_OIDC_GROUP_CLAIM with the exact claim name when groupsClaim is set
@@ -229,7 +231,11 @@ tests:
 
   # Empty-string groupsClaim and empty scopes list behave like unset: the
   # `with` gates treat them as falsy, so no empty-valued env vars appear.
-  - it: treats explicit empty groupsClaim and empty scopes as unset
+  # scopes and groupsClaim are NOT symmetric. An empty scopes list means "ask
+  # for nothing extra", which is the default, so the variable is omitted. An
+  # empty groupsClaim means "off", which only reaches the hub if the variable
+  # is emitted empty.
+  - it: empty scopes is omitted, while empty groupsClaim is emitted as the off-switch
     template: templates/deployment-hub.yaml
     values:
       - values/oidc-base.yaml
@@ -242,11 +248,11 @@ tests:
           content:
             name: RADAR_HUB_OIDC_ISSUER
             value: https://idp.test.example
-      - notContains:
+      - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: RADAR_HUB_OIDC_GROUP_CLAIM
-          any: true
+            value: ""
       - notContains:
           path: spec.template.spec.containers[0].env
           content:

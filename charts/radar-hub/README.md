@@ -82,7 +82,9 @@ helm install radar-hub skyhook/radar-hub --version 1.7.0-rc.1   # opt in
 ```
 
 The release job marks such versions as **Pre-release** on GitHub, so the Latest
-badge stays on the newest stable release.
+badge stays on the newest stable release. That step must be on `main` before a
+prerelease chart is merged; without it chart-releaser publishes the rc as an
+ordinary release marked Latest.
 
 **Promoting it.** When the Hub release lands, bump `version` to the stable
 number and `appVersion` to that Hub version in the same change. Do not promote a
