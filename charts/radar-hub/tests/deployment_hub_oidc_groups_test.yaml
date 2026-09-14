@@ -228,9 +228,6 @@ tests:
           content:
             name: RADAR_HUB_OIDC_ISSUER
           any: true
-
-  # Empty-string groupsClaim and empty scopes list behave like unset: the
-  # `with` gates treat them as falsy, so no empty-valued env vars appear.
   # scopes and groupsClaim are NOT symmetric. An empty scopes list means "ask
   # for nothing extra", which is the default, so the variable is omitted. An
   # empty groupsClaim means "off", which only reaches the hub if the variable
