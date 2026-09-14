@@ -353,6 +353,12 @@ auth:
     # commonly uses "group" or a URI-style claim type such as
     # "http://schemas.xmlsoap.org/claims/Group".
     #
+    # A groups claim may be an array or a single string. A string is ONE
+    # group, not a list to split: providers emit a string when the user is in
+    # exactly one group (ADFS does this), so splitting would invent groups.
+    # An AD distinguished name is therefore one value containing commas, and
+    # is dropped by the rule below rather than broken into parts.
+    #
     # Group VALUES that cannot be represented verbatim in the forwarded header
     # are DROPPED rather than escaped, because a value that can't round-trip
     # can't be bound accurately in RBAC either. A value is forwarded only if it
