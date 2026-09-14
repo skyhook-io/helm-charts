@@ -47,7 +47,10 @@ tests:
   # The other OIDC envs must be present while the two new ones stay absent —
   # this is the variant that actually exercises the per-value gates instead
   # of riding the issuer gate.
-  - it: with issuer set but groupsClaim and scopes unset, emits the other OIDC envs and omits the two new ones
+  # groupsClaim defaults to "groups", so an OIDC install gets passthrough
+  # without configuring anything. scopes stays empty: a scope the provider does
+  # not define fails the whole sign-in, so it can never be defaulted.
+  - it: with issuer set and defaults, emits the claim and still omits scopes
     template: templates/deployment-hub.yaml
     values:
       - values/oidc-base.yaml
@@ -72,15 +75,35 @@ tests:
           content:
             name: RADAR_HUB_OIDC_DEFAULT_ROLE
             value: member
-      - notContains:
+      - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: RADAR_HUB_OIDC_GROUP_CLAIM
-          any: true
+            value: groups
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
             name: RADAR_HUB_OIDC_SCOPES
+          any: true
+
+  # Passthrough is turned OFF by emptying the claim, and the env then
+  # disappears rather than being emitted empty.
+  - it: groupsClaim set empty disables passthrough and emits no claim env
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.groupsClaim: ""
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_ISSUER
+            value: https://idp.test.example
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_GROUP_CLAIM
           any: true
 
   # S11.02 + M8: groupsClaim set -> exact env name (singular GROUP) and value.
