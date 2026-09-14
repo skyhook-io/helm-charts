@@ -43,6 +43,41 @@ jobs:
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
+      # Label prerelease chart versions as prereleases on GitHub.
+      #
+      # Helm already hides a prerelease (1.7.0-rc.1) from `helm install` unless
+      # --devel is passed, so it cannot reach anyone by the normal path. GitHub
+      # has no such rule: chart-releaser creates an ordinary release and marks
+      # it latest, so an rc would sit at the top of the releases page looking
+      # shipped. chart-releaser v1.7.0 cannot express this itself - its only
+      # related option is the run-wide --make-release-latest - so the labelling
+      # happens here, after the fact.
+      #
+      # Driven off the packaged charts rather than off Chart.yaml: these are
+      # exactly the charts chart-releaser just released, and `helm show chart`
+      # normalises the version, so a quoted `version: "1.7.0-rc.1"` cannot
+      # produce a value that silently fails to match its own tag.
+      #
+      # Marking a release as a prerelease makes GitHub keep the Latest badge on
+      # the newest stable release instead, which is the behaviour we want and
+      # is why no run-wide badge suppression is needed.
+      - name: Label prerelease charts on GitHub
+        if: steps.cr.outputs.changed_charts != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for pkg in .cr-release-packages/*.tgz; do
+            [ -f "$pkg" ] || continue
+            name="$(helm show chart "$pkg" | awk '/^name:/ {print $2; exit}')"
+            ver="$(helm show chart "$pkg" | awk '/^version:/ {print $2; exit}')"
+            case "$ver" in
+              *-*) ;;                 # prerelease: 1.7.0-rc.1
+              *)   continue ;;        # stable: leave it exactly as released
+            esac
+            echo "::notice::Marking ${name}-${ver} as a prerelease (staged, not shipped)"
+            gh release edit "${name}-${ver}" --prerelease --latest=false
+          done
+
       # Mirror the charts chart-releaser just packaged (.cr-release-packages/)
       # to the GHCR OCI registry, alongside the HTTP repo (gh-pages) and
       # Artifact Hub, so catalogs that consume charts over OCI can pull
