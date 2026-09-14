@@ -44,15 +44,21 @@ jobs:
       # prerelease is the difference between "shipped" and "staged".
       #
       # chart-releaser publishes every chart whose <name>-<version> tag is
-      # missing, so the same rule decides what is pending here. The badge is
-      # withheld only when EVERY pending chart is a prerelease; a run that
-      # ships any stable chart still marks it, since that stable release is
-      # genuinely the latest.
+      # missing, so the same rule decides what is pending here.
+      #
+      # The badge is withheld whenever ANY pending chart is a prerelease, not
+      # merely when all of them are. mark_as_latest is a single option for the
+      # whole run and chart-releaser applies it to every release it creates,
+      # so on a mixed run the badge would land on whichever release is created
+      # last - possibly the prerelease, which is the exact outcome this is
+      # meant to prevent. Erring this way costs a stable release its badge on
+      # a mixed run; erring the other way ships an rc as Latest. It also makes
+      # the scan's breadth harmless: a chart left untagged by an earlier failed
+      # release can only ever withhold the badge, never wrongly grant it.
       - name: Decide whether this run claims the Latest badge
         id: latest
         run: |
-          pending_any=0
-          pending_stable=0
+          pending_prerelease=0
           for f in charts/*/Chart.yaml; do
             [ -f "$f" ] || continue
             name=$(awk '/^name:/ {print $2; exit}' "$f")
@@ -60,14 +66,13 @@ jobs:
             if git rev-parse -q --verify "refs/tags/${name}-${ver}" >/dev/null; then
               continue   # already released
             fi
-            pending_any=1
             case "$ver" in
-              *-*) echo "pending prerelease: ${name}-${ver}" ;;
-              *)   echo "pending stable: ${name}-${ver}"; pending_stable=1 ;;
+              *-*) echo "pending prerelease: ${name}-${ver}"; pending_prerelease=1 ;;
+              *)   echo "pending stable: ${name}-${ver}" ;;
             esac
           done
-          if [ "$pending_any" = 1 ] && [ "$pending_stable" = 0 ]; then
-            echo "Only prereleases pending - withholding the Latest badge."
+          if [ "$pending_prerelease" = 1 ]; then
+            echo "A prerelease is pending - withholding the Latest badge for this run."
             echo "mark=false" >> "$GITHUB_OUTPUT"
           else
             echo "mark=true" >> "$GITHUB_OUTPUT"
