@@ -227,6 +227,9 @@
             "engineLabel": {
               "type": "string"
             },
+            "alertAnalysis": {
+              "type": "boolean"
+            },
             "credentials": {
               "type": "object",
               "properties": {

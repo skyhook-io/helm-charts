@@ -48,6 +48,12 @@ absent "$enabled" 'verbs: ["get", "list"]'
 contains "$enabled" 'http://review-radar-hub-hub.agent-test.svc.cluster.local:8080'
 absent "$enabled" 'HUB_AGENT_BEDROCK_API_KEY:'
 absent "$enabled" 'HUB_AGENT_BEDROCK_MODEL'
+absent "$enabled" 'HUB_AGENT_BACKGROUND_ENABLED' # Engine on does not imply alert analysis.
+
+alerts=$(render --set hub.agent.alertAnalysis=true)
+contains "$alerts" 'HUB_AGENT_BACKGROUND_ENABLED'
+reject 'hub.agent.alertAnalysis=true requires hub.agent.enabled=true' \
+  --set hub.agent.enabled=false --set hub.agent.alertAnalysis=true
 
 off=$(render --set hub.agent.enabled=false)
 absent "$off" 'HUB_AGENT_'
