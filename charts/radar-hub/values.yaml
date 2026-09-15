@@ -121,6 +121,15 @@ postgres:
 # ---------------------------------------------------------------------------
 hub:
   # Public URL the web app + agent connect to. Must include scheme + host.
+  #
+  # MUST be https://. An http:// URL installs cleanly and passes readiness, but
+  # nothing can sign in and no cluster can connect:
+  #   - the OIDC state cookie is __Host- prefixed, so it carries Secure and is
+  #     never sent back over plain HTTP. Sign-in bounces to
+  #     /login?error=session_expired and the hub logs "state cookie missing".
+  #   - in-cluster Radar refuses a ws:// tunnel to any non-loopback host.
+  # Terminate TLS at your Ingress, or set web.tls.selfSigned=true for a trial
+  # (pair it with cloud.insecureSkipVerify=true on the agent).
   publicURL: ""
 
   # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.
@@ -323,6 +332,76 @@ auth:
     # Roles are managed in the hub by an owner afterwards; they are not synced
     # from IdP groups.
     defaultRole: "member"
+    # Name of the ID-token claim holding the user's IdP groups. Defaults to
+    # "groups", which is what Okta, Keycloak and Entra emit. Set it empty to
+    # disable group passthrough entirely.
+    #
+    # A claim your IdP does not emit is harmless: no groups are forwarded and
+    # sign-in is unaffected. Nothing reaches a cluster until you write a
+    # RoleBinding naming one of the subjects below.
+    #
+    # Each group value is forwarded to your connected clusters as a
+    # `radar:idp:<group>` subject, so you can bind Kubernetes RBAC to the groups
+    # you already manage in your IdP instead of re-authoring per-user bindings:
+    #
+    #   subjects:
+    #     - kind: Group
+    #       name: radar:idp:<group-value-exactly-as-your-IdP-emits-it>
+    #       apiGroup: rbac.authorization.k8s.io
+    #
+    # Claim name varies by IdP: "groups" for Okta, Keycloak and Entra; ADFS
+    # commonly uses "group" or a URI-style claim type such as
+    # "http://schemas.xmlsoap.org/claims/Group".
+    #
+    # A groups claim may be an array or a single string. A string is ONE
+    # group, not a list to split: providers emit a string when the user is in
+    # exactly one group (ADFS does this), so splitting would invent groups.
+    # An AD distinguished name is therefore one value containing commas, and
+    # is dropped by the rule below rather than broken into parts.
+    #
+    # Group VALUES that cannot be represented verbatim in the forwarded header
+    # are DROPPED rather than escaped, because a value that can't round-trip
+    # can't be bound accurately in RBAC either. A value is forwarded only if it
+    # is printable ASCII with no whitespace and no comma, and at most 128 bytes
+    # measured on the value AS THE IdP EMITS IT — a provider prefix counts, so
+    # a Keycloak group (which arrives as "/name") has 127. At most 64 groups
+    # are forwarded per user, though the session cookie is usually the real
+    # limit: the whole ID token is sealed into it, so roughly 31 36-character
+    # group IDs fit and past that the hub REFUSES the sign-in (HTTP 431) rather
+    # than dropping groups silently. This matters for Active
+    # Directory: display names like "Domain Admins" contain a space and are
+    # dropped. Emit stable group IDs (Entra object IDs, Okta group IDs) rather
+    # than display names — they are also immune to a group being renamed, which
+    # would otherwise silently repoint or break every binding.
+    #
+    # Requires a Hub image that understands RADAR_HUB_OIDC_GROUP_CLAIM. On an
+    # older Hub the variable is ignored and no group subjects reach clusters.
+    #
+    # This does not change what is requested from your IdP, so it cannot
+    # affect sign-in or token size: it only decides whether the groups already
+    # present in the ID token are read and forwarded. In particular it does NOT
+    # change the scopes requested — see `scopes` below.
+    #
+    # This does NOT affect hub roles. Roles stay hub-authoritative (defaultRole
+    # above, then managed by an owner in the hub).
+    groupsClaim: "groups"
+    # Extra OIDC scopes on top of openid+email. Setting groupsClaim above does
+    # NOT add a scope, because providers differ in how they are asked for
+    # groups and guessing breaks logins:
+    #   Okta      -> gates the claim behind a scope on a CUSTOM authorization
+    #                server: add "groups" only if your server defines it.
+    #   Keycloak  -> depends on where the group-membership mapper sits. On the
+    #                client's DEDICATED scope the claim is always present:
+    #                leave this empty. On an OPTIONAL client scope named
+    #                "groups": add "groups".
+    #   Entra ID  -> emits groups from the app's Token configuration and
+    #                REJECTS an unknown "groups" scope (AADSTS70011). Leave empty.
+    #   Google    -> emits no groups and rejects the scope. Leave empty.
+    #
+    # Asking for a scope the provider does not define does NOT merely omit the
+    # groups — it fails the whole sign-in (Keycloak: "invalid_scope"). When in
+    # doubt leave this empty and check whether groups arrive before adding one.
+    scopes: []
 
 # ---------------------------------------------------------------------------
 # Branding (customer-facing strings exposed via /api/config)

@@ -1,0 +1,11 @@
+# required-base.yaml plus a working OIDC config (issuer gate open,
+# clientSecret present for secret.yaml's guard). groupsClaim/scopes are NOT
+# set here — each test sets exactly what it exercises.
+hub:
+  publicURL: "https://radar.test.example"
+  cookiePassword: "test-cookie-password-32-bytes-minimum-aaaa"
+auth:
+  oidc:
+    issuer: "https://idp.test.example"
+    clientID: "radar-hub"
+    clientSecret: "test-oidc-client-secret"
