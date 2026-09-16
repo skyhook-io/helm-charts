@@ -230,6 +230,17 @@ spec:
               value: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL | quote }}
             - name: RADAR_HUB_OIDC_DEFAULT_ROLE
               value: {{ .Values.auth.oidc.defaultRole | quote }}
+            {{- with .Values.auth.oidc.scopes }}
+            - name: RADAR_HUB_OIDC_SCOPES
+              value: {{ join "," . | quote }}
+            {{- end }}
+            {{- /* Always emitted, including when empty. The hub reads an
+                   explicitly empty value as "passthrough off"; omitting the
+                   variable would instead leave the binary on its own default
+                   of "groups", so the documented off-switch has to reach the
+                   container to work at all. */}}
+            - name: RADAR_HUB_OIDC_GROUP_CLAIM
+              value: {{ .Values.auth.oidc.groupsClaim | quote }}
             {{- end }}
 
             {{- if .Values.hub.agent.enabled }}
