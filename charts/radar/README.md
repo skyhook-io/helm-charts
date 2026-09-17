@@ -207,8 +207,11 @@ trend charts remain unavailable for Kubecost.
 | `cost.kubecost.existingSecret` | Secret holding an optional Kubecost service-account API key; setting it disables automatic port-9008 auth bypass | `""` |
 | `cost.kubecost.existingSecretKey` | Key within `cost.kubecost.existingSecret`; sent as `X-API-KEY` | `api-key` |
 | `traffic.prometheusUrl` | Manual Prometheus/VictoriaMetrics URL (skips auto-discovery) | `""` |
-| `traffic.prometheusHeaders` | HTTP headers sent with every Prometheus request (auth-protected backends) | `{}` |
-| `traffic.prometheusHeadersFromEnv` | Prometheus headers sourced from environment variables, for secret-backed auth headers | `{}` |
+| `traffic.prometheusHeaders` | HTTP headers sent with every Prometheus request (auth-protected backends). Requires `traffic.prometheusUrl` — credentials are never sent to auto-discovered endpoints | `{}` |
+| `traffic.prometheusHeadersFromEnv` | Prometheus headers sourced from environment variables, for secret-backed auth headers. Requires `traffic.prometheusUrl` | `{}` |
+| `traffic.prometheusSingleCluster` | Optional workload-metrics override: assert that the backend contains only this cluster. Replaces automatic matching; does not scope rightsizing or other metrics features | `false` |
+| `traffic.prometheusClusterLabels` | Optional exact label/value constraints for workload metrics in a shared store, ANDed. Alternative to `prometheusSingleCluster`; leave both unset for automatic matching | `{}` |
+| `traffic.beylaJobSelector` | Beyla Live Traffic matcher fragment. Workload charts use it only with an explicit scope override and accept one `job` equality or regex matcher; custom workload jobs are normally discovered automatically | `""` |
 | `argocd.existingSecret` | Name of a Secret holding the Argo CD API token (recommended — keeps it out of the release) | `""` |
 | `argocd.existingSecretKey` | Key within `argocd.existingSecret` holding the token | `token` |
 | `argocd.token` | Inline Argo CD API token (dev only — lands in the release state) | `""` |
@@ -287,7 +290,7 @@ Disabled by default for security:
 
 | Feature | Value | Description |
 |---------|-------|-------------|
-| Secrets | `rbac.secrets: true` | View secrets in resource list |
+| Secrets | `rbac.secrets: true` | View secrets in resource list. Also granted by `rbac.helm` (Helm stores releases in Secrets), by auth (`auth.mode` other than `none`), and in cloud mode, where every Secret read is re-checked against the requesting user's own RBAC. The grant is cluster-wide `get/list/watch` on all Secrets; `rbac.secrets: false` does not remove it in those modes. |
 | Terminal | `rbac.podExec: true` | Shell access to pods |
 | Port Forward | `rbac.portForward: true` | Port forwarding to pods. Also the fallback for traffic sources (Hubble/Caretta) — Radar dials the relay/metrics Service directly first, so in-cluster installs only need this when a NetworkPolicy or routing blocks Radar's namespace from reaching the service |
 | Logs | `rbac.podLogs: true` | View pod logs (**enabled by default**) |

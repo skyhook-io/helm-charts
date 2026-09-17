@@ -1,0 +1,42 @@
+# S11.04 — values.schema.json rejects wrong-typed OIDC group-passthrough
+# values at render time (helm-unittest validates the schema exactly like
+# `helm template` does). These pin both the rejection and the operator-facing
+# error text pointing at the offending key.
+#
+# NOTE (not fixed here): auth.oidc does NOT set additionalProperties: false,
+# so a misspelled key — e.g. groupClaim (singular) instead of groupsClaim —
+# passes the schema silently and the feature stays off with no signal.
+suite: values schema for OIDC group passthrough
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  - it: rejects groupsClaim given as a list
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.groupsClaim: ["groups"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/auth/oidc/groupsClaim': got array, want string"
+
+  - it: rejects scopes given as a plain string
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.scopes: "groups,profile"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/auth/oidc/scopes': got string, want array"
+
+  - it: rejects scopes given as a list of integers
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.scopes: [1, 2]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/auth/oidc/scopes/0': got number, want string"
