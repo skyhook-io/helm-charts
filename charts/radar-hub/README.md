@@ -128,6 +128,29 @@ live in the sandbox namespace and carry `HUB_AGENT_DB_DSN` plus
 `HUB_AGENT_VERTEX_CREDENTIALS` (the service-account key JSON), matching the
 provider.
 
+### AI analysis in alerts
+
+`hub.agent.alertAnalysis=true` lets alert rules attach an AI analysis to the
+issues they match. It is the fleet-wide kill switch only, and it needs the
+engine above: setting it with `hub.agent.enabled=false` is refused at render
+time rather than ignored. Three further gates live outside the chart — the
+organization's owner must consent, an alert rule must opt in, and the process
+must be running the alerts worker (on by default; a web-only replica running
+with it disabled does no analysis).
+
+```bash
+helm upgrade --install radar-hub skyhook/radar-hub \
+  --set hub.agent.enabled=true \
+  --set hub.agent.alertAnalysis=true \
+  --set hub.agent.provider=anthropic \
+  --set hub.agent.credentials.apiKey=sk-ant-… \
+  --set postgres.bundled.auth.password=<password>
+```
+
+Analyses draw on the same model account as the investigations you start by
+hand, so turning it on adds provider spend that follows how often your rules
+fire.
+
 ### The sandbox namespace
 
 Jobs land in `<fullname>-sandbox` unless `hub.agent.sandbox.namespace` says
