@@ -119,20 +119,28 @@ talks to Claude on Google Cloud Vertex AI with a service-account key. Only the
 selected provider's broker is mounted and only its credential is written, so
 the other egress path does not exist in the pod.
 
+With the bundled evaluation Postgres, set its password explicitly and the
+chart derives the DSN the sandbox pod uses:
+
 ```bash
 helm upgrade --install radar-hub skyhook/radar-hub \
   --set hub.agent.enabled=true \
   --set hub.agent.provider=anthropic \
   --set hub.agent.credentials.apiKey=sk-ant-… \
-  --set hub.agent.credentials.podDSN='postgres://…'
+  --set postgres.bundled.auth.password='<password>'
 ```
 
-`credentials.podDSN` is the DSN the **sandbox pod** resolves, which is not the
-one the Hub uses — the pod runs in another namespace, so a bare Service name
-will not resolve. It can be omitted only with the bundled evaluation Postgres,
-and then only when `postgres.bundled.auth.password` is set explicitly: a
-generated password cannot be read back at render time, so the chart refuses to
-derive a DSN that would not match the database.
+The explicit password is required because a generated one cannot be read back
+at render time, so the chart refuses to derive a DSN that would not match the
+database. On an existing install that already generated a password, pass that
+same value back in from the `<fullname>-postgres` Secret (key `password`);
+changing it does not rotate the password inside the database.
+
+With an external database, set `credentials.podDSN` instead
+(`--set hub.agent.credentials.podDSN='postgres://…'`). It is the DSN the
+**sandbox pod** resolves, which is not the one the Hub uses — the pod runs in
+another namespace, so a bare Service name will not resolve, and the chart
+cannot read your Postgres Secret to rewrite the host.
 
 For Vertex, the credential is a GCP service-account key in JSON rather than an
 API key, so it goes in `credentials.serviceAccountJSON` (`apiKey` is refused
@@ -146,7 +154,7 @@ helm upgrade --install radar-hub skyhook/radar-hub \
   --set hub.agent.vertex.project=my-gcp-project \
   --set hub.agent.vertex.location=global \
   --set-file hub.agent.credentials.serviceAccountJSON=./sa-key.json \
-  --set hub.agent.credentials.podDSN='postgres://…'
+  --set postgres.bundled.auth.password='<password>'
 ```
 
 For a sealed-secrets or external-secrets workflow, skip the inline values and
@@ -156,10 +164,38 @@ live in the sandbox namespace and carry `HUB_AGENT_DB_DSN` plus
 `HUB_AGENT_VERTEX_CREDENTIALS` (the service-account key JSON), matching the
 provider.
 
+### AI analysis in alerts
+
+`hub.agent.alertAnalysis=true` lets alert rules attach an AI analysis to the
+issues they match. It is the fleet-wide kill switch only, and it needs the
+engine above: setting it with `hub.agent.enabled=false` is refused at render
+time rather than ignored. Three further gates live outside the chart — the
+organization's owner must consent, an alert rule must opt in, and the process
+must be running the alerts worker (on by default; a web-only replica running
+with it disabled does no analysis).
+
+```bash
+helm upgrade --install radar-hub skyhook/radar-hub \
+  --set hub.agent.enabled=true \
+  --set hub.agent.alertAnalysis=true \
+  --set hub.agent.provider=anthropic \
+  --set hub.agent.credentials.apiKey=sk-ant-… \
+  --set postgres.bundled.auth.password='<password>'
+```
+
+Analyses draw on the same model account as the investigations you start by
+hand, so turning it on adds provider spend that follows how often your rules
+fire.
+
 ### The sandbox namespace
 
-Jobs land in `<release>-radar-hub-sandbox` unless `hub.agent.sandbox.namespace`
-says otherwise. The default is release-scoped so two installs in one cluster get
+Jobs land in `<fullname>-sandbox` unless `hub.agent.sandbox.namespace` says
+otherwise. `<fullname>` is the release name when it already contains
+`radar-hub`, otherwise `<release>-radar-hub`: a release named `radar-hub` uses
+`radar-hub-sandbox`, and a release named `rh` uses `rh-radar-hub-sandbox`.
+`fullnameOverride` replaces `<fullname>` outright, and `nameOverride` replaces
+`radar-hub` in that rule; this also applies to the `<fullname>-postgres`
+Secret above. The default is release-scoped so two installs in one cluster get
 separate sandboxes, and so a bare install cannot adopt an unrelated namespace
 that already happens to exist. Helm will not install over a namespace it does
 not own, so a name collision fails the install rather than quietly taking it

@@ -286,6 +286,15 @@ spec:
             - name: HUB_AGENT_ENGINE_LABEL
               value: {{ . | quote }}
             {{- end }}
+            {{- /* Fleet-wide kill switch for the AI analysis alert rules can
+                   attach to the issues they match. Emitted only when on: the
+                   hub defaults it off, so an absent variable is the same
+                   posture and cannot be read as a claim on a Hub release that
+                   predates the setting. */}}
+            {{- if .Values.hub.agent.alertAnalysis }}
+            - name: HUB_AGENT_BACKGROUND_ENABLED
+              value: "true"
+            {{- end }}
             {{- end }}
           livenessProbe:
             httpGet:

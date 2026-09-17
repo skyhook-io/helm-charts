@@ -167,6 +167,14 @@ hub:
     # "Claude (via Agent SDK)"). Empty hides the chip.
     engineLabel: ""
 
+    # Let alert rules attach an AI analysis to the issues they match
+    # (HUB_AGENT_BACKGROUND_ENABLED on the hub). This is only the fleet-wide
+    # kill switch: an issue is analysed solely when the organization's owner
+    # has consented, an alert rule covering it opted in, and the engine above
+    # is on. It rides the alerts worker, so it does nothing in a process
+    # running with the worker disabled.
+    alertAnalysis: false
+
     # Credentials reaching the Job pod. Every one is delivered by SecretKeyRef;
     # there is no by-value path into the Job object.
     credentials:
