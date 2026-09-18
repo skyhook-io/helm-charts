@@ -1,0 +1,106 @@
+# Server-side session values: auth.session.{maxLifetime,maxInactive} +
+# auth.oidc.useRefreshToken.
+#
+# Cross-repo contract: the env NAMES asserted literally below are what
+# cmd/hub/main.go reads — RADAR_HUB_SESSION_MAX_LIFETIME,
+# RADAR_HUB_SESSION_MAX_INACTIVE and RADAR_HUB_OIDC_USE_REFRESH_TOKEN. A rename
+# on either side renders fine but silently leaves the Hub on its defaults.
+#
+# Durations are Go time.ParseDuration strings. The Hub IGNORES an unparseable
+# value with only a warning and keeps its default, so the schema is the only
+# place a "7d" gets caught.
+suite: hub deployment server-side session env
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  # Upgrade safety: an install that sets nothing renders no new env, so the
+  # Hub keeps its own defaults (168h / 24h / refresh off).
+  - it: emits no session or refresh env when untouched
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_SESSION_MAX_LIFETIME
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_SESSION_MAX_INACTIVE
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
+          any: true
+
+  # Break-glass sessions obey the same limits, so the session env must not be
+  # gated on auth.oidc.issuer.
+  - it: emits session limits without OIDC
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.session.maxLifetime: "72h"
+      auth.session.maxInactive: "2h"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_SESSION_MAX_LIFETIME
+            value: "72h"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_SESSION_MAX_INACTIVE
+            value: "2h"
+
+  - it: emits the refresh flag when useRefreshToken is true
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.useRefreshToken: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
+            value: "true"
+
+  # The flag means nothing without OIDC; it stays inside the issuer gate.
+  - it: ignores useRefreshToken when OIDC is off
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.useRefreshToken: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
+          any: true
+
+  - it: rejects a day-unit duration
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.session.maxLifetime: "7d"
+    asserts:
+      - failedTemplate:
+          errorPattern: "/auth/session/maxLifetime"
+
+  - it: rejects useRefreshToken given as a string
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.useRefreshToken: "yes"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/auth/oidc/useRefreshToken': got string, want boolean"
