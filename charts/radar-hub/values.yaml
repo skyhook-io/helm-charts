@@ -373,12 +373,8 @@ auth:
     # is printable ASCII with no whitespace and no comma, and at most 128 bytes
     # measured on the value AS THE IdP EMITS IT — a provider prefix counts, so
     # a Keycloak group (which arrives as "/name") has 127. At most 64 groups
-    # are forwarded per user, though the session cookie is usually the real
-    # limit: the whole ID token is sealed into it, so roughly 31 36-character
-    # group IDs fit and past that the hub REFUSES the sign-in (HTTP 431) rather
-    # than dropping groups silently. This matters for Active
-    # Directory: display names like "Domain Admins" contain a space and are
-    # dropped. Emit stable group IDs (Entra object IDs, Okta group IDs) rather
+    # are forwarded per user. This matters for Active Directory: display names
+    # like "Domain Admins" contain a space and are dropped. Emit stable group IDs (Entra object IDs, Okta group IDs) rather
     # than display names — they are also immune to a group being renamed, which
     # would otherwise silently repoint or break every binding.
     #
@@ -410,6 +406,34 @@ auth:
     # groups — it fails the whole sign-in (Keycloak: "invalid_scope"). When in
     # doubt leave this empty and check whether groups arrive before adding one.
     scopes: []
+    # Keep the IdP refresh token on the session and refresh the ID token before
+    # it expires. IdP groups then stay current for the whole session instead of
+    # being dropped when the first ID token expires (typically an hour), and a
+    # user the IdP rejects on refresh is signed out.
+    #
+    # Does NOT change the scopes requested. Okta and Entra return a refresh
+    # token only when "offline_access" is in `scopes` above; Keycloak returns
+    # one by default. The IdP client needs the Refresh Token grant.
+    #
+    # An unreachable IdP (or 429/5xx) fails the request with 503 and keeps the
+    # session; an IdP that rejects the refresh token ends the session (401).
+    #
+    # Requires Hub 1.6.0 or newer; an older Hub ignores it.
+    useRefreshToken: false
+
+  # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
+  # in Postgres; the cookie carries only a random session id, so signing out,
+  # removing a member, or rotating the break-glass password ends the session
+  # server-side. Empty = the Hub default. Go duration syntax: "168h", "30m"
+  # ("7d" is NOT valid and is rejected by the schema).
+  #
+  # Requires Hub 1.6.0 or newer; an older Hub ignores both.
+  session:
+    # Absolute lifetime from sign-in. Hub default: 168h (7 days).
+    maxLifetime: ""
+    # A session unused for this long is signed out. Hub default: 24h. Must be
+    # at least 20m, or the Hub refuses to start.
+    maxInactive: ""
 
 # ---------------------------------------------------------------------------
 # Branding (customer-facing strings exposed via /api/config)

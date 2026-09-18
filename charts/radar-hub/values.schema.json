@@ -401,6 +401,22 @@
               "items": {
                 "type": "string"
               }
+            },
+            "useRefreshToken": {
+              "type": "boolean"
+            }
+          }
+        },
+        "session": {
+          "type": "object",
+          "properties": {
+            "maxLifetime": {
+              "type": "string",
+              "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$"
+            },
+            "maxInactive": {
+              "type": "string",
+              "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$"
             }
           }
         }
