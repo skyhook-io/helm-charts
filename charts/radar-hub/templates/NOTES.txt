@@ -101,19 +101,22 @@ The hub logs license verification at boot. Look for:
 REPLACING A LICENSE
 -------------------
 The license is mounted as a file, not passed as an environment variable, so
-replacing it does NOT need a redeploy or a pod delete. Update the Secret and
-the hub picks the new license up within about a minute. Look for:
+on hub 1.7.0 and newer, replacing it does NOT need a redeploy or a pod delete.
+Update the Secret and the hub picks the new license up within about a minute.
+Look for:
   "applied a replaced licence without a restart"
 
-On hub images older than 1.5.0 the mounted file is still read, but only at
-startup — those pods need a restart to pick up a replacement. Self-renewal
-needs 1.5.0 or newer, which is this chart's default image.
+THREE THINGS IN THIS SECTION NEED 1.7.0, WHICH THIS CHART DOES NOT YET DEFAULT
+TO. Hot reload, license self-renewal and air-gapped mode all arrive in that
+release. On 1.5.0 and 1.6.0 — including this chart's default image — the
+mounted file is read, but only at startup, so replacing the Secret needs a pod
+restart; neither version renews a license on its own, and neither reads
+RADAR_HUB_AIR_GAPPED at all.
 
-Air-gapped needs 1.7.0 or newer, which this chart does NOT yet default to:
-RADAR_HUB_AIR_GAPPED is read by no released hub before then. Until you pin
-image.hub.tag to 1.7.0 or later, setting hub.airGapped fails the render — on
-purpose, because the alternative is a hub that ignores the setting and goes on
-calling out while this page tells you it does not.
+That last one is why setting hub.airGapped fails the render until you pin
+image.hub.tag to 1.7.0 or later. The alternative is a hub that ignores the
+setting and goes on calling out while this page tells you it does not, which is
+the expensive way to find out for anyone audited on having no egress.
 
 An empty or corrupted file is ignored and the hub keeps the license it already
 verified — replacing a file badly does not take your console away mid-flight.
