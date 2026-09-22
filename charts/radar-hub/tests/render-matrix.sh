@@ -2,7 +2,7 @@
 # What the chart accepts and refuses, as an executable check.
 #
 # Two guards live here and neither is visible from reading a values file:
-#   - air-gapped requires a hub image this chart can PROVE is >= 1.5.0
+#   - air-gapped requires a hub image this chart can PROVE is >= 1.7.0
 #   - unknown keys are rejected rather than ignored
 #
 # Both were shipped broken. The air-gapped guard was a denylist that waved
@@ -35,12 +35,12 @@ check() { # check <description> <expect: render|refuse> <extra args...>
   fi
 }
 
-echo "air-gapped requires a provable >= 1.5.0 tag"
-for tag in 1.5.0 1.5.3 2.0.0; do
+echo "air-gapped requires a provable >= 1.7.0 tag"
+for tag in 1.7.0 1.7.3 2.0.0; do
   check "airGapped + $tag" render --set hub.airGapped=true --set image.hub.tag="$tag"
 done
 # Refused because they cannot be CHECKED, not because they are necessarily old.
-for tag in 1.4.2 v1.4.2 1.4 0.9.0 latest sha-abc123 1.5.0-rc1; do
+for tag in 1.4.2 v1.4.2 1.4 0.9.0 latest sha-abc123 1.5.0 1.6.0 1.7.0-rc1; do
   check "airGapped + $tag" refuse --set hub.airGapped=true --set image.hub.tag="$tag"
 done
 check "old tag with airGapped off" render --set hub.airGapped=false --set image.hub.tag=1.4.2
