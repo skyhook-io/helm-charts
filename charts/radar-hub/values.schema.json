@@ -291,7 +291,8 @@
                 "model": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "sandbox": {
               "type": "object",
@@ -437,7 +438,8 @@
             "useRefreshToken": {
               "type": "boolean"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "session": {
           "type": "object",

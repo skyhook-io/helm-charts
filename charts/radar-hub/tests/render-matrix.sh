@@ -50,6 +50,12 @@ check "hub.airgapped (lowercase g)"  refuse --set hub.airgapped=true
 check "hubb.publicURL (top-level)"   refuse --set hubb.publicURL=x
 check "image.hub.tagg"               refuse --set image.hub.tagg=1.5.0
 check "auth.breakGlass.emial"        refuse --set auth.breakGlass.emial=a@b.c
+# The two blocks that stayed open after the first pass. Both sit deep enough
+# that closing a parent does nothing for them, and a typo in either renders a
+# working-looking release with the setting silently dropped — a misspelled OIDC
+# issuer signs nobody in, a misspelled Vertex project sends the agent nowhere.
+check "auth.oidc.issuerr"           refuse --set auth.oidc.issuerr=https://idp.example
+check "hub.agent.vertex.projct"     refuse --set hub.agent.vertex.projct=p
 
 echo "legitimate values still render"
 check "image.hub.tag"                render --set image.hub.tag=1.5.0
