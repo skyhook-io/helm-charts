@@ -66,6 +66,21 @@ check "global.deeply.nested"         render --set global.deeply.nested=1
 # A free-form map the operator fills (IRSA and friends).
 check "serviceAccount annotation"    render --set 'serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:x'
 
+# The floor NOTES tells the operator and the floor the template enforces are
+# one fact written twice. They drifted once already: NOTES promised 1.5.0 while
+# no released hub honoured the setting at all, so an operator following the
+# page got a deployment that called out while being told it did not.
+echo "install notes agree with the guard"
+guard_floor="$(grep -oE 'semverCompare ">=[0-9]+\.[0-9]+\.[0-9]+"' templates/secret.yaml \
+  | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+if grep -q "NEED $guard_floor" templates/NOTES.txt; then
+  printf '  \033[32mok\033[0m    NOTES names the enforced floor (%s)\n' "$guard_floor"
+else
+  printf '  \033[31mNO\033[0m    NOTES does not name the enforced floor (%s)\n' "$guard_floor"
+  fails=$((fails+1))
+fi
+
 echo
 if [ $fails -eq 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; fi
 exit $fails
+
