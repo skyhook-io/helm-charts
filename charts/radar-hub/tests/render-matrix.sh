@@ -66,6 +66,50 @@ check "global.deeply.nested"         render --set global.deeply.nested=1
 # A free-form map the operator fills (IRSA and friends).
 check "serviceAccount annotation"    render --set 'serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:x'
 
+# What the render CONTAINS. Exit status proves the chart accepted the values;
+# it does not prove the Deployment got the setting. Every wiring line a values
+# key is supposed to produce is asserted here, so deleting the line from the
+# template fails this script rather than shipping a chart that renders cleanly
+# and does nothing.
+render() { helm template t . "${BASE[@]}" "$@" 2>/dev/null; }
+envis() { # envis <description> <ENV_NAME> <value> <extra args...>
+  local desc="$1" name="$2" val="$3"; shift 3
+  if render "$@" | grep -A1 -E "^\s+- name: $name\$" | grep -qE "^\s+value: \"?$val\"?\$"; then
+    printf '  ok    %-46s %s=%s\n' "$desc" "$name" "$val"
+  else
+    printf '  FAIL  %-46s %s is not %s in the render\n' "$desc" "$name" "$val"; fails=$((fails+1))
+  fi
+}
+has() { # has <description> <regex> <extra args...>
+  local desc="$1" pat="$2"; shift 2
+  if render "$@" | grep -qE -- "$pat"; then printf '  ok    %-46s present\n' "$desc"
+  else printf '  FAIL  %-46s missing: %s\n' "$desc" "$pat"; fails=$((fails+1)); fi
+}
+lacks() { # lacks <description> <regex> <extra args...>
+  local desc="$1" pat="$2"; shift 2
+  if render "$@" | grep -qE -- "$pat"; then printf '  FAIL  %-46s present but must not be: %s\n' "$desc" "$pat"; fails=$((fails+1))
+  else printf '  ok    %-46s absent\n' "$desc"; fi
+}
+
+echo "the values reach the hub Deployment"
+AG=(--set hub.airGapped=true --set image.hub.tag=1.7.0)
+envis "airGapped sets the variable"        RADAR_HUB_AIR_GAPPED true "${AG[@]}"
+lacks "airGapped suppresses licenseServer" 'name: RADAR_HUB_LICENSE_SERVER' "${AG[@]}" --set hub.licenseServer=https://l.example
+lacks "default install is not air-gapped" 'name: RADAR_HUB_AIR_GAPPED'
+envis "licenseServer is wired when set"    RADAR_HUB_LICENSE_SERVER https://l.example --set hub.licenseServer=https://l.example
+lacks "licenseServer absent when empty"    'name: RADAR_HUB_LICENSE_SERVER'
+envis "latestRadarVersion is wired"        HUB_LATEST_RADAR_VERSION 1.10.0 --set hub.latestRadarVersion=1.10.0
+lacks "latestRadarVersion absent by default" 'name: HUB_LATEST_RADAR_VERSION'
+
+echo "the licence reaches /etc/radar-hub either way"
+has   "license.key lands in the chart Secret"   'license-key: "eyJtest"'       --set license.key=eyJtest
+has   "license.key is mounted"                  'mountPath: /etc/radar-hub'    --set license.key=eyJtest
+has   "license.key volume uses the chart Secret" 'secretName: "t-radar-hub-config"'   --set license.key=eyJtest
+has   "existingSecret is mounted"               'mountPath: /etc/radar-hub'    --set license.existingSecret=my-lic
+has   "existingSecret volume names that Secret" 'secretName: "my-lic"'         --set license.existingSecret=my-lic
+lacks "existingSecret writes no key to the chart Secret" 'license-key:'        --set license.existingSecret=my-lic
+lacks "no licence, no mount"                    'mountPath: /etc/radar-hub'
+
 # The floor NOTES tells the operator and the floor the template enforces are
 # one fact written twice. If they drift, an operator following the page gets a
 # deployment that calls out while being told it does not.
