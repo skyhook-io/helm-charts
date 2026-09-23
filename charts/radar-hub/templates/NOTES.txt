@@ -66,7 +66,7 @@ NEXT STEPS
    - The Billing tab is hidden
    - The "Create organization" button is hidden
 
-4. Connect a Kubernetes cluster with Radar CLI 1.8.3 or newer:
+4. Connect a Kubernetes cluster with the Radar CLI:
      kubectl radar cloud install \
        --hub-url {{ .Values.hub.publicURL | quote }} \
        --context YOUR_KUBECONFIG_CONTEXT
@@ -100,26 +100,11 @@ The hub logs license verification at boot. Look for:
 
 REPLACING A LICENSE
 -------------------
-The license is mounted as a file, not passed as an environment variable, so
-on hub 1.7.0 and newer, replacing it does NOT need a redeploy or a pod delete.
-Update the Secret and the hub picks the new license up within about a minute.
-Look for:
-  "applied a replaced licence without a restart"
-
-THREE THINGS IN THIS SECTION NEED 1.7.0, WHICH THIS CHART DOES NOT YET DEFAULT
-TO. Hot reload, license self-renewal and air-gapped mode all arrive in that
-release. On 1.5.0 and 1.6.0 — including this chart's default image — the
-mounted file is read, but only at startup, so replacing the Secret needs a pod
-restart; neither version renews a license on its own, and neither reads
-RADAR_HUB_AIR_GAPPED at all.
-
-That last one is why setting hub.airGapped fails the render until you pin
-image.hub.tag to 1.7.0 or later. The alternative is a hub that ignores the
-setting and goes on calling out while this page tells you it does not, which is
-the expensive way to find out for anyone audited on having no egress.
-
-An empty or corrupted file is ignored and the hub keeps the license it already
-verified — replacing a file badly does not take your console away mid-flight.
+Update the Secret (or license.key), then restart the hub so it reads the new
+file:
+  kubectl -n {{ .Release.Namespace }} rollout restart deploy/{{ include "radar-hub.fullname" . }}-hub
+Nothing else is interrupted. An empty or corrupted file is ignored and the hub
+keeps the license it already verified.
 
 WHICH LICENSE WINS
 ------------------
