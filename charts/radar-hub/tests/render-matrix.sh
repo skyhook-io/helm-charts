@@ -60,16 +60,15 @@ check "hub.agent.vertex.projct"     refuse --set hub.agent.vertex.projct=p
 echo "legitimate values still render"
 check "image.hub.tag"                render --set image.hub.tag=1.5.0
 # Helm reserves `global` for umbrella charts and the parent owns its shape,
-# so closing the root schema must not close this. It did, briefly.
+# so closing the root schema must not close this.
 check "global.imageRegistry"         render --set global.imageRegistry=my.registry.io
 check "global.deeply.nested"         render --set global.deeply.nested=1
 # A free-form map the operator fills (IRSA and friends).
 check "serviceAccount annotation"    render --set 'serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:x'
 
 # The floor NOTES tells the operator and the floor the template enforces are
-# one fact written twice. They drifted once already: NOTES promised 1.5.0 while
-# no released hub honoured the setting at all, so an operator following the
-# page got a deployment that called out while being told it did not.
+# one fact written twice. If they drift, an operator following the page gets a
+# deployment that calls out while being told it does not.
 echo "install notes agree with the guard"
 guard_floor="$(grep -oE 'semverCompare ">=[0-9]+\.[0-9]+\.[0-9]+"' templates/secret.yaml \
   | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"

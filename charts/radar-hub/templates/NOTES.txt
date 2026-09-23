@@ -123,7 +123,8 @@ verified — replacing a file badly does not take your console away mid-flight.
 
 WHICH LICENSE WINS
 ------------------
-A hub that is NOT air-gapped renews its own license daily and remembers the
+A hub that is NOT air-gapped and holds a cloud-issued, org-linked license
+renews it daily and remembers the
 result. So there can be two: the one in your values file and the one this hub
 fetched. The later expiry wins; on the same expiry, the fetched one wins if the
 terms differ, because that is what a mid-period change looks like — buying more
