@@ -36,6 +36,9 @@ jobs:
       - name: Verify AI agent chart configuration
         run: bash .github/ci/agent-test.sh
 
+      - name: Render matrix (what radar-hub accepts, refuses and wires)
+        run: bash charts/radar-hub/tests/render-matrix.sh
+
       # The default nodeSelector must pin the OS but NOT the architecture --
       # the official images are amd64+arm64, and an arch pin silently makes an
       # unmodified install unschedulable on arm64 nodes. Also assert that an
