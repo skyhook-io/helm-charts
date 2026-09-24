@@ -101,6 +101,11 @@ lacks "licenseServer absent when empty"    'name: RADAR_HUB_LICENSE_SERVER'
 envis "latestRadarVersion is wired"        HUB_LATEST_RADAR_VERSION 1.10.0 --set hub.latestRadarVersion=1.10.0
 lacks "latestRadarVersion absent by default" 'name: HUB_LATEST_RADAR_VERSION'
 
+echo "the self-signed certificate is told the public host"
+envis "selfSigned passes the host, without the port" WEB_TLS_SELF_SIGNED_HOST radar.acme.example --set web.tls.selfSigned=true --set hub.publicURL=https://radar.acme.example:8443
+envis "selfSigned passes a bare host"               WEB_TLS_SELF_SIGNED_HOST x.example         --set web.tls.selfSigned=true
+lacks "no host env without selfSigned"            'name: WEB_TLS_SELF_SIGNED_HOST'
+
 echo "the licence reaches /etc/radar-hub either way"
 has   "license.key lands in the chart Secret"   'license-key: "eyJtest"'       --set license.key=eyJtest
 has   "license.key is mounted"                  'mountPath: /etc/radar-hub'    --set license.key=eyJtest
@@ -110,18 +115,24 @@ has   "existingSecret volume names that Secret" 'secretName: "my-lic"'         -
 lacks "existingSecret writes no key to the chart Secret" 'license-key:'        --set license.existingSecret=my-lic
 lacks "no licence, no mount"                    'mountPath: /etc/radar-hub'
 
-# The floor NOTES tells the operator and the floor the template enforces are
-# one fact written twice. If they drift, an operator following the page gets a
-# deployment that calls out while being told it does not.
-echo "install notes agree with the guard"
-guard_floor="$(grep -oE 'semverCompare ">=[0-9]+\.[0-9]+\.[0-9]+"' templates/secret.yaml \
-  | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
-if grep -q "NEED $guard_floor" templates/NOTES.txt; then
-  printf '  \033[32mok\033[0m    NOTES names the enforced floor (%s)\n' "$guard_floor"
-else
-  printf '  \033[31mNO\033[0m    NOTES does not name the enforced floor (%s)\n' "$guard_floor"
-  fails=$((fails+1))
-fi
+# The restart command in the install notes must name the Deployment that
+# exists. The Deployment name is truncated to Kubernetes' limit; a notes line
+# that rebuilds it from parts is not, and diverges exactly when names get long.
+#
+# `helm template` never renders NOTES.txt and `helm install --dry-run` prints
+# it differently across Helm versions, so the notes are rendered through `tpl`
+# from a scratch copy of the chart, inside a template shaped as YAML because
+# Helm validates every rendered template as a manifest.
+echo "install notes name the real hub Deployment"
+scratch="$(mktemp -d)"; cp -R . "$scratch/chart"; cp templates/NOTES.txt "$scratch/chart/notes-copy.txt"
+printf 'kind: NotesCheck\nnotes: |\n{{ tpl (.Files.Get "notes-copy.txt") . | indent 2 }}\n' > "$scratch/chart/templates/notes-rendered.yaml"
+for rel in t a-release-name-long-enough-to-force-truncation-x50; do
+  want="$(helm template "$rel" . "${BASE[@]}" --show-only templates/deployment-hub.yaml 2>/dev/null | awk '/^  name:/{print $2; exit}')"
+  got="$(helm template "$rel" "$scratch/chart" "${BASE[@]}" --set license.existingSecret=x --show-only templates/notes-rendered.yaml 2>/dev/null | grep -oE 'rollout restart deploy/[^ ]+' | sed 's#.*deploy/##' | head -1)"
+  if [ -n "$want" ] && [ "$want" = "$got" ]; then printf '  ok    %-46s %s\n' "release $rel" "$got"
+  else printf '  FAIL  %-46s notes say %s, Deployment is %s\n' "release $rel" "${got:-nothing}" "${want:-nothing}"; fails=$((fails+1)); fi
+done
+rm -rf "$scratch"
 
 echo
 if [ $fails -eq 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; fi
