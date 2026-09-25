@@ -1,0 +1,52 @@
+# auth.oidc.clusterAccess -> RADAR_HUB_OIDC_CLUSTER_ACCESS. The env name is what
+# cmd/hub/main.go reads; a rename on either side renders fine and silently
+# leaves every install on the roles default, so the exact string is pinned.
+suite: hub deployment OIDC cluster access env
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  - it: defaults to roles when OIDC is configured
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_ACCESS
+            value: "roles"
+
+  - it: emits idp when set
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: idp
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_ACCESS
+            value: "idp"
+
+  - it: emits nothing without OIDC
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_ACCESS
+          any: true
+
+  - it: rejects an unknown value
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: groups
+    asserts:
+      - failedTemplate:
+          errorPattern: "clusterAccess"

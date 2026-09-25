@@ -437,6 +437,13 @@
             },
             "useRefreshToken": {
               "type": "boolean"
+            },
+            "clusterAccess": {
+              "type": "string",
+              "enum": [
+                "roles",
+                "idp"
+              ]
             }
           },
           "additionalProperties": false

@@ -264,6 +264,8 @@ spec:
             - name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
               value: "true"
             {{- end }}
+            - name: RADAR_HUB_OIDC_CLUSTER_ACCESS
+              value: {{ .Values.auth.oidc.clusterAccess | quote }}
             {{- end }}
 
             {{- /* Outside the OIDC block: break-glass sessions obey the same

@@ -463,6 +463,22 @@ auth:
     #
     # Requires Hub 1.6.0 or newer; an older Hub ignores it.
     useRefreshToken: false
+    # How NEW cluster installs grant Kubernetes access to hub users.
+    #   roles -> the Radar chart's default ClusterRoleBindings for hub roles
+    #            (owner/member/viewer) stay on. The default.
+    #   idp   -> the connect wizard installs with cloud.defaultRbac.create=false,
+    #            so hub roles grant nothing in the cluster and your own
+    #            RoleBindings on radar:idp:<group> subjects decide access.
+    #
+    # Existing clusters are never changed. The Hub shows this read-only in
+    # Settings; it cannot be changed from the UI on a self-hosted install.
+    #
+    # idp needs IdP group passthrough (groupsClaim above) to be working —
+    # otherwise new clusters get no hub-role bindings AND no group subjects,
+    # and nobody can see anything. The Hub logs a warning at boot in that case.
+    #
+    # An older Hub ignores this value and behaves as roles.
+    clusterAccess: "roles"
 
   # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
   # in Postgres; the cookie carries only a random session id, so signing out,
