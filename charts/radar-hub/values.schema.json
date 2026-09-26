@@ -475,6 +475,7 @@
             "clusterAccess": {
               "type": "string",
               "enum": [
+                "",
                 "roles",
                 "idp"
               ]
