@@ -44,6 +44,13 @@ for tag in 1.4.2 v1.4.2 1.4 0.9.0 latest sha-abc123 1.5.0 1.6.0 1.7.0-rc1; do
   check "airGapped + $tag" refuse --set hub.airGapped=true --set image.hub.tag="$tag"
 done
 check "old tag with airGapped off" render --set hub.airGapped=false --set image.hub.tag=1.4.2
+# The chart's own appVersion is trusted even as a pre-release (an rc chart on
+# an rc Hub). The same pre-release set by hand is not.
+APP=$(awk -F'"' '/^appVersion:/{print $2}' Chart.yaml)
+case "$APP" in
+  *-*) check "airGapped + default tag ($APP)" render --set hub.airGapped=true
+       check "airGapped + ${APP%%-*}-rc.999 by hand" refuse --set hub.airGapped=true --set image.hub.tag="${APP%%-*}-rc.999" ;;
+esac
 
 echo "unknown keys are refused, not ignored"
 check "hub.airgapped (lowercase g)"  refuse --set hub.airgapped=true
