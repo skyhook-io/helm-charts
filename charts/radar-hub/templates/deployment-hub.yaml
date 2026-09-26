@@ -1,3 +1,14 @@
+{{- /* idp drops the hub-role bindings from new installs, so it only works
+       when IdP groups reach the cluster. Refuse it here rather than let the
+       Hub fail at boot; the Hub still refuses the cases the chart can't see. */}}
+{{- if eq .Values.auth.oidc.clusterAccess "idp" }}
+{{- if not .Values.auth.oidc.issuer }}
+{{- fail "auth.oidc.clusterAccess=idp needs OIDC configured (auth.oidc.issuer): IdP groups decide cluster access in that mode. Leave it unset or set roles." -}}
+{{- end }}
+{{- if not .Values.auth.oidc.groupsClaim }}
+{{- fail "auth.oidc.clusterAccess=idp needs auth.oidc.groupsClaim: without it no IdP groups reach the cluster and new installs grant nobody access. Leave clusterAccess unset or set roles." -}}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -264,8 +275,10 @@ spec:
             - name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
               value: "true"
             {{- end }}
+            {{- with .Values.auth.oidc.clusterAccess }}
             - name: RADAR_HUB_OIDC_CLUSTER_ACCESS
-              value: {{ .Values.auth.oidc.clusterAccess | quote }}
+              value: {{ . | quote }}
+            {{- end }}
             {{- end }}
 
             {{- /* Outside the OIDC block: break-glass sessions obey the same

@@ -6,10 +6,23 @@ templates:
   - templates/deployment-hub.yaml
   - templates/secret.yaml
 tests:
-  - it: defaults to roles when OIDC is configured
+  - it: emits nothing by default so the Hub follows the IdP
     template: templates/deployment-hub.yaml
     values:
       - values/oidc-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_ACCESS
+          any: true
+
+  - it: emits roles when set
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: roles
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -50,3 +63,24 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "clusterAccess"
+
+  - it: refuses idp without OIDC
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.clusterAccess: idp
+    asserts:
+      - failedTemplate:
+          errorPattern: "needs OIDC configured"
+
+  - it: refuses idp with group passthrough off
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: idp
+      auth.oidc.groupsClaim: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "needs auth.oidc.groupsClaim"
