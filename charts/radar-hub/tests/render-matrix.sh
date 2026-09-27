@@ -68,7 +68,18 @@ echo "hub.cloudAppURL must be a bare http(s) origin"
 check "cloudAppURL https origin"         render --set hub.cloudAppURL=https://app.example
 check "cloudAppURL with port"            render --set hub.cloudAppURL=http://localhost:3000
 check "cloudAppURL without scheme"       refuse --set hub.cloudAppURL=app.radarhq.io
+check "cloudAppURL with trailing slash"   render --set hub.cloudAppURL=https://app.radarhq.io/
+check "cloudAppURL max port"             render --set hub.cloudAppURL=https://app.example:65535
+check "cloudAppURL IPv6 literal"         render --set 'hub.cloudAppURL=http://[::1]:8080'
 check "cloudAppURL with a path"          refuse --set hub.cloudAppURL=https://app.example/org
+check "cloudAppURL empty host and port"  refuse --set hub.cloudAppURL=https://:
+check "cloudAppURL non-numeric port"     refuse --set hub.cloudAppURL=https://app.example:abc
+check "cloudAppURL port out of range"    refuse --set hub.cloudAppURL=https://app.example:99999
+check "cloudAppURL port zero"            refuse --set hub.cloudAppURL=https://app.example:0
+check "cloudAppURL with userinfo"        refuse --set hub.cloudAppURL=https://u@app.example
+check "cloudAppURL with a query"         refuse --set 'hub.cloudAppURL=https://app.example?x'
+check "cloudAppURL with a fragment"      refuse --set 'hub.cloudAppURL=https://app.example#x'
+check "cloudAppURL with a backslash"     refuse --set 'hub.cloudAppURL=https://app.example\\evil'   # --set unescapes \\ to one backslash
 
 echo "legitimate values still render"
 check "image.hub.tag"                render --set image.hub.tag=1.5.0
