@@ -64,6 +64,12 @@ check "auth.breakGlass.emial"        refuse --set auth.breakGlass.emial=a@b.c
 check "auth.oidc.issuerr"           refuse --set auth.oidc.issuerr=https://idp.example
 check "hub.agent.vertex.projct"     refuse --set hub.agent.vertex.projct=p
 
+echo "hub.cloudAppURL must be a bare http(s) origin"
+check "cloudAppURL https origin"         render --set hub.cloudAppURL=https://app.example
+check "cloudAppURL with port"            render --set hub.cloudAppURL=http://localhost:3000
+check "cloudAppURL without scheme"       refuse --set hub.cloudAppURL=app.radarhq.io
+check "cloudAppURL with a path"          refuse --set hub.cloudAppURL=https://app.example/org
+
 echo "legitimate values still render"
 check "image.hub.tag"                render --set image.hub.tag=1.5.0
 # Helm reserves `global` for umbrella charts and the parent owns its shape,
@@ -107,6 +113,9 @@ envis "licenseServer is wired when set"    RADAR_HUB_LICENSE_SERVER https://l.ex
 lacks "licenseServer absent when empty"    'name: RADAR_HUB_LICENSE_SERVER'
 envis "latestRadarVersion is wired"        HUB_LATEST_RADAR_VERSION 1.10.0 --set hub.latestRadarVersion=1.10.0
 lacks "latestRadarVersion absent by default" 'name: HUB_LATEST_RADAR_VERSION'
+envis "cloudAppURL is wired when set"      RADAR_HUB_CLOUD_APP_URL https://app.example --set hub.cloudAppURL=https://app.example
+lacks "cloudAppURL absent when empty"      'name: RADAR_HUB_CLOUD_APP_URL'
+envis "airGapped keeps cloudAppURL"        RADAR_HUB_CLOUD_APP_URL https://app.example "${AG[@]}" --set hub.cloudAppURL=https://app.example
 
 echo "the self-signed certificate is told the public host"
 envis "selfSigned passes the host, without the port" WEB_TLS_SELF_SIGNED_HOST radar.acme.example --set web.tls.selfSigned=true --set hub.publicURL=https://radar.acme.example:8443

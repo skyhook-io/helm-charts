@@ -151,6 +151,12 @@ spec:
             - name: RADAR_HUB_AIR_GAPPED
               value: "true"
             {{- end }}
+            {{- /* Only builds links into Cloud; the hub makes no calls to
+                   it, so air-gapped leaves it alone. */}}
+            {{- if .Values.hub.cloudAppURL }}
+            - name: RADAR_HUB_CLOUD_APP_URL
+              value: {{ .Values.hub.cloudAppURL | quote }}
+            {{- end }}
             - name: RADAR_HUB_CHART_VERSION
               value: {{ .Chart.Version | quote }}
             {{- if .Values.web.tls.selfSigned }}

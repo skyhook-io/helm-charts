@@ -301,6 +301,14 @@ hub:
   # given you a different endpoint. Ignored entirely when airGapped is true.
   licenseServer: ""
 
+  # The Radar Cloud web app this hub's license belongs to, as a bare http(s)
+  # origin with no path (e.g. "https://app.radarhq.io"). The hub uses it only
+  # to build links into Cloud, such as "Move it for me"; it makes no calls to
+  # it. Empty means https://app.radarhq.io. Set it together with licenseServer
+  # when Skyhook has pointed you at a different Cloud, because the hub cannot
+  # derive one from the other. A value that is not an origin fails the render.
+  cloudAppURL: ""
+
   replicas: 1
 
   resources:
