@@ -5,15 +5,30 @@
 Mode:           self-hosted Radar Cloud control plane
 Hub image:      {{ include "radar-hub.hubImage" . }}
 Web image:      {{ include "radar-hub.webImage" . }}
-Public URL:     {{ default "(not set — set hub.publicURL)" .Values.hub.publicURL }}
+{{- $publicURL := .Values.hub.publicURL }}
+{{- $loopback := include "radar-hub.publicURLIsLoopback" . }}
+{{- /* A localhost URL opened through port-forward, rather than through an
+       Ingress, Gateway or load balancer publishing it on localhost. */}}
+{{- $portForward := and $loopback (not (include "radar-hub.publicURLFronted" .)) }}
+Public URL:     {{ default "(not set - set hub.publicURL)" $publicURL }}{{ if $loopback }} (localhost: browser only, never given to agents){{ end }}
 Org name:       {{ .Values.hub.orgName }}
 
 Services:
-  web: {{ .Values.service.web.type }} :{{ .Values.service.web.port }} (public entrypoint; nginx proxies API, agent, and MCP traffic)
+  web: {{ .Values.service.web.type }} :{{ .Values.service.web.port }}{{ if include "radar-hub.inClusterTLS" . }}, :{{ .Values.service.web.tlsPort | default 443 }} https (self-signed){{ end }} (public entrypoint; nginx proxies API, agent, and MCP traffic)
   hub: {{ .Values.service.hub.type }} :{{ .Values.service.hub.port }} (raw hub API; keep ClusterIP unless using a split-origin deployment)
+{{- if include "radar-hub.inClusterTLS" . }}
+
+In-cluster agent address (self-signed https on the web Service):
+  {{ include "radar-hub.inClusterAgentURL" . }}
+  Radar in this cluster uses this as cloud.url, with cloud.insecureSkipVerify=true.
+{{- end }}
 
 Exposure:
-{{- if .Values.ingress.enabled }}
+{{- if $portForward }}
+  none: hub.publicURL is a localhost address, opened with kubectl
+  port-forward (step 2 below). Radar in this cluster connects to the
+  in-cluster agent address above.
+{{- else if .Values.ingress.enabled }}
   Ingress ({{ default "default class" .Values.ingress.className }}) → {{ range .Values.ingress.hosts }}{{ .host }} {{ end }}
 {{- else if .Values.httpRoute.enabled }}
   Gateway API HTTPRoute → parentRefs: {{ range .Values.httpRoute.parentRefs }}{{ .name }}{{ if .namespace }}/{{ .namespace }}{{ end }}{{ if .sectionName }} (listener {{ .sectionName }}){{ end }} {{ end }}
@@ -46,7 +61,7 @@ Auth:
 {{- end }}
 {{- if .Values.auth.oidc.issuer }}
   - OIDC enabled: issuer={{ .Values.auth.oidc.issuer }} client_id={{ .Values.auth.oidc.clientID }}
-  - OIDC callback: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL }}
+  - OIDC callback: {{ default (printf "%s/api/auth/oidc/callback" $publicURL) .Values.auth.oidc.callbackURL }}
 {{- else if not .Values.auth.breakGlass.email }}
   WARNING: no auth method configured. Set auth.breakGlass.* and/or auth.oidc.*
 {{- end }}
@@ -58,20 +73,38 @@ NEXT STEPS
      kubectl -n {{ .Release.Namespace }} get pods -w
      kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "radar-hub.hubName" . }} -c migrate
 
+{{ if $portForward -}}
+2. Once both Deployments are Ready, forward the hub to your workstation and
+   leave the command running:
+     kubectl -n {{ .Release.Namespace }} port-forward{{ with include "radar-hub.portForwardAddress" . }} --address {{ . }}{{ end }} svc/{{ include "radar-hub.webName" . }} {{ include "radar-hub.publicURLPort" . }}:{{ .Values.service.web.tlsPort | default 443 }}
+   Then open {{ $publicURL }}. The certificate is self-signed, so the
+   browser asks you to accept it once. Anyone you invite runs the same
+   port-forward with their own kubectl access.
+{{- else -}}
 2. Once both Deployments are Ready, open:
-     {{ default "<hub.publicURL>" .Values.hub.publicURL }}
+     {{ default "<hub.publicURL>" $publicURL }}
+{{- end }}
 
 3. Sign in with the break-glass admin (or OIDC if configured).
 
+{{ if .Values.localCluster.id -}}
+4. This cluster shows up as "local" about 30 seconds after the first sign-in,
+   once Radar is installed here with clusterName {{ .Values.localCluster.id }} and the
+   matching token.
+{{- else if $loopback -}}
+4. Connect this cluster from the hub's "Connect a cluster" page, and answer
+   that it runs in the same cluster as the hub.
+{{- else -}}
 4. Connect a Kubernetes cluster with the Radar CLI:
      kubectl radar cloud install \
-       --hub-url {{ .Values.hub.publicURL | quote }} \
+       --hub-url {{ $publicURL | quote }} \
        --context YOUR_KUBECONFIG_CONTEXT
 
    The CLI confirms the kubeconfig target, preflights native Helm changes,
    and hands verified Argo CD/Flux installations back to GitOps. Browser
    approval requires an account allowed to add clusters to this organization.
    Guide: https://radarhq.io/docs/cloud/self-hosted/install#5-connect-your-first-cluster
+{{- end }}
 
 5. Upgrade path:
      helm repo update

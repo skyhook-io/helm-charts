@@ -130,6 +130,14 @@ hub:
   #   - in-cluster Radar refuses a ws:// tunnel to any non-loopback host.
   # Terminate TLS at your Ingress, or set web.tls.selfSigned=true for a trial
   # (pair it with cloud.insecureSkipVerify=true on the agent).
+  #
+  # A localhost address (localhost, *.localhost, 127.x.x.x, [::1], 0.0.0.0
+  # or [::], any port) is never given to agents: a Radar in this cluster
+  # dials the in-cluster address the install notes print. With no Ingress,
+  # Gateway or load balancer set, it also means the hub has no public address
+  # and people open it with kubectl port-forward: the URL must then be https
+  # (e.g. https://localhost:8443) with web.tls.selfSigned=true, and invites
+  # and emails carry the port-forward step.
   publicURL: ""
 
   # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.
@@ -301,6 +309,14 @@ hub:
   # given you a different endpoint. Ignored entirely when airGapped is true.
   licenseServer: ""
 
+  # The Radar Cloud web app this hub's license belongs to, as a bare http(s)
+  # origin with no path (e.g. "https://app.radarhq.io"). The hub uses it only
+  # to build links into Cloud, such as "Move it for me"; it makes no calls to
+  # it. Empty means https://app.radarhq.io. Set it together with licenseServer
+  # when Skyhook has pointed you at a different Cloud, because the hub cannot
+  # derive one from the other. A value that is not an origin fails the render.
+  cloudAppURL: ""
+
   replicas: 1
 
   resources:
@@ -357,6 +373,43 @@ web:
   # for a browser-trusted certificate.
   tls:
     selfSigned: false
+    # Keep the self-signed https listener for Radar agents in this cluster,
+    # which dial it at the in-cluster address the install notes print. Public
+    # traffic is unaffected: an Ingress or Gateway keeps using the http port,
+    # and the hub does not treat the public certificate as self-signed. Leave
+    # it on once any agent uses that address, so switching public routing to
+    # an Ingress or Gateway does not disconnect it. Implied by selfSigned, a
+    # localhost hub.publicURL and localCluster.
+    inCluster: false
+
+# ---------------------------------------------------------------------------
+# Local cluster: the cluster the hub runs in
+# ---------------------------------------------------------------------------
+# The hub registers it itself, named "local", with this id and token. Install
+# Radar in the same cluster with clusterName set to the id and the same token,
+# and it connects as soon as the hub has an organization (right after the
+# first sign-in). Changing the token and upgrading replaces the registered
+# token, so the Radar install must be updated with the new one.
+#
+# That Radar dials the web Service's self-signed https port by its in-cluster
+# address (install notes print it). Setting localCluster keeps that port on
+# even with web.tls.selfSigned=false, so moving public traffic to an Ingress
+# or Gateway does not disconnect it. Public traffic keeps using the http port.
+#
+# Set id together with EITHER token OR existingSecret. Leave all empty to
+# connect every cluster from the hub's UI instead.
+localCluster:
+  # 11 characters of A-Z, a-z, 0-9, "-" and "_", the form the hub gives its
+  # cluster ids.
+  id: ""
+  # "rhc_" followed by 43 characters of A-Z, a-z, 0-9, "-" and "_", the form
+  # the hub mints. Written to the chart's Secret. Prefer existingSecret for
+  # GitOps so the token is not in your values file.
+  token: ""
+  # Secret you manage, in this release's namespace, holding the token.
+  existingSecret: ""
+  # Key inside existingSecret. Empty means "token".
+  existingSecretKey: ""
 
 # ---------------------------------------------------------------------------
 # Auth
@@ -546,7 +599,9 @@ service:
     type: ClusterIP
     port: 80
     # HTTPS port on the web Service, wired to the pod's self-signed :8443
-    # listener. Only rendered when web.tls.selfSigned=true.
+    # listener. Rendered when web.tls.selfSigned or web.tls.inCluster is true,
+    # with a localhost hub.publicURL, or with localCluster; Radar agents in
+    # this cluster dial it.
     tlsPort: 443
 
   # Advanced/split-origin only. Keep the hub Service internal unless you
