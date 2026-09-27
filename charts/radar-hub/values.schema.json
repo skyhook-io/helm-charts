@@ -176,7 +176,7 @@
       "properties": {
         "publicURL": {
           "type": "string",
-          "description": "Public https URL of the hub. Required unless oneCluster.enabled is true, where empty means https://localhost:8443."
+          "minLength": 1
         },
         "cookiePassword": {
           "type": "string"
@@ -384,16 +384,6 @@
             }
           },
           "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "oneCluster": {
-      "type": "object",
-      "description": "Try it in one cluster: no public address; the hub is opened with port-forward at https://localhost:8443. Requires web.tls.selfSigned=true.",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -730,34 +720,6 @@
     },
     "fullnameOverride": {
       "type": "string"
-    }
-  },
-  "if": {
-    "properties": {
-      "oneCluster": {
-        "properties": {
-          "enabled": {
-            "const": true
-          }
-        },
-        "required": [
-          "enabled"
-        ]
-      }
-    },
-    "required": [
-      "oneCluster"
-    ]
-  },
-  "else": {
-    "properties": {
-      "hub": {
-        "properties": {
-          "publicURL": {
-            "minLength": 1
-          }
-        }
-      }
     }
   },
   "additionalProperties": false

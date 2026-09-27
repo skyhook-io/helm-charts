@@ -7,7 +7,7 @@
 # production, disable it and point at your own DB (postgres.external).
 #
 # Required values for a working install:
-#   --set hub.publicURL=https://radar.acme.example   (not with oneCluster.enabled)
+#   --set hub.publicURL=https://radar.acme.example
 #   --set hub.cookiePassword=<32+ byte secret>
 #   # Postgres: bundled eval DB is ON by default (nothing to set). For
 #   # production: --set postgres.bundled.enabled=false --set postgres.external.existingSecret=<secret>
@@ -131,8 +131,13 @@ hub:
   # Terminate TLS at your Ingress, or set web.tls.selfSigned=true for a trial
   # (pair it with cloud.insecureSkipVerify=true on the agent).
   #
-  # Optional with oneCluster.enabled=true, where empty means
-  # https://localhost:8443.
+  # A localhost address (localhost, *.localhost, 127.x.x.x, [::1], 0.0.0.0
+  # or [::], any port) is never given to agents: a Radar in this cluster
+  # dials the in-cluster address the install notes print. With no Ingress,
+  # Gateway or load balancer set, it also means the hub has no public address
+  # and people open it with kubectl port-forward: the URL must then be https
+  # (e.g. https://localhost:8443) with web.tls.selfSigned=true, and invites
+  # and emails carry the port-forward step.
   publicURL: ""
 
   # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.
@@ -373,24 +378,9 @@ web:
     # traffic is unaffected: an Ingress or Gateway keeps using the http port,
     # and the hub does not treat the public certificate as self-signed. Leave
     # it on once any agent uses that address, so switching public routing to
-    # an Ingress or Gateway does not disconnect it. Implied by selfSigned,
-    # oneCluster.enabled and localCluster.
+    # an Ingress or Gateway does not disconnect it. Implied by selfSigned, a
+    # localhost hub.publicURL and localCluster.
     inCluster: false
-
-# ---------------------------------------------------------------------------
-# Try it in one cluster
-# ---------------------------------------------------------------------------
-# A trial with no public address, DNS, ingress or load balancer. You open the
-# hub from your workstation with port-forward, and a Radar installed in the
-# same cluster connects to it over the in-cluster address.
-#
-# Requires web.tls.selfSigned=true. hub.publicURL defaults to
-# https://localhost:8443. The hub treats that URL as browser-only: invites
-# and emails carry the port-forward step, and no agent is ever given it.
-# Pair it with localCluster below so the cluster the hub runs in shows up
-# without a separate connect step.
-oneCluster:
-  enabled: false
 
 # ---------------------------------------------------------------------------
 # Local cluster: the cluster the hub runs in
@@ -610,7 +600,8 @@ service:
     port: 80
     # HTTPS port on the web Service, wired to the pod's self-signed :8443
     # listener. Rendered when web.tls.selfSigned or web.tls.inCluster is true,
-    # or with oneCluster or localCluster; Radar agents in this cluster dial it.
+    # with a localhost hub.publicURL, or with localCluster; Radar agents in
+    # this cluster dial it.
     tlsPort: 443
 
   # Advanced/split-origin only. Keep the hub Service internal unless you

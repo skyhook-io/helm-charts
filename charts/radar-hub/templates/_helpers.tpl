@@ -176,35 +176,79 @@ path is reachable.
 {{- end }}
 
 {{/*
-Browser origin of a oneCluster install: what `kubectl port-forward` to the web
-Service's https port serves on the workstation.
+Host and port of hub.publicURL, split from urlParse's host:port. A bracketed
+IPv6 host keeps its brackets. The port falls back to the scheme default.
 */}}
-{{- define "radar-hub.oneClusterOrigin" -}}
-https://localhost:8443
+{{- define "radar-hub.publicURLHost" -}}
+{{- $hostport := (urlParse .Values.hub.publicURL).host -}}
+{{- if hasPrefix "[" $hostport -}}
+{{- regexFind "^\\[[^\\]]*\\]" $hostport | lower -}}
+{{- else -}}
+{{- regexReplaceAll ":[0-9]*$" $hostport "" | trimSuffix "." | lower -}}
+{{- end -}}
+{{- end }}
+
+{{- define "radar-hub.publicURLPort" -}}
+{{- $hostport := (urlParse .Values.hub.publicURL).host -}}
+{{- $port := regexFind "[0-9]+$" (regexFind ":[0-9]+$" (regexReplaceAll "^\\[[^\\]]*\\]" $hostport "")) -}}
+{{- if $port -}}
+{{- $port -}}
+{{- else if eq (urlParse .Values.hub.publicURL).scheme "http" -}}
+80
+{{- else -}}
+443
+{{- end -}}
 {{- end }}
 
 {{/*
-hub.publicURL as the hub and web read it. In oneCluster mode an empty value
-means the port-forward origin, since the install has no other address.
+Whether hub.publicURL names this machine: localhost, a *.localhost name,
+127.x.x.x, [::1], or the unspecified 0.0.0.0 and [::], with any port. Such a
+hub has no public address and is opened with kubectl port-forward. The hub
+uses the same list. Returns "true" or "".
 */}}
-{{- define "radar-hub.publicURL" -}}
-{{- if .Values.oneCluster.enabled -}}
-{{- default (include "radar-hub.oneClusterOrigin" .) .Values.hub.publicURL -}}
-{{- else -}}
-{{- .Values.hub.publicURL -}}
+{{- define "radar-hub.publicURLIsLoopback" -}}
+{{- $h := include "radar-hub.publicURLHost" . -}}
+{{- if or (eq $h "localhost") (hasSuffix ".localhost" $h) (regexMatch "^127\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$" $h) (eq $h "[::1]") (eq $h "0.0.0.0") (eq $h "[::]") -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Whether something other than port-forward serves hub.publicURL: an Ingress,
+a Gateway, or a LoadBalancer web Service (kind and Docker Desktop publish
+these on localhost). Returns "true" or "".
+*/}}
+{{- define "radar-hub.publicURLFronted" -}}
+{{- if or .Values.ingress.enabled .Values.httpRoute.enabled (eq .Values.service.web.type "LoadBalancer") -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+The --address for kubectl port-forward to a localhost hub.publicURL, without
+brackets, or "" when the default is enough. kubectl binds only 127.0.0.1 and
+::1 by default, which covers localhost and *.localhost too; any other IP
+literal has to be named.
+*/}}
+{{- define "radar-hub.portForwardAddress" -}}
+{{- $h := include "radar-hub.publicURLHost" . -}}
+{{- $isIP := or (hasPrefix "[" $h) (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$" $h) -}}
+{{- if and $isIP (ne $h "127.0.0.1") (ne $h "[::1]") -}}
+{{- trimPrefix "[" $h | trimSuffix "]" -}}
 {{- end -}}
 {{- end }}
 
 {{/*
 Whether the web pod serves its self-signed https listener. On for
 web.tls.selfSigned, and also whenever a Radar agent in this cluster may dial
-it: web.tls.inCluster, oneCluster, or a registered local cluster. It then
+it: web.tls.inCluster, a localhost hub.publicURL, or a registered local
+cluster. It then
 stays up when public traffic moves to an Ingress or Gateway, which keep using
 the plain-http port.
 Returns "true" or "".
 */}}
 {{- define "radar-hub.inClusterTLS" -}}
-{{- if or .Values.web.tls.selfSigned .Values.web.tls.inCluster .Values.oneCluster.enabled .Values.localCluster.id .Values.localCluster.existingSecret -}}
+{{- if or .Values.web.tls.selfSigned .Values.web.tls.inCluster (include "radar-hub.publicURLIsLoopback" .) .Values.localCluster.id .Values.localCluster.existingSecret -}}
 true
 {{- end -}}
 {{- end }}

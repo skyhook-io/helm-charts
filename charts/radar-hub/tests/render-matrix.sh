@@ -133,21 +133,48 @@ envis "selfSigned passes the host, without the port" WEB_TLS_SELF_SIGNED_HOST ra
 envis "selfSigned passes a bare host"               WEB_TLS_SELF_SIGNED_HOST x.example         --set web.tls.selfSigned=true
 lacks "no host env without selfSigned"            'name: WEB_TLS_SELF_SIGNED_HOST'
 
-echo "try it in one cluster"
-OC=(--set oneCluster.enabled=true --set web.tls.selfSigned=true)
-check "oneCluster + selfSigned"                 render "${OC[@]}"
-check "oneCluster without selfSigned"           refuse --set oneCluster.enabled=true
-check "oneCluster with no publicURL"            render "${OC[@]}" --set hub.publicURL=
-check "no publicURL without oneCluster"         refuse --set hub.publicURL=
-check "oneCluster.enabeld (typo)"               refuse --set oneCluster.enabeld=true
-envis "oneCluster defaults publicURL"           RADAR_HUB_PUBLIC_URL https://localhost:8443 "${OC[@]}" --set hub.publicURL=
-envis "oneCluster default is the frontend URL"  HUB_FRONTEND_URL https://localhost:8443 "${OC[@]}" --set hub.publicURL=
-envis "oneCluster origin is not listed twice"   HUB_ALLOWED_ORIGINS https://localhost:8443 "${OC[@]}" --set hub.publicURL=
-envis "oneCluster adds localhost to origins"    HUB_ALLOWED_ORIGINS https://x.example,https://localhost:8443 "${OC[@]}"
-envis "origins are publicURL alone otherwise"   HUB_ALLOWED_ORIGINS https://x.example
-envis "oneCluster marks the URL browser-only"   RADAR_HUB_BROWSER_ONLY_URL true "${OC[@]}"
-lacks "no browser-only flag by default"         'name: RADAR_HUB_BROWSER_ONLY_URL' --set web.tls.selfSigned=true
-envis "oneCluster cert names localhost"         WEB_TLS_SELF_SIGNED_HOST localhost "${OC[@]}" --set hub.publicURL=
+echo "a localhost publicURL means port-forward, no public address"
+SS=(--set web.tls.selfSigned=true)
+LH=(--set hub.publicURL=https://localhost:8443)
+check "oneCluster.enabled is no longer a value"  refuse --set oneCluster.enabled=true "${SS[@]}"
+check "empty publicURL is refused"               refuse --set hub.publicURL=
+check "empty publicURL + selfSigned is refused"  refuse --set hub.publicURL= "${SS[@]}"
+for url in https://localhost:8443 https://LOCALHOST https://radar.localhost:9443 https://127.0.0.1:8443 https://127.1.2.3 'https://[::1]:8443' https://0.0.0.0:8443 'https://[::]:8443'; do
+  check "$url + selfSigned"                      render --set "hub.publicURL=$url" "${SS[@]}"
+  check "$url without selfSigned"                refuse --set "hub.publicURL=$url"
+  envis "$url is browser-only"                   RADAR_HUB_BROWSER_ONLY_URL true --set "hub.publicURL=$url" "${SS[@]}"
+done
+ING=(--set ingress.enabled=true --set 'ingress.hosts[0].host=x.example'
+     --set 'ingress.hosts[0].paths[0].path=/' --set 'ingress.hosts[0].paths[0].pathType=Prefix')
+check "http localhost is refused"               refuse --set hub.publicURL=http://localhost:8080 "${SS[@]}"
+check "http 127.0.0.1 is refused"               refuse --set hub.publicURL=http://127.0.0.1:8443 "${SS[@]}"
+check "http localhost + Ingress is allowed"     render --set hub.publicURL=http://localhost "${ING[@]}"
+check "localhost + Ingress skips the guard"      render "${LH[@]}" "${ING[@]}"
+check "localhost + HTTPRoute skips the guard"    render "${LH[@]}" --set httpRoute.enabled=true --set 'httpRoute.parentRefs[0].name=gw'
+check "localhost + LoadBalancer skips the guard" render "${LH[@]}" --set service.web.type=LoadBalancer
+lacks "localhost + Ingress is not browser-only"  'name: RADAR_HUB_BROWSER_ONLY_URL' "${LH[@]}" "${ING[@]}"
+lacks "localhost + HTTPRoute is not browser-only" 'name: RADAR_HUB_BROWSER_ONLY_URL' "${LH[@]}" --set httpRoute.enabled=true --set 'httpRoute.parentRefs[0].name=gw'
+lacks "localhost + LoadBalancer is not browser-only" 'name: RADAR_HUB_BROWSER_ONLY_URL' "${LH[@]}" --set service.web.type=LoadBalancer
+envis "localhost + LoadBalancer keeps the in-cluster URL" RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local/agent "${LH[@]}" --set service.web.type=LoadBalancer
+envis "cert host for [::1] has no brackets"     WEB_TLS_SELF_SIGNED_HOST ::1 --set 'hub.publicURL=https://[::1]:8443' "${SS[@]}"
+envis "cert host for [::] has no brackets"      WEB_TLS_SELF_SIGNED_HOST :: --set 'hub.publicURL=https://[::]:8443' "${SS[@]}"
+envis "cert host for [::1] with no port"        WEB_TLS_SELF_SIGNED_HOST ::1 --set 'hub.publicURL=https://[::1]' "${SS[@]}"
+envis "cert host for a public IPv6"             WEB_TLS_SELF_SIGNED_HOST 2001:db8::5 --set 'hub.publicURL=https://[2001:db8::5]:8443' "${SS[@]}"
+envis "cert host for 127.0.0.1"                 WEB_TLS_SELF_SIGNED_HOST 127\.0\.0\.1 --set hub.publicURL=https://127.0.0.1:8443 "${SS[@]}"
+has   "localhost + Ingress keeps the https port" 'name: https' "${LH[@]}" "${ING[@]}" --show-only templates/service.yaml
+envis "localhost + Ingress has the in-cluster URL" RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local/agent "${LH[@]}" "${ING[@]}"
+envis "localhost origins are the URL alone"      HUB_ALLOWED_ORIGINS https://localhost:8443 "${LH[@]}" "${SS[@]}"
+envis "localhost is the public URL"              RADAR_HUB_PUBLIC_URL https://localhost:8443 "${LH[@]}" "${SS[@]}"
+envis "localhost cert names localhost"           WEB_TLS_SELF_SIGNED_HOST localhost "${LH[@]}" "${SS[@]}"
+# Names that only look local. Each must render the way a public address
+# always has: no browser-only flag, no https listener, origins = the URL.
+for url in https://x.example https://localhost.example.com https://127.0.0.1.nip.io https://mylocalhost 'https://[::2]' https://0.0.0.1 https://10.0.0.0; do
+  lacks "$url is not browser-only"               'name: RADAR_HUB_BROWSER_ONLY_URL' --set "hub.publicURL=$url"
+  lacks "$url adds no https port"                'name: https' --set "hub.publicURL=$url" --show-only templates/service.yaml
+  lacks "$url adds no in-cluster URL"            'name: RADAR_HUB_IN_CLUSTER_AGENT_URL' --set "hub.publicURL=$url"
+  envis "$url origins are the URL alone"         HUB_ALLOWED_ORIGINS "$(printf '%s' "$url" | sed 's/[].[]/\\&/g')" --set "hub.publicURL=$url"
+done
+lacks "no browser-only flag with selfSigned alone" 'name: RADAR_HUB_BROWSER_ONLY_URL' "${SS[@]}"
 envis "in-cluster agent URL on 443"             RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local/agent --set web.tls.selfSigned=true
 envis "in-cluster agent URL on a custom port"   RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local:9443/agent --set web.tls.selfSigned=true --set service.web.tlsPort=9443
 envis "in-cluster agent URL uses clusterDomain" RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.corp.internal/agent --set web.tls.selfSigned=true --set clusterDomain=corp.internal
@@ -249,23 +276,37 @@ for rel in t a-release-name-long-enough-to-force-truncation-x50; do
   if [ -n "$want" ] && [ "$want" = "$got" ]; then printf '  ok    %-46s %s\n' "release $rel" "$got"
   else printf '  FAIL  %-46s notes say %s, Deployment is %s\n' "release $rel" "${got:-nothing}" "${want:-nothing}"; fails=$((fails+1)); fi
 done
-echo "install notes in oneCluster mode"
+echo "install notes for a localhost publicURL"
 notes() { helm template t "$scratch/chart" "${BASE[@]}" "$@" --show-only templates/notes-rendered.yaml 2>/dev/null; }
-pf='port-forward svc/t-radar-hub-web 8443:443'
-if notes "${OC[@]}" | grep -qF "$pf"; then printf '  ok    %-46s %s\n' "port-forward command" "$pf"
-else printf '  FAIL  %-46s missing: %s\n' "port-forward command" "$pf"; fails=$((fails+1)); fi
-if notes "${OC[@]}" --set service.web.tlsPort=9443 | grep -qF "8443:9443"; then printf '  ok    %-46s %s\n' "port-forward follows tlsPort" "8443:9443"
-else printf '  FAIL  %-46s missing: 8443:9443\n' "port-forward follows tlsPort"; fails=$((fails+1)); fi
-if notes "${OC[@]}" | grep -qF "open https://localhost:8443"; then printf '  ok    %-46s present\n' "open https://localhost:8443"
-else printf '  FAIL  %-46s missing\n' "open https://localhost:8443"; fails=$((fails+1)); fi
-if notes | grep -qF "port-forward"; then printf '  FAIL  %-46s present but must not be\n' "no port-forward outside oneCluster"; fails=$((fails+1))
-else printf '  ok    %-46s absent\n' "no port-forward outside oneCluster"; fi
-echo "install notes print the in-cluster agent address"
 note_has() { # note_has <description> <fixed string> <extra args...>
   local desc="$1" want="$2"; shift 2
   if notes "$@" | grep -qF -- "$want"; then printf '  ok    %-46s %s\n' "$desc" "$want"
   else printf '  FAIL  %-46s missing: %s\n' "$desc" "$want"; fails=$((fails+1)); fi
 }
+note_lacks() { # note_lacks <description> <fixed string> <extra args...>
+  local desc="$1" bad="$2"; shift 2
+  if notes "$@" | grep -qiF -- "$bad"; then printf '  FAIL  %-46s present but must not be: %s\n' "$desc" "$bad"; fails=$((fails+1))
+  else printf '  ok    %-46s absent\n' "$desc"; fi
+}
+note_has   "port-forward on the URL's port"       'port-forward svc/t-radar-hub-web 8443:443' "${LH[@]}" "${SS[@]}"
+note_has   "port-forward follows tlsPort"         'port-forward svc/t-radar-hub-web 8443:9443' "${LH[@]}" "${SS[@]}" --set service.web.tlsPort=9443
+note_has   "port-forward on a custom URL port"    'port-forward svc/t-radar-hub-web 9443:443' --set hub.publicURL=https://localhost:9443 "${SS[@]}"
+# kubectl binds 127.0.0.1 and ::1 by default; any other IP must be named.
+note_has   "port-forward binds 0.0.0.0"           'port-forward --address 0.0.0.0 svc/t-radar-hub-web 8443:443' --set hub.publicURL=https://0.0.0.0:8443 "${SS[@]}"
+note_has   "port-forward binds ::"                'port-forward --address :: svc/t-radar-hub-web 8443:443' --set 'hub.publicURL=https://[::]:8443' "${SS[@]}"
+note_has   "port-forward binds 127.0.0.2"         'port-forward --address 127.0.0.2 svc/t-radar-hub-web 8443:443' --set hub.publicURL=https://127.0.0.2:8443 "${SS[@]}"
+note_lacks "no --address for localhost"           '--address' "${LH[@]}" "${SS[@]}"
+note_lacks "no --address for *.localhost"         '--address' --set hub.publicURL=https://radar.localhost:8443 "${SS[@]}"
+note_lacks "no --address for 127.0.0.1"           '--address' --set hub.publicURL=https://127.0.0.1:8443 "${SS[@]}"
+note_lacks "no --address for [::1]"               '--address' --set 'hub.publicURL=https://[::1]:8443' "${SS[@]}"
+note_has   "port-forward for [::1]"               'port-forward svc/t-radar-hub-web 8443:443' --set 'hub.publicURL=https://[::1]:8443' "${SS[@]}"
+note_has   "port-forward defaults to 443"         'port-forward svc/t-radar-hub-web 443:443' --set hub.publicURL=https://127.0.0.1 "${SS[@]}"
+note_has   "open the exact URL"                   'Then open https://localhost:9443.' --set hub.publicURL=https://localhost:9443 "${SS[@]}"
+note_lacks "no port-forward for a public URL"     'port-forward' "${SS[@]}"
+note_lacks "no port-forward behind an Ingress"    'port-forward' "${LH[@]}" "${ING[@]}"
+note_lacks "notes never say one cluster"          'one cluster' "${LH[@]}" "${SS[@]}"
+note_lacks "notes never say one cluster (local)"  'one cluster' "${LH[@]}" "${SS[@]}" --set localCluster.id=k3Fg-9pA_x1 --set localCluster.existingSecret=lc
+echo "install notes print the in-cluster agent address"
 note_has "selfSigned"                    'wss://t-radar-hub-web.default.svc.cluster.local/agent' --set web.tls.selfSigned=true
 note_has "Ingress + inCluster"           'wss://t-radar-hub-web.default.svc.cluster.local/agent' "${INGIC[@]}"
 note_has "Ingress + localCluster"        'wss://t-radar-hub-web.default.svc.cluster.local/agent' "${INGLC[@]}"

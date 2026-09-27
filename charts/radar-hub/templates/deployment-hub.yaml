@@ -175,10 +175,12 @@ spec:
             - name: RADAR_HUB_IN_CLUSTER_AGENT_URL
               value: {{ include "radar-hub.inClusterAgentURL" . | quote }}
             {{- end }}
-            {{- if .Values.oneCluster.enabled }}
-            {{- /* The public URL only works in a browser running the
-                   port-forward. The hub says so in invites and emails, and
-                   never hands it to an agent as the address to dial. */}}
+            {{- if and (include "radar-hub.publicURLIsLoopback" .) (not (include "radar-hub.publicURLFronted" .)) }}
+            {{- /* People open this hub with kubectl port-forward: the invite
+                   and email flows say so. Behind an Ingress, Gateway or load
+                   balancer on localhost they do not, so it stays off there.
+                   The hub refuses to give any localhost URL to agents on its
+                   own, whatever this says. */}}
             - name: RADAR_HUB_BROWSER_ONLY_URL
               value: "true"
             {{- end }}
@@ -194,19 +196,12 @@ spec:
               value: {{ .Values.branding.supportEmail | quote }}
             - name: RADAR_HUB_BRAND_FEEDBACK_EMAIL
               value: {{ .Values.branding.feedbackEmail | quote }}
-            {{- $publicURL := include "radar-hub.publicURL" . }}
             - name: RADAR_HUB_PUBLIC_URL
-              value: {{ $publicURL | quote }}
+              value: {{ .Values.hub.publicURL | quote }}
             - name: HUB_FRONTEND_URL
-              value: {{ $publicURL | quote }}
-            {{- /* Comma-separated. oneCluster always admits the port-forward
-                   origin, also when publicURL names another address. */}}
-            {{- $origins := list $publicURL }}
-            {{- if .Values.oneCluster.enabled }}
-            {{- $origins = append $origins (include "radar-hub.oneClusterOrigin" .) | uniq }}
-            {{- end }}
+              value: {{ .Values.hub.publicURL | quote }}
             - name: HUB_ALLOWED_ORIGINS
-              value: {{ join "," $origins | quote }}
+              value: {{ .Values.hub.publicURL | quote }}
             - name: HUB_DB_DSN
               valueFrom:
                 secretKeyRef:
@@ -274,7 +269,7 @@ spec:
               {{- /* Auto-derive from publicURL when not set. Customers
                      who terminate TLS at a separate ingress with a
                      different host can still override this explicitly. */}}
-              value: {{ default (printf "%s/api/auth/oidc/callback" $publicURL) .Values.auth.oidc.callbackURL | quote }}
+              value: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL | quote }}
             - name: RADAR_HUB_OIDC_DEFAULT_ROLE
               value: {{ .Values.auth.oidc.defaultRole | quote }}
             {{- with .Values.auth.oidc.scopes }}

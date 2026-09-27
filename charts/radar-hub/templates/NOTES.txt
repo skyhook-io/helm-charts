@@ -5,12 +5,16 @@
 Mode:           self-hosted Radar Cloud control plane
 Hub image:      {{ include "radar-hub.hubImage" . }}
 Web image:      {{ include "radar-hub.webImage" . }}
-{{- $publicURL := include "radar-hub.publicURL" . }}
-Public URL:     {{ default "(not set - set hub.publicURL)" $publicURL }}{{ if .Values.oneCluster.enabled }} (browser only, through port-forward){{ end }}
+{{- $publicURL := .Values.hub.publicURL }}
+{{- $loopback := include "radar-hub.publicURLIsLoopback" . }}
+{{- /* A localhost URL opened through port-forward, rather than through an
+       Ingress, Gateway or load balancer publishing it on localhost. */}}
+{{- $portForward := and $loopback (not (include "radar-hub.publicURLFronted" .)) }}
+Public URL:     {{ default "(not set - set hub.publicURL)" $publicURL }}{{ if $loopback }} (localhost: browser only, never given to agents){{ end }}
 Org name:       {{ .Values.hub.orgName }}
 
 Services:
-  web: {{ .Values.service.web.type }} :{{ .Values.service.web.port }} (public entrypoint; nginx proxies API, agent, and MCP traffic)
+  web: {{ .Values.service.web.type }} :{{ .Values.service.web.port }}{{ if include "radar-hub.inClusterTLS" . }}, :{{ .Values.service.web.tlsPort | default 443 }} https (self-signed){{ end }} (public entrypoint; nginx proxies API, agent, and MCP traffic)
   hub: {{ .Values.service.hub.type }} :{{ .Values.service.hub.port }} (raw hub API; keep ClusterIP unless using a split-origin deployment)
 {{- if include "radar-hub.inClusterTLS" . }}
 
@@ -20,10 +24,10 @@ In-cluster agent address (self-signed https on the web Service):
 {{- end }}
 
 Exposure:
-{{- if .Values.oneCluster.enabled }}
-  Try it in one cluster: no public address. Open the hub with port-forward
-  (step 2 below). Radar in this cluster connects to the in-cluster agent
-  address above.
+{{- if $portForward }}
+  none: hub.publicURL is a localhost address, opened with kubectl
+  port-forward (step 2 below). Radar in this cluster connects to the
+  in-cluster agent address above.
 {{- else if .Values.ingress.enabled }}
   Ingress ({{ default "default class" .Values.ingress.className }}) → {{ range .Values.ingress.hosts }}{{ .host }} {{ end }}
 {{- else if .Values.httpRoute.enabled }}
@@ -69,11 +73,11 @@ NEXT STEPS
      kubectl -n {{ .Release.Namespace }} get pods -w
      kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "radar-hub.hubName" . }} -c migrate
 
-{{ if .Values.oneCluster.enabled -}}
+{{ if $portForward -}}
 2. Once both Deployments are Ready, forward the hub to your workstation and
    leave the command running:
-     kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "radar-hub.webName" . }} 8443:{{ .Values.service.web.tlsPort | default 443 }}
-   Then open https://localhost:8443. The certificate is self-signed, so the
+     kubectl -n {{ .Release.Namespace }} port-forward{{ with include "radar-hub.portForwardAddress" . }} --address {{ . }}{{ end }} svc/{{ include "radar-hub.webName" . }} {{ include "radar-hub.publicURLPort" . }}:{{ .Values.service.web.tlsPort | default 443 }}
+   Then open {{ $publicURL }}. The certificate is self-signed, so the
    browser asks you to accept it once. Anyone you invite runs the same
    port-forward with their own kubectl access.
 {{- else -}}
@@ -87,7 +91,7 @@ NEXT STEPS
 4. This cluster shows up as "local" about 30 seconds after the first sign-in,
    once Radar is installed here with clusterName {{ .Values.localCluster.id }} and the
    matching token.
-{{- else if .Values.oneCluster.enabled -}}
+{{- else if $loopback -}}
 4. Connect this cluster from the hub's "Connect a cluster" page, and answer
    that it runs in the same cluster as the hub.
 {{- else -}}

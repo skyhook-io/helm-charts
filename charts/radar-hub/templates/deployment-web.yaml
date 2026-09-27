@@ -65,9 +65,11 @@ spec:
             {{- /* The certificate names the public host so a workstation that
                    trusts it can verify it; the Radar CLI refuses a certificate
                    with no name however trusted. Host only: the port is not
-                   part of a certificate name. */}}
+                   part of a certificate name. An IPv6 host goes without its
+                   URL brackets, the form the image passes to OpenSSL as
+                   IP:<address>. */}}
             - name: WEB_TLS_SELF_SIGNED_HOST
-              value: {{ regexReplaceAll ":[0-9]+$" (urlParse (include "radar-hub.publicURL" .)).host "" | quote }}
+              value: {{ regexReplaceAll ":[0-9]+$" (urlParse .Values.hub.publicURL).host "" | trimPrefix "[" | trimSuffix "]" | quote }}
             {{- end }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
