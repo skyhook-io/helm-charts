@@ -42,7 +42,7 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-            {{- if .Values.web.tls.selfSigned }}
+            {{- if include "radar-hub.inClusterTLS" . }}
             - name: https
               containerPort: 8443
               protocol: TCP
@@ -59,7 +59,7 @@ spec:
                    via .Values.clusterDomain for custom-domain clusters. */}}
             - name: HUB_UPSTREAM
               value: "http://{{ include "radar-hub.hubName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}:{{ .Values.service.hub.port }}"
-            {{- if .Values.web.tls.selfSigned }}
+            {{- if include "radar-hub.inClusterTLS" . }}
             - name: WEB_TLS_SELF_SIGNED
               value: "true"
             {{- /* The certificate names the public host so a workstation that
@@ -67,7 +67,7 @@ spec:
                    with no name however trusted. Host only: the port is not
                    part of a certificate name. */}}
             - name: WEB_TLS_SELF_SIGNED_HOST
-              value: {{ regexReplaceAll ":[0-9]+$" (urlParse .Values.hub.publicURL).host "" | quote }}
+              value: {{ regexReplaceAll ":[0-9]+$" (urlParse (include "radar-hub.publicURL" .)).host "" | quote }}
             {{- end }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
@@ -80,6 +80,10 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 30
+          {{- /* https only when it is the public entrypoint. Behind an
+                 Ingress or Gateway the https listener serves the local agent
+                 alone, and readiness must not make the public http path
+                 depend on it. */}}
           readinessProbe:
             httpGet:
               path: /

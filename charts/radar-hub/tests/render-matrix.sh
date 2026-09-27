@@ -133,6 +133,96 @@ envis "selfSigned passes the host, without the port" WEB_TLS_SELF_SIGNED_HOST ra
 envis "selfSigned passes a bare host"               WEB_TLS_SELF_SIGNED_HOST x.example         --set web.tls.selfSigned=true
 lacks "no host env without selfSigned"            'name: WEB_TLS_SELF_SIGNED_HOST'
 
+echo "try it in one cluster"
+OC=(--set oneCluster.enabled=true --set web.tls.selfSigned=true)
+check "oneCluster + selfSigned"                 render "${OC[@]}"
+check "oneCluster without selfSigned"           refuse --set oneCluster.enabled=true
+check "oneCluster with no publicURL"            render "${OC[@]}" --set hub.publicURL=
+check "no publicURL without oneCluster"         refuse --set hub.publicURL=
+check "oneCluster.enabeld (typo)"               refuse --set oneCluster.enabeld=true
+envis "oneCluster defaults publicURL"           RADAR_HUB_PUBLIC_URL https://localhost:8443 "${OC[@]}" --set hub.publicURL=
+envis "oneCluster default is the frontend URL"  HUB_FRONTEND_URL https://localhost:8443 "${OC[@]}" --set hub.publicURL=
+envis "oneCluster origin is not listed twice"   HUB_ALLOWED_ORIGINS https://localhost:8443 "${OC[@]}" --set hub.publicURL=
+envis "oneCluster adds localhost to origins"    HUB_ALLOWED_ORIGINS https://x.example,https://localhost:8443 "${OC[@]}"
+envis "origins are publicURL alone otherwise"   HUB_ALLOWED_ORIGINS https://x.example
+envis "oneCluster marks the URL browser-only"   RADAR_HUB_BROWSER_ONLY_URL true "${OC[@]}"
+lacks "no browser-only flag by default"         'name: RADAR_HUB_BROWSER_ONLY_URL' --set web.tls.selfSigned=true
+envis "oneCluster cert names localhost"         WEB_TLS_SELF_SIGNED_HOST localhost "${OC[@]}" --set hub.publicURL=
+envis "in-cluster agent URL on 443"             RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local/agent --set web.tls.selfSigned=true
+envis "in-cluster agent URL on a custom port"   RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local:9443/agent --set web.tls.selfSigned=true --set service.web.tlsPort=9443
+envis "in-cluster agent URL uses clusterDomain" RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.corp.internal/agent --set web.tls.selfSigned=true --set clusterDomain=corp.internal
+envis "in-cluster agent URL uses the release name" RADAR_HUB_IN_CLUSTER_AGENT_URL wss://radar-hub-web.default.svc.cluster.local/agent --set web.tls.selfSigned=true --set fullnameOverride=radar-hub
+lacks "no in-cluster agent URL without selfSigned" 'name: RADAR_HUB_IN_CLUSTER_AGENT_URL'
+
+echo "the local cluster"
+LC_ID=k3Fg-9pA_x1
+LC_TOK=rhc_0123456789abcdefghijABCDEFGHIJ-_0123456789a
+secretref() { # secretref <description> <ENV_NAME> <secret> <key> <extra args...>
+  local desc="$1" name="$2" sec="$3" key="$4"; shift 4
+  if render "$@" | grep -A5 -E "^\s+- name: $name\$" | tr -d '\n' | grep -qE "secretKeyRef:\s+name: \"$sec\"\s+key: \"?$key\"?"; then
+    printf '  ok    %-46s %s <- %s/%s\n' "$desc" "$name" "$sec" "$key"
+  else
+    printf '  FAIL  %-46s %s is not read from %s/%s\n' "$desc" "$name" "$sec" "$key"; fails=$((fails+1))
+  fi
+}
+check "id + token"                              render --set localCluster.id=$LC_ID --set localCluster.token=$LC_TOK
+check "id + existingSecret"                     render --set localCluster.id=$LC_ID --set localCluster.existingSecret=lc
+check "token and existingSecret together"       refuse --set localCluster.id=$LC_ID --set localCluster.token=$LC_TOK --set localCluster.existingSecret=lc
+check "id without a token"                      refuse --set localCluster.id=$LC_ID
+check "token without an id"                     refuse --set localCluster.token=$LC_TOK
+check "existingSecret without an id"            refuse --set localCluster.existingSecret=lc
+check "id of 10 characters"                     refuse --set localCluster.id=k3Fg-9pA_x --set localCluster.token=$LC_TOK
+check "id of 12 characters"                     refuse --set localCluster.id=k3Fg-9pA_x12 --set localCluster.token=$LC_TOK
+check "id with a dot"                           refuse --set localCluster.id=k3Fg.9pA_x1 --set localCluster.token=$LC_TOK
+check "token without the rhc_ prefix"         refuse --set localCluster.id=$LC_ID --set localCluster.token=${LC_TOK#rhc_}xxxx
+check "token of 42 characters after rhc_"       refuse --set localCluster.id=$LC_ID --set localCluster.token=${LC_TOK%?}
+check "token of 44 characters after rhc_"       refuse --set localCluster.id=$LC_ID --set localCluster.token=${LC_TOK}x
+check "token with a dot"                        refuse --set localCluster.id=$LC_ID --set localCluster.token=${LC_TOK%?}.
+envis "id is wired"                             HUB_LOCAL_CLUSTER_ID $LC_ID --set localCluster.id=$LC_ID --set localCluster.token=$LC_TOK
+envis "name is local"                           HUB_LOCAL_CLUSTER_NAME local --set localCluster.id=$LC_ID --set localCluster.token=$LC_TOK
+has   "token lands in the chart Secret"         "local-cluster-token: \"$LC_TOK\"" --set localCluster.id=$LC_ID --set localCluster.token=$LC_TOK
+secretref "token is read from the chart Secret" HUB_LOCAL_CLUSTER_TOKEN t-radar-hub-config local-cluster-token --set localCluster.id=$LC_ID --set localCluster.token=$LC_TOK
+secretref "existingSecret defaults to key token" HUB_LOCAL_CLUSTER_TOKEN lc token --set localCluster.id=$LC_ID --set localCluster.existingSecret=lc
+secretref "existingSecretKey is honoured"       HUB_LOCAL_CLUSTER_TOKEN lc agent-token --set localCluster.id=$LC_ID --set localCluster.existingSecret=lc --set localCluster.existingSecretKey=agent-token
+lacks "existingSecret writes no token"          'local-cluster-token:' --set localCluster.id=$LC_ID --set localCluster.existingSecret=lc
+lacks "no local cluster by default"             'name: HUB_LOCAL_CLUSTER_'
+# A new token must restart the hub, or it keeps authenticating the old one.
+# The pod checksum covers the chart Secret the inline token is written to.
+sum_for() { render --set localCluster.id=$LC_ID "$@" --show-only templates/deployment-hub.yaml | awk '/checksum\/secret:/{print $2}'; }
+if [ "$(sum_for --set localCluster.token=$LC_TOK)" != "$(sum_for --set localCluster.token=${LC_TOK%?}b)" ]; then
+  printf '  ok    %-46s %s\n' "new inline token rolls the hub pod" "checksum changes"
+else printf '  FAIL  %-46s checksum unchanged\n' "new inline token rolls the hub pod"; fails=$((fails+1)); fi
+
+echo "the local cluster keeps its in-cluster listener behind an Ingress"
+ING=(--set ingress.enabled=true --set 'ingress.hosts[0].host=x.example'
+     --set 'ingress.hosts[0].paths[0].path=/' --set 'ingress.hosts[0].paths[0].pathType=Prefix')
+INGLC=("${ING[@]}" --set localCluster.id=$LC_ID --set localCluster.token=$LC_TOK)
+has   "Ingress + localCluster: web Service https" 'name: https' "${INGLC[@]}" --show-only templates/service.yaml
+has   "Ingress + localCluster: pod listens on 8443" 'containerPort: 8443' "${INGLC[@]}" --show-only templates/deployment-web.yaml
+envis "Ingress + localCluster: web serves TLS"   WEB_TLS_SELF_SIGNED true "${INGLC[@]}"
+envis "Ingress + localCluster: in-cluster URL"   RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local/agent "${INGLC[@]}"
+envis "existingSecret alone keeps the URL too"   RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local/agent "${ING[@]}" --set localCluster.id=$LC_ID --set localCluster.existingSecret=lc
+lacks "Ingress + localCluster: public cert not skipped" 'name: RADAR_HUB_INSECURE_SKIP_VERIFY' "${INGLC[@]}"
+lacks "Ingress + localCluster: readiness stays http" 'scheme: HTTPS' "${INGLC[@]}" --show-only templates/deployment-web.yaml
+has   "Ingress + localCluster: Ingress targets http" 'number: 80$' "${INGLC[@]}" --show-only templates/ingress.yaml
+lacks "Ingress + localCluster: not browser-only" 'name: RADAR_HUB_BROWSER_ONLY_URL' "${INGLC[@]}"
+envis "Ingress + localCluster: origins are publicURL" HUB_ALLOWED_ORIGINS https://x.example "${INGLC[@]}"
+INGIC=("${ING[@]}" --set web.tls.inCluster=true)
+has   "Ingress + inCluster: web Service https"   'name: https' "${INGIC[@]}" --show-only templates/service.yaml
+has   "Ingress + inCluster: pod listens on 8443" 'containerPort: 8443' "${INGIC[@]}" --show-only templates/deployment-web.yaml
+envis "Ingress + inCluster: web serves TLS"      WEB_TLS_SELF_SIGNED true "${INGIC[@]}"
+envis "Ingress + inCluster: in-cluster URL"      RADAR_HUB_IN_CLUSTER_AGENT_URL wss://t-radar-hub-web.default.svc.cluster.local/agent "${INGIC[@]}"
+lacks "Ingress + inCluster: public cert not skipped" 'name: RADAR_HUB_INSECURE_SKIP_VERIFY' "${INGIC[@]}"
+lacks "Ingress + inCluster: readiness stays http" 'scheme: HTTPS' "${INGIC[@]}" --show-only templates/deployment-web.yaml
+has   "Ingress + inCluster: Ingress targets http" 'number: 80$' "${INGIC[@]}" --show-only templates/ingress.yaml
+check "web.tls.inClusterr (typo)"               refuse --set web.tls.inClusterr=true
+ING=("${ING[@]}" --set web.tls.inCluster=false)
+lacks "Ingress alone: no web Service https"      'name: https' "${ING[@]}" --show-only templates/service.yaml
+lacks "Ingress alone: no 8443 listener"          'containerPort: 8443' "${ING[@]}" --show-only templates/deployment-web.yaml
+lacks "Ingress alone: web serves no TLS"         'name: WEB_TLS_SELF_SIGNED' "${ING[@]}"
+lacks "Ingress alone: no in-cluster URL"         'name: RADAR_HUB_IN_CLUSTER_AGENT_URL' "${ING[@]}"
+
+
 echo "the licence reaches /etc/radar-hub either way"
 has   "license.key lands in the chart Secret"   'license-key: "eyJtest"'       --set license.key=eyJtest
 has   "license.key is mounted"                  'mountPath: /etc/radar-hub'    --set license.key=eyJtest
@@ -159,6 +249,29 @@ for rel in t a-release-name-long-enough-to-force-truncation-x50; do
   if [ -n "$want" ] && [ "$want" = "$got" ]; then printf '  ok    %-46s %s\n' "release $rel" "$got"
   else printf '  FAIL  %-46s notes say %s, Deployment is %s\n' "release $rel" "${got:-nothing}" "${want:-nothing}"; fails=$((fails+1)); fi
 done
+echo "install notes in oneCluster mode"
+notes() { helm template t "$scratch/chart" "${BASE[@]}" "$@" --show-only templates/notes-rendered.yaml 2>/dev/null; }
+pf='port-forward svc/t-radar-hub-web 8443:443'
+if notes "${OC[@]}" | grep -qF "$pf"; then printf '  ok    %-46s %s\n' "port-forward command" "$pf"
+else printf '  FAIL  %-46s missing: %s\n' "port-forward command" "$pf"; fails=$((fails+1)); fi
+if notes "${OC[@]}" --set service.web.tlsPort=9443 | grep -qF "8443:9443"; then printf '  ok    %-46s %s\n' "port-forward follows tlsPort" "8443:9443"
+else printf '  FAIL  %-46s missing: 8443:9443\n' "port-forward follows tlsPort"; fails=$((fails+1)); fi
+if notes "${OC[@]}" | grep -qF "open https://localhost:8443"; then printf '  ok    %-46s present\n' "open https://localhost:8443"
+else printf '  FAIL  %-46s missing\n' "open https://localhost:8443"; fails=$((fails+1)); fi
+if notes | grep -qF "port-forward"; then printf '  FAIL  %-46s present but must not be\n' "no port-forward outside oneCluster"; fails=$((fails+1))
+else printf '  ok    %-46s absent\n' "no port-forward outside oneCluster"; fi
+echo "install notes print the in-cluster agent address"
+note_has() { # note_has <description> <fixed string> <extra args...>
+  local desc="$1" want="$2"; shift 2
+  if notes "$@" | grep -qF -- "$want"; then printf '  ok    %-46s %s\n' "$desc" "$want"
+  else printf '  FAIL  %-46s missing: %s\n' "$desc" "$want"; fails=$((fails+1)); fi
+}
+note_has "selfSigned"                    'wss://t-radar-hub-web.default.svc.cluster.local/agent' --set web.tls.selfSigned=true
+note_has "Ingress + inCluster"           'wss://t-radar-hub-web.default.svc.cluster.local/agent' "${INGIC[@]}"
+note_has "Ingress + localCluster"        'wss://t-radar-hub-web.default.svc.cluster.local/agent' "${INGLC[@]}"
+note_has "fullnameOverride, tlsPort, clusterDomain" 'wss://rh-web.default.svc.c.internal:9443/agent' "${INGLC[@]}" --set fullnameOverride=rh --set service.web.tlsPort=9443 --set clusterDomain=c.internal
+if notes "${ING[@]}" | grep -qF "In-cluster agent address"; then printf '  FAIL  %-46s present but must not be\n' "no in-cluster address without a listener"; fails=$((fails+1))
+else printf '  ok    %-46s absent\n' "no in-cluster address without a listener"; fi
 rm -rf "$scratch"
 
 echo

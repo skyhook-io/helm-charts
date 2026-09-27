@@ -176,7 +176,7 @@
       "properties": {
         "publicURL": {
           "type": "string",
-          "minLength": 1
+          "description": "Public https URL of the hub. Required unless oneCluster.enabled is true, where empty means https://localhost:8443."
         },
         "cookiePassword": {
           "type": "string"
@@ -377,9 +377,48 @@
           "properties": {
             "selfSigned": {
               "type": "boolean"
+            },
+            "inCluster": {
+              "type": "boolean",
+              "description": "Keep the self-signed https listener on the web Service for Radar agents in this cluster, also when public traffic goes through an Ingress or Gateway."
             }
           },
           "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "oneCluster": {
+      "type": "object",
+      "description": "Try it in one cluster: no public address; the hub is opened with port-forward at https://localhost:8443. Requires web.tls.selfSigned=true.",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "localCluster": {
+      "type": "object",
+      "description": "The cluster the hub runs in, registered by the hub as \"local\". Set id with either token or existingSecret.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^$|^[A-Za-z0-9_-]{11}$",
+          "description": "Cluster id, 11 characters of A-Z, a-z, 0-9, - and _. The Radar agent in this cluster uses it as clusterName."
+        },
+        "token": {
+          "type": "string",
+          "description": "Agent token for the local cluster, written to the chart's Secret. \"rhc_\" followed by 43 characters of A-Z, a-z, 0-9, - and _, the form the hub mints.",
+          "pattern": "^$|^rhc_[A-Za-z0-9_-]{43}$"
+        },
+        "existingSecret": {
+          "type": "string",
+          "description": "Secret in the release namespace holding the agent token."
+        },
+        "existingSecretKey": {
+          "type": "string",
+          "description": "Key inside existingSecret. Empty means token."
         }
       },
       "additionalProperties": false
@@ -691,6 +730,34 @@
     },
     "fullnameOverride": {
       "type": "string"
+    }
+  },
+  "if": {
+    "properties": {
+      "oneCluster": {
+        "properties": {
+          "enabled": {
+            "const": true
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      }
+    },
+    "required": [
+      "oneCluster"
+    ]
+  },
+  "else": {
+    "properties": {
+      "hub": {
+        "properties": {
+          "publicURL": {
+            "minLength": 1
+          }
+        }
+      }
     }
   },
   "additionalProperties": false

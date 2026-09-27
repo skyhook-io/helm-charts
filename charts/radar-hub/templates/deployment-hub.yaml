@@ -167,6 +167,21 @@ spec:
             - name: RADAR_HUB_INSECURE_SKIP_VERIFY
               value: "true"
             {{- end }}
+            {{- if include "radar-hub.inClusterTLS" . }}
+            {{- /* Where a Radar agent in this same cluster reaches the hub:
+                   the web Service's self-signed https port by in-cluster
+                   FQDN. The hub offers it in the connect and move flows for a
+                   cluster that runs next to it. */}}
+            - name: RADAR_HUB_IN_CLUSTER_AGENT_URL
+              value: {{ include "radar-hub.inClusterAgentURL" . | quote }}
+            {{- end }}
+            {{- if .Values.oneCluster.enabled }}
+            {{- /* The public URL only works in a browser running the
+                   port-forward. The hub says so in invites and emails, and
+                   never hands it to an agent as the address to dial. */}}
+            - name: RADAR_HUB_BROWSER_ONLY_URL
+              value: "true"
+            {{- end }}
             - name: RADAR_HUB_ORG_NAME
               value: {{ .Values.hub.orgName | quote }}
             - name: RADAR_HUB_AUDIT_RETENTION_DAYS
@@ -179,12 +194,19 @@ spec:
               value: {{ .Values.branding.supportEmail | quote }}
             - name: RADAR_HUB_BRAND_FEEDBACK_EMAIL
               value: {{ .Values.branding.feedbackEmail | quote }}
+            {{- $publicURL := include "radar-hub.publicURL" . }}
             - name: RADAR_HUB_PUBLIC_URL
-              value: {{ .Values.hub.publicURL | quote }}
+              value: {{ $publicURL | quote }}
             - name: HUB_FRONTEND_URL
-              value: {{ .Values.hub.publicURL | quote }}
+              value: {{ $publicURL | quote }}
+            {{- /* Comma-separated. oneCluster always admits the port-forward
+                   origin, also when publicURL names another address. */}}
+            {{- $origins := list $publicURL }}
+            {{- if .Values.oneCluster.enabled }}
+            {{- $origins = append $origins (include "radar-hub.oneClusterOrigin" .) | uniq }}
+            {{- end }}
             - name: HUB_ALLOWED_ORIGINS
-              value: {{ .Values.hub.publicURL | quote }}
+              value: {{ join "," $origins | quote }}
             - name: HUB_DB_DSN
               valueFrom:
                 secretKeyRef:
@@ -252,7 +274,7 @@ spec:
               {{- /* Auto-derive from publicURL when not set. Customers
                      who terminate TLS at a separate ingress with a
                      different host can still override this explicitly. */}}
-              value: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL | quote }}
+              value: {{ default (printf "%s/api/auth/oidc/callback" $publicURL) .Values.auth.oidc.callbackURL | quote }}
             - name: RADAR_HUB_OIDC_DEFAULT_ROLE
               value: {{ .Values.auth.oidc.defaultRole | quote }}
             {{- with .Values.auth.oidc.scopes }}
@@ -270,6 +292,27 @@ spec:
             - name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
               value: "true"
             {{- end }}
+            {{- end }}
+
+            {{- /* The cluster the hub runs in, registered by the hub itself
+                   under this id and token so a Radar installed next to it
+                   connects without a sign-in step. Named "local" on first
+                   registration; users can rename it. */}}
+            {{- if .Values.localCluster.id }}
+            - name: HUB_LOCAL_CLUSTER_ID
+              value: {{ .Values.localCluster.id | quote }}
+            - name: HUB_LOCAL_CLUSTER_NAME
+              value: "local"
+            - name: HUB_LOCAL_CLUSTER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.localCluster.existingSecret }}
+                  name: {{ .Values.localCluster.existingSecret | quote }}
+                  key: {{ .Values.localCluster.existingSecretKey | default "token" | quote }}
+                  {{- else }}
+                  name: {{ include "radar-hub.secretName" . | quote }}
+                  key: local-cluster-token
+                  {{- end }}
             {{- end }}
 
             {{- /* Outside the OIDC block: break-glass sessions obey the same

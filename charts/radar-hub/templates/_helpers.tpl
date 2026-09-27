@@ -174,3 +174,52 @@ path is reachable.
 {{- printf "postgres://%s:%s@%s:5432/%s?sslmode=disable" $u $p $host $d -}}
 {{- end -}}
 {{- end }}
+
+{{/*
+Browser origin of a oneCluster install: what `kubectl port-forward` to the web
+Service's https port serves on the workstation.
+*/}}
+{{- define "radar-hub.oneClusterOrigin" -}}
+https://localhost:8443
+{{- end }}
+
+{{/*
+hub.publicURL as the hub and web read it. In oneCluster mode an empty value
+means the port-forward origin, since the install has no other address.
+*/}}
+{{- define "radar-hub.publicURL" -}}
+{{- if .Values.oneCluster.enabled -}}
+{{- default (include "radar-hub.oneClusterOrigin" .) .Values.hub.publicURL -}}
+{{- else -}}
+{{- .Values.hub.publicURL -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Whether the web pod serves its self-signed https listener. On for
+web.tls.selfSigned, and also whenever a Radar agent in this cluster may dial
+it: web.tls.inCluster, oneCluster, or a registered local cluster. It then
+stays up when public traffic moves to an Ingress or Gateway, which keep using
+the plain-http port.
+Returns "true" or "".
+*/}}
+{{- define "radar-hub.inClusterTLS" -}}
+{{- if or .Values.web.tls.selfSigned .Values.web.tls.inCluster .Values.oneCluster.enabled .Values.localCluster.id .Values.localCluster.existingSecret -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Address a Radar agent in this cluster dials to reach the hub: the web
+Service's self-signed https port, by in-cluster FQDN. Only meaningful when
+radar-hub.inClusterTLS is on, because the plain-http port carries no wss.
+*/}}
+{{- define "radar-hub.inClusterAgentURL" -}}
+{{- $port := int (.Values.service.web.tlsPort | default 443) -}}
+{{- $host := printf "%s.%s.svc.%s" (include "radar-hub.webName" .) .Release.Namespace .Values.clusterDomain -}}
+{{- if eq $port 443 -}}
+{{- printf "wss://%s/agent" $host -}}
+{{- else -}}
+{{- printf "wss://%s:%d/agent" $host $port -}}
+{{- end -}}
+{{- end }}

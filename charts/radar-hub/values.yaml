@@ -7,7 +7,7 @@
 # production, disable it and point at your own DB (postgres.external).
 #
 # Required values for a working install:
-#   --set hub.publicURL=https://radar.acme.example
+#   --set hub.publicURL=https://radar.acme.example   (not with oneCluster.enabled)
 #   --set hub.cookiePassword=<32+ byte secret>
 #   # Postgres: bundled eval DB is ON by default (nothing to set). For
 #   # production: --set postgres.bundled.enabled=false --set postgres.external.existingSecret=<secret>
@@ -130,6 +130,9 @@ hub:
   #   - in-cluster Radar refuses a ws:// tunnel to any non-loopback host.
   # Terminate TLS at your Ingress, or set web.tls.selfSigned=true for a trial
   # (pair it with cloud.insecureSkipVerify=true on the agent).
+  #
+  # Optional with oneCluster.enabled=true, where empty means
+  # https://localhost:8443.
   publicURL: ""
 
   # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.
@@ -365,6 +368,58 @@ web:
   # for a browser-trusted certificate.
   tls:
     selfSigned: false
+    # Keep the self-signed https listener for Radar agents in this cluster,
+    # which dial it at the in-cluster address the install notes print. Public
+    # traffic is unaffected: an Ingress or Gateway keeps using the http port,
+    # and the hub does not treat the public certificate as self-signed. Leave
+    # it on once any agent uses that address, so switching public routing to
+    # an Ingress or Gateway does not disconnect it. Implied by selfSigned,
+    # oneCluster.enabled and localCluster.
+    inCluster: false
+
+# ---------------------------------------------------------------------------
+# Try it in one cluster
+# ---------------------------------------------------------------------------
+# A trial with no public address, DNS, ingress or load balancer. You open the
+# hub from your workstation with port-forward, and a Radar installed in the
+# same cluster connects to it over the in-cluster address.
+#
+# Requires web.tls.selfSigned=true. hub.publicURL defaults to
+# https://localhost:8443. The hub treats that URL as browser-only: invites
+# and emails carry the port-forward step, and no agent is ever given it.
+# Pair it with localCluster below so the cluster the hub runs in shows up
+# without a separate connect step.
+oneCluster:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Local cluster: the cluster the hub runs in
+# ---------------------------------------------------------------------------
+# The hub registers it itself, named "local", with this id and token. Install
+# Radar in the same cluster with clusterName set to the id and the same token,
+# and it connects as soon as the hub has an organization (right after the
+# first sign-in). Changing the token and upgrading replaces the registered
+# token, so the Radar install must be updated with the new one.
+#
+# That Radar dials the web Service's self-signed https port by its in-cluster
+# address (install notes print it). Setting localCluster keeps that port on
+# even with web.tls.selfSigned=false, so moving public traffic to an Ingress
+# or Gateway does not disconnect it. Public traffic keeps using the http port.
+#
+# Set id together with EITHER token OR existingSecret. Leave all empty to
+# connect every cluster from the hub's UI instead.
+localCluster:
+  # 11 characters of A-Z, a-z, 0-9, "-" and "_", the form the hub gives its
+  # cluster ids.
+  id: ""
+  # "rhc_" followed by 43 characters of A-Z, a-z, 0-9, "-" and "_", the form
+  # the hub mints. Written to the chart's Secret. Prefer existingSecret for
+  # GitOps so the token is not in your values file.
+  token: ""
+  # Secret you manage, in this release's namespace, holding the token.
+  existingSecret: ""
+  # Key inside existingSecret. Empty means "token".
+  existingSecretKey: ""
 
 # ---------------------------------------------------------------------------
 # Auth
@@ -554,7 +609,8 @@ service:
     type: ClusterIP
     port: 80
     # HTTPS port on the web Service, wired to the pod's self-signed :8443
-    # listener. Only rendered when web.tls.selfSigned=true.
+    # listener. Rendered when web.tls.selfSigned or web.tls.inCluster is true,
+    # or with oneCluster or localCluster; Radar agents in this cluster dial it.
     tlsPort: 443
 
   # Advanced/split-origin only. Keep the hub Service internal unless you
