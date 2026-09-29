@@ -445,9 +445,13 @@ auth:
     # "groups", which is what Okta, Keycloak and Entra emit. Set it empty to
     # disable group passthrough entirely.
     #
-    # A claim your IdP does not emit is harmless: no groups are forwarded and
-    # sign-in is unaffected. Nothing reaches a cluster until you write a
-    # RoleBinding naming one of the subjects below.
+    # A claim your IdP does not emit doesn't break sign-in: no groups are
+    # forwarded. It does matter for clusterAccess below: left unset, it follows
+    # this setting to idp, and clusters installed then get no hub-role
+    # bindings, so with no groups arriving nobody sees them. Check that groups
+    # arrive (Settings shows the ones your session forwards) before installing
+    # clusters, or set clusterAccess to roles. Nothing reaches a cluster until
+    # you write a RoleBinding naming one of the subjects below.
     #
     # Each group value is forwarded to your connected clusters as a
     # `radar:idp:<group>` subject, so you can bind Kubernetes RBAC to the groups
