@@ -55,17 +55,17 @@ tests:
           any: true
 
   - it: rejects an unknown value
-    template: templates/deployment-hub.yaml
+    template: templates/secret.yaml
     values:
       - values/oidc-base.yaml
     set:
       auth.oidc.clusterAccess: groups
     asserts:
       - failedTemplate:
-          errorPattern: "clusterAccess"
+          errorPattern: "clusterAccess': value must be one of"
 
   - it: refuses idp without OIDC
-    template: templates/deployment-hub.yaml
+    template: templates/secret.yaml
     values:
       - values/required-base.yaml
     set:
@@ -75,7 +75,7 @@ tests:
           errorPattern: "needs OIDC configured"
 
   - it: refuses idp with group passthrough off
-    template: templates/deployment-hub.yaml
+    template: templates/secret.yaml
     values:
       - values/oidc-base.yaml
     set:

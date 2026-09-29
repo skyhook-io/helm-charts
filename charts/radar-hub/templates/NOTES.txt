@@ -47,6 +47,23 @@ Auth:
 {{- if .Values.auth.oidc.issuer }}
   - OIDC enabled: issuer={{ .Values.auth.oidc.issuer }} client_id={{ .Values.auth.oidc.clientID }}
   - OIDC callback: {{ default (printf "%s/api/auth/oidc/callback" .Values.hub.publicURL) .Values.auth.oidc.callbackURL }}
+  {{- $ca := .Values.auth.oidc.clusterAccess }}
+  {{- if or (eq $ca "idp") (and (eq $ca "") .Values.auth.oidc.groupsClaim) }}
+  - Cluster access for NEW clusters: IdP groups{{ if eq $ca "" }} (automatic, because auth.oidc.groupsClaim is set){{ end }}.
+    New installs get no hub-role bindings: only radar:idp:<group> subjects you
+    bind in Kubernetes RBAC grant access. Existing clusters are unchanged.
+    Set auth.oidc.clusterAccess=roles to keep the hub-role bindings.
+  {{- else }}
+  - Cluster access for new clusters: hub roles (owner/member/viewer bindings).
+  {{- end }}
+  {{- if .Values.auth.oidc.useRefreshToken }}
+  - Refresh tokens: ON. The IdP client needs the Refresh Token grant (Okta and
+    Entra: add offline_access to auth.oidc.scopes). A refused refresh signs the
+    user out. Set auth.oidc.useRefreshToken=false to turn it off.
+  {{- else }}
+  - Refresh tokens: off. A session carrying IdP groups ends when its ID token
+    expires.
+  {{- end }}
 {{- else if not .Values.auth.breakGlass.email }}
   WARNING: no auth method configured. Set auth.breakGlass.* and/or auth.oidc.*
 {{- end }}
