@@ -122,8 +122,9 @@ postgres:
 hub:
   # Public URL the web app + agent connect to. Must include scheme + host.
   #
-  # MUST be https://. An http:// URL installs cleanly and passes readiness, but
-  # nothing can sign in and no cluster can connect:
+  # MUST be https://, except for the localhost port-forward case below. Any
+  # other http:// URL installs cleanly and passes readiness, but nothing can
+  # sign in and no cluster can connect:
   #   - the OIDC state cookie is __Host- prefixed, so it carries Secure and is
   #     never sent back over plain HTTP. Sign-in bounces to
   #     /login?error=session_expired and the hub logs "state cookie missing".
