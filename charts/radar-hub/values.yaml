@@ -542,9 +542,10 @@ auth:
     # Existing clusters are never changed. The Hub shows this read-only in
     # Settings; it cannot be changed from the UI on a self-hosted install.
     #
-    # idp needs IdP group passthrough (groupsClaim above). Setting idp without
-    # it fails the install: new clusters would get no hub-role bindings AND no
-    # group subjects, and nobody could see anything.
+    # idp needs OIDC (issuer above) and IdP group passthrough (groupsClaim
+    # above). Setting idp without either fails the install: new clusters would
+    # get no hub-role bindings AND no group subjects, and nobody could see
+    # anything.
     #
     # Requires a Hub that reads RADAR_HUB_OIDC_CLUSTER_ACCESS; an older Hub
     # ignores it and behaves as roles.
