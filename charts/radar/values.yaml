@@ -8,6 +8,20 @@
 # enabled (single PVC + SQLite cannot be safely shared across pods).
 replicaCount: 1
 
+# Shared OSS configuration is read-only in the UI. These values are loaded at
+# startup; changing them rolls the Pod. Cloud keeps its existing settings path.
+# null retains Radar's default ignored system namespaces. To include all
+# namespaces, set audit: {ignoredNamespaces: [], disabledChecks: []}.
+audit: null
+# audit:
+#   ignoredNamespaces: [kube-system, kube-node-lease, kube-public, "*-system"]
+#   disabledChecks: [] # Check IDs from GET /api/audit -> checks
+
+helm:
+  # Prefixes, not full chart references. Registry credentials are not stored here.
+  ociSources: []
+  # - oci://ghcr.io/myorg/charts
+
 image:
   repository: ghcr.io/skyhook-io/radar
   pullPolicy: IfNotPresent
@@ -483,6 +497,17 @@ cloud:
       viewer: true
       member: true
       owner: true
+    # Read Radar's curated integrations with explicit group/resource grants.
+    # Includes full specs/status (including inline configuration), not just UI
+    # summaries. Credential-bearing exceptions are listed in files/integration-read-baseline.yaml.
+    # Independent of *ClusterRole: custom base roles still receive this add-on.
+    # Cluster kinds additionally require clusterScopedRead.<tier>. A false here
+    # removes only this add-on, not grants from other roles. For customer-managed
+    # RBAC only, set defaultRbac.create=false and supply your own group bindings.
+    integrationRead:
+      viewer: true
+      member: true
+      owner: true
     # Grant the owner tier node cordon/drain. Cluster-scoped WRITE, so OFF by
     # default. Blast radius when enabled: `patch nodes` can't be field-scoped
     # by RBAC (also permits label/taint edits cluster-wide), and
@@ -492,6 +517,14 @@ cloud:
     # while owner=false this renders nothing, but it stays latent — re-enabling
     # owner later activates it. See templates/cloud-rbac-node-ops.yaml.
     nodeOps: false
+
+# Anonymous usage report to Skyhook, daily and when the pod stops: views,
+# actions and MCP tools used, plus this cluster's minor version, platform,
+# node-count range and known integrations. No install ID, names or contents.
+# Off unless set to true. Radar never asks in a cluster; this value decides
+# for everyone using it. See docs/usage-stats.md.
+usageReporting:
+  enabled: null
 
 # MCP (Model Context Protocol) server for AI tools
 mcp:
@@ -568,9 +601,8 @@ traffic:
 # Provisions the Argo CD API connection declaratively so it survives pod
 # restarts and needs no interactive Settings paste — the right shape for
 # in-cluster / Cloud deployments. Powers the full Git-rendered desired-vs-live
-# diff on GitOps Application pages. Leave token/existingSecret empty to configure
-# it interactively in Settings instead (note: that pick is stored under
-# /home/nonroot and is lost on restart unless persistence is enabled).
+# diff on GitOps Application pages. Configure shared OSS through these values;
+# Settings shows connection status but cannot edit installation configuration.
 #
 # Setting a token here makes the integration environment-managed: read-only in
 # the Settings UI, never written to disk. Mint a token with

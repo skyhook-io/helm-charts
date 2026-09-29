@@ -151,6 +151,12 @@ spec:
             - name: RADAR_HUB_AIR_GAPPED
               value: "true"
             {{- end }}
+            {{- /* Only builds links into Cloud; the hub makes no calls to
+                   it, so air-gapped leaves it alone. */}}
+            {{- if .Values.hub.cloudAppURL }}
+            - name: RADAR_HUB_CLOUD_APP_URL
+              value: {{ .Values.hub.cloudAppURL | quote }}
+            {{- end }}
             - name: RADAR_HUB_CHART_VERSION
               value: {{ .Chart.Version | quote }}
             {{- if .Values.web.tls.selfSigned }}
@@ -159,6 +165,23 @@ spec:
             # to the generated cluster install command — a connector dialing this
             # hub over wss:// must skip verification of the self-signed cert.
             - name: RADAR_HUB_INSECURE_SKIP_VERIFY
+              value: "true"
+            {{- end }}
+            {{- if include "radar-hub.inClusterTLS" . }}
+            {{- /* Where a Radar agent in this same cluster reaches the hub:
+                   the web Service's self-signed https port by in-cluster
+                   FQDN. The hub offers it in the connect and move flows for a
+                   cluster that runs next to it. */}}
+            - name: RADAR_HUB_IN_CLUSTER_AGENT_URL
+              value: {{ include "radar-hub.inClusterAgentURL" . | quote }}
+            {{- end }}
+            {{- if and (include "radar-hub.publicURLIsLoopback" .) (not (include "radar-hub.publicURLFronted" .)) }}
+            {{- /* People open this hub with kubectl port-forward: the invite
+                   and email flows say so. Behind an Ingress, Gateway or load
+                   balancer on localhost they do not, so it stays off there.
+                   The hub refuses to give any localhost URL to agents on its
+                   own, whatever this says. */}}
+            - name: RADAR_HUB_BROWSER_ONLY_URL
               value: "true"
             {{- end }}
             - name: RADAR_HUB_ORG_NAME
@@ -268,6 +291,27 @@ spec:
             - name: RADAR_HUB_OIDC_CLUSTER_ACCESS
               value: {{ . | quote }}
             {{- end }}
+            {{- end }}
+
+            {{- /* The cluster the hub runs in, registered by the hub itself
+                   under this id and token so a Radar installed next to it
+                   connects without a sign-in step. Named "local" on first
+                   registration; users can rename it. */}}
+            {{- if .Values.localCluster.id }}
+            - name: HUB_LOCAL_CLUSTER_ID
+              value: {{ .Values.localCluster.id | quote }}
+            - name: HUB_LOCAL_CLUSTER_NAME
+              value: "local"
+            - name: HUB_LOCAL_CLUSTER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.localCluster.existingSecret }}
+                  name: {{ .Values.localCluster.existingSecret | quote }}
+                  key: {{ .Values.localCluster.existingSecretKey | default "token" | quote }}
+                  {{- else }}
+                  name: {{ include "radar-hub.secretName" . | quote }}
+                  key: local-cluster-token
+                  {{- end }}
             {{- end }}
 
             {{- /* Outside the OIDC block: break-glass sessions obey the same
