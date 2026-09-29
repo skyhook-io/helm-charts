@@ -387,9 +387,13 @@ auth:
     # "groups", which is what Okta, Keycloak and Entra emit. Set it empty to
     # disable group passthrough entirely.
     #
-    # A claim your IdP does not emit is harmless: no groups are forwarded and
-    # sign-in is unaffected. Nothing reaches a cluster until you write a
-    # RoleBinding naming one of the subjects below.
+    # A claim your IdP does not emit doesn't break sign-in: no groups are
+    # forwarded. It does matter for clusterAccess below: left unset, it follows
+    # this setting to idp, and clusters installed then get no hub-role
+    # bindings, so with no groups arriving nobody sees them. Check that groups
+    # arrive (Settings shows the ones your session forwards) before installing
+    # clusters, or set clusterAccess to roles. Nothing reaches a cluster until
+    # you write a RoleBinding naming one of the subjects below.
     #
     # Each group value is forwarded to your connected clusters as a
     # `radar:idp:<group>` subject, so you can bind Kubernetes RBAC to the groups
@@ -450,9 +454,11 @@ auth:
     # doubt leave this empty and check whether groups arrive before adding one.
     scopes: []
     # Keep the IdP refresh token on the session and refresh the ID token before
-    # it expires. IdP groups then stay current for the whole session instead of
-    # being dropped when the first ID token expires (typically an hour), and a
-    # user the IdP rejects on refresh is signed out.
+    # it expires. IdP groups then stay current for the whole session, and a
+    # user the IdP rejects on refresh is signed out. Without it, a session
+    # carrying IdP groups ends when the first ID token expires (typically an
+    # hour) and the user signs in again. Turn this on when your IdP issues
+    # short-lived ID tokens and sessions should last session.maxLifetime.
     #
     # Does NOT change the scopes requested. Okta and Entra return a refresh
     # token only when "offline_access" is in `scopes` above; Keycloak returns
