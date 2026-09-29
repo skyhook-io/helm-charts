@@ -76,9 +76,10 @@ NEXT STEPS
 {{ if $portForward -}}
 2. Once both Deployments are Ready, forward the hub to your workstation and
    leave the command running:
-     kubectl -n {{ .Release.Namespace }} port-forward{{ with include "radar-hub.portForwardAddress" . }} --address {{ . }}{{ end }} svc/{{ include "radar-hub.webName" . }} {{ include "radar-hub.publicURLPort" . }}:{{ .Values.service.web.tlsPort | default 443 }}
-   Then open {{ $publicURL }}. The certificate is self-signed, so the
-   browser asks you to accept it once. Anyone you invite runs the same
+{{- $https := eq (urlParse $publicURL).scheme "https" }}
+     kubectl -n {{ .Release.Namespace }} port-forward{{ with include "radar-hub.portForwardAddress" . }} --address {{ . }}{{ end }} svc/{{ include "radar-hub.webName" . }} {{ include "radar-hub.publicURLPort" . }}:{{ if $https }}{{ .Values.service.web.tlsPort | default 443 }}{{ else }}http{{ end }}
+   Then open {{ $publicURL }}.{{ if $https }} The certificate is self-signed, so the
+   browser asks you to accept it once.{{ end }} Anyone you invite runs the same
    port-forward with their own kubectl access.
 {{- else -}}
 2. Once both Deployments are Ready, open:
