@@ -146,8 +146,15 @@ for url in https://localhost:8443 https://LOCALHOST https://radar.localhost:9443
 done
 ING=(--set ingress.enabled=true --set 'ingress.hosts[0].host=x.example'
      --set 'ingress.hosts[0].paths[0].path=/' --set 'ingress.hosts[0].paths[0].pathType=Prefix')
-check "http localhost is refused"               refuse --set hub.publicURL=http://localhost:8080 "${SS[@]}"
-check "http 127.0.0.1 is refused"               refuse --set hub.publicURL=http://127.0.0.1:8443 "${SS[@]}"
+# http forwards to the web Service's http port (radar-e2e installs this way).
+check "http localhost + selfSigned"             render --set hub.publicURL=http://localhost:18080 "${SS[@]}"
+check "http 127.0.0.1 + selfSigned"             render --set hub.publicURL=http://127.0.0.1:8443 "${SS[@]}"
+check "http [::1] + selfSigned"                 render --set 'hub.publicURL=http://[::1]:8080' "${SS[@]}"
+check "http localhost without selfSigned"       refuse --set hub.publicURL=http://localhost:18080
+# 0.0.0.0 and [::] listen on every interface: sign-in must not be plain http.
+check "http 0.0.0.0 is refused"                 refuse --set hub.publicURL=http://0.0.0.0:8080 "${SS[@]}"
+check "http [::] is refused"                    refuse --set 'hub.publicURL=http://[::]:8080' "${SS[@]}"
+check "ftp localhost is refused"                refuse --set hub.publicURL=ftp://localhost:8080 "${SS[@]}"
 check "http localhost + Ingress is allowed"     render --set hub.publicURL=http://localhost "${ING[@]}"
 check "localhost + Ingress skips the guard"      render "${LH[@]}" "${ING[@]}"
 check "localhost + HTTPRoute skips the guard"    render "${LH[@]}" --set httpRoute.enabled=true --set 'httpRoute.parentRefs[0].name=gw'
@@ -291,6 +298,10 @@ note_lacks() { # note_lacks <description> <fixed string> <extra args...>
 note_has   "port-forward on the URL's port"       'port-forward svc/t-radar-hub-web 8443:443' "${LH[@]}" "${SS[@]}"
 note_has   "port-forward follows tlsPort"         'port-forward svc/t-radar-hub-web 8443:9443' "${LH[@]}" "${SS[@]}" --set service.web.tlsPort=9443
 note_has   "port-forward on a custom URL port"    'port-forward svc/t-radar-hub-web 9443:443' --set hub.publicURL=https://localhost:9443 "${SS[@]}"
+note_has   "http forwards to the http port"       'port-forward svc/t-radar-hub-web 18080:http' --set hub.publicURL=http://localhost:18080 "${SS[@]}"
+note_has   "http with no port forwards 80"        'port-forward svc/t-radar-hub-web 80:http' --set hub.publicURL=http://localhost "${SS[@]}"
+note_lacks "http has no certificate step"         'accept it once' --set hub.publicURL=http://localhost:18080 "${SS[@]}"
+note_has   "https keeps the certificate step"     'The certificate is self-signed' "${LH[@]}" "${SS[@]}"
 # kubectl binds 127.0.0.1 and ::1 by default; any other IP must be named.
 note_has   "port-forward binds 0.0.0.0"           'port-forward --address 0.0.0.0 svc/t-radar-hub-web 8443:443' --set hub.publicURL=https://0.0.0.0:8443 "${SS[@]}"
 note_has   "port-forward binds ::"                'port-forward --address :: svc/t-radar-hub-web 8443:443' --set 'hub.publicURL=https://[::]:8443' "${SS[@]}"

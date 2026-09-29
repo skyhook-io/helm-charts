@@ -135,9 +135,13 @@ hub:
   # or [::], any port) is never given to agents: a Radar in this cluster
   # dials the in-cluster address the install notes print. With no Ingress,
   # Gateway or load balancer set, it also means the hub has no public address
-  # and people open it with kubectl port-forward: the URL must then be https
-  # (e.g. https://localhost:8443) with web.tls.selfSigned=true, and invites
-  # and emails carry the port-forward step.
+  # and people open it with kubectl port-forward, which needs
+  # web.tls.selfSigned=true; invites and emails carry the port-forward step.
+  # https (e.g. https://localhost:8443) forwards to the self-signed https
+  # port and is the recommended form. http forwards to the http port and
+  # works on localhost, *.localhost, 127.x.x.x and [::1] in browsers that
+  # accept Secure cookies over http on those hosts (tested in Chromium-based
+  # browsers); 0.0.0.0 and [::] need https.
   publicURL: ""
 
   # Cookie sealing key — 32+ bytes. Generate with `openssl rand -base64 48`.
