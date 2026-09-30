@@ -445,8 +445,9 @@ auth:
     # "groups", which is what Okta, Keycloak and Entra emit. Set it empty to
     # disable group passthrough entirely.
     #
-    # A claim your IdP does not emit is harmless: no groups are forwarded and
-    # sign-in is unaffected. Nothing reaches a cluster until you write a
+    # A claim your IdP does not emit doesn't break sign-in: no groups are
+    # forwarded. It does matter for clusterAccess below, which follows this
+    # setting when left empty. Nothing reaches a cluster until you write a
     # RoleBinding naming one of the subjects below.
     #
     # Each group value is forwarded to your connected clusters as a
@@ -508,19 +509,44 @@ auth:
     # doubt leave this empty and check whether groups arrive before adding one.
     scopes: []
     # Keep the IdP refresh token on the session and refresh the ID token before
-    # it expires. IdP groups then stay current for the whole session instead of
-    # being dropped when the first ID token expires (typically an hour), and a
-    # user the IdP rejects on refresh is signed out.
+    # it expires. IdP groups then stay current for the whole session, and a
+    # user the IdP rejects on refresh is signed out. Without a refresh token, a
+    # session carrying IdP groups ends when its ID token expires (Keycloak's
+    # default is 5 minutes, Okta and Entra an hour) and the user signs in
+    # again. On by default so sessions last session.maxLifetime; set false to
+    # always re-sign-in at token expiry.
     #
     # Does NOT change the scopes requested. Okta and Entra return a refresh
     # token only when "offline_access" is in `scopes` above; Keycloak returns
-    # one by default. The IdP client needs the Refresh Token grant.
+    # one by default. The IdP client needs the Refresh Token grant. An IdP that
+    # returns no refresh token behaves as if this were false.
     #
     # An unreachable IdP (or 429/5xx) fails the request with 503 and keeps the
     # session; an IdP that rejects the refresh token ends the session (401).
     #
     # Requires Hub 1.6.0 or newer; an older Hub ignores it.
-    useRefreshToken: false
+    useRefreshToken: true
+    # How NEW cluster installs grant Kubernetes access to hub users.
+    #   roles -> the Radar chart's default ClusterRoleBindings for hub roles
+    #            (owner/member/viewer) stay on.
+    #   idp   -> the connect wizard installs with cloud.defaultRbac.create=false,
+    #            so hub roles grant nothing in the cluster and your own
+    #            RoleBindings on radar:idp:<group> subjects decide access.
+    #   ""    -> (default) idp while IdP group passthrough is on (groupsClaim
+    #            set), roles otherwise. Set roles to opt out.
+    #
+    # Under idp, a groupsClaim your IdP doesn't emit means clusters installed
+    # then are visible to nobody. Check that groups arrive (Settings shows the
+    # ones your session forwards) before installing clusters.
+    #
+    # Existing clusters are never changed. The Hub shows this read-only in
+    # Settings; it cannot be changed from the UI on a self-hosted install.
+    #
+    # idp without OIDC (issuer) or groupsClaim fails the install.
+    #
+    # Requires a Hub that reads RADAR_HUB_OIDC_CLUSTER_ACCESS; an older Hub
+    # ignores it and behaves as roles.
+    clusterAccess: ""
 
   # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
   # in Postgres; the cookie carries only a random session id, so signing out,

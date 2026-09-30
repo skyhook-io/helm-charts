@@ -14,9 +14,9 @@ templates:
   - templates/deployment-hub.yaml
   - templates/secret.yaml
 tests:
-  # Upgrade safety: an install that sets nothing renders no new env, so the
-  # Hub keeps its own defaults (168h / 24h / refresh off).
-  - it: emits no session or refresh env when untouched
+  # Upgrade safety: an install that sets nothing renders no session env, so the
+  # Hub keeps its own defaults (168h / 24h). Refresh is on by default (below).
+  - it: emits no session env when untouched
     template: templates/deployment-hub.yaml
     values:
       - values/oidc-base.yaml
@@ -30,11 +30,6 @@ tests:
           path: spec.template.spec.containers[0].env
           content:
             name: RADAR_HUB_SESSION_MAX_INACTIVE
-          any: true
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
           any: true
 
   # Break-glass sessions obey the same limits, so the session env must not be
@@ -58,18 +53,29 @@ tests:
             name: RADAR_HUB_SESSION_MAX_INACTIVE
             value: "2h"
 
-  - it: emits the refresh flag when useRefreshToken is true
+  - it: emits the refresh flag by default
     template: templates/deployment-hub.yaml
     values:
       - values/oidc-base.yaml
-    set:
-      auth.oidc.useRefreshToken: true
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
             value: "true"
+
+  - it: omits the refresh flag when useRefreshToken is false
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.useRefreshToken: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
+          any: true
 
   # The flag means nothing without OIDC; it stays inside the issuer gate.
   - it: ignores useRefreshToken when OIDC is off
