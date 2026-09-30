@@ -446,12 +446,9 @@ auth:
     # disable group passthrough entirely.
     #
     # A claim your IdP does not emit doesn't break sign-in: no groups are
-    # forwarded. It does matter for clusterAccess below: left unset, it follows
-    # this setting to idp, and clusters installed then get no hub-role
-    # bindings, so with no groups arriving nobody sees them. Check that groups
-    # arrive (Settings shows the ones your session forwards) before installing
-    # clusters, or set clusterAccess to roles. Nothing reaches a cluster until
-    # you write a RoleBinding naming one of the subjects below.
+    # forwarded. It does matter for clusterAccess below, which follows this
+    # setting when left empty. Nothing reaches a cluster until you write a
+    # RoleBinding naming one of the subjects below.
     #
     # Each group value is forwarded to your connected clusters as a
     # `radar:idp:<group>` subject, so you can bind Kubernetes RBAC to the groups
@@ -539,13 +536,14 @@ auth:
     #   ""    -> (default) idp while IdP group passthrough is on (groupsClaim
     #            set), roles otherwise. Set roles to opt out.
     #
+    # Under idp, a groupsClaim your IdP doesn't emit means clusters installed
+    # then are visible to nobody. Check that groups arrive (Settings shows the
+    # ones your session forwards) before installing clusters.
+    #
     # Existing clusters are never changed. The Hub shows this read-only in
     # Settings; it cannot be changed from the UI on a self-hosted install.
     #
-    # idp needs OIDC (issuer above) and IdP group passthrough (groupsClaim
-    # above). Setting idp without either fails the install: new clusters would
-    # get no hub-role bindings AND no group subjects, and nobody could see
-    # anything.
+    # idp without OIDC (issuer) or groupsClaim fails the install.
     #
     # Requires a Hub that reads RADAR_HUB_OIDC_CLUSTER_ACCESS; an older Hub
     # ignores it and behaves as roles.

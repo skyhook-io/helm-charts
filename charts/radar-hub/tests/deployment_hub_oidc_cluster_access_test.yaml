@@ -6,7 +6,7 @@ templates:
   - templates/deployment-hub.yaml
   - templates/secret.yaml
 tests:
-  - it: emits nothing by default so the Hub follows the IdP
+  - it: emits nothing by default
     template: templates/deployment-hub.yaml
     values:
       - values/oidc-base.yaml
