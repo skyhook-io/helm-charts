@@ -3923,6 +3923,39 @@ entries:
           url: https://radarhq.io/docs/cloud/self-hosted
       category: monitoring-logging
     apiVersion: v2
+    appVersion: 1.10.0
+    created: "2026-10-07T14:34:11.743894917Z"
+    description: Radar Cloud control plane for self-hosted deployments — Go API +
+      React web app + Postgres (bundled eval DB or bring-your-own).
+    digest: 14ee5ba8ffcd1d7af660835e84be95232952cf53f75e6b773522e64488ad6e9d
+    home: https://radarhq.io/docs/cloud/self-hosted
+    icon: https://radarhq.io/radar/icon-512.png
+    keywords:
+    - radar
+    - kubernetes
+    - observability
+    - self-hosted
+    - on-prem
+    maintainers:
+    - email: support@skyhook.io
+      name: Skyhook
+      url: https://radarhq.io
+    name: radar-hub
+    sources:
+    - https://github.com/skyhook-dev/radar-hub
+    type: application
+    urls:
+    - https://github.com/skyhook-io/helm-charts/releases/download/radar-hub-1.10.0/radar-hub-1.10.0.tgz
+    version: 1.10.0
+  - annotations:
+      artifacthub.io/license: Proprietary
+      artifacthub.io/links: |
+        - name: Website
+          url: https://radarhq.io
+        - name: Documentation
+          url: https://radarhq.io/docs/cloud/self-hosted
+      category: monitoring-logging
+    apiVersion: v2
     appVersion: 1.9.1
     created: "2026-10-07T14:07:41.889243628Z"
     description: Radar Cloud control plane for self-hosted deployments — Go API +
@@ -5115,4 +5148,4 @@ entries:
     urls:
     - https://github.com/skyhook-io/helm-charts/releases/download/skyhook-connector-1.3.15/skyhook-connector-1.3.15.tgz
     version: 1.3.15
-generated: "2026-10-07T14:07:41.889716244Z"
+generated: "2026-10-07T14:34:11.744186903Z"
