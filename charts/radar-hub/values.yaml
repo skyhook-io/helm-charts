@@ -508,19 +508,24 @@ auth:
     # doubt leave this empty and check whether groups arrive before adding one.
     scopes: []
     # Keep the IdP refresh token on the session and refresh the ID token before
-    # it expires. IdP groups then stay current for the whole session instead of
-    # being dropped when the first ID token expires (typically an hour), and a
-    # user the IdP rejects on refresh is signed out.
+    # it expires. IdP groups then stay current for the whole session, and a
+    # user the IdP rejects on refresh is signed out. Without a refresh token, a
+    # session carrying IdP groups ends when its ID token expires (Keycloak's
+    # default is 5 minutes, Okta and Entra an hour) and the user signs in
+    # again, as Grafana and oauth2-proxy do; Hubs before 1.10.0 instead kept
+    # the session and stopped forwarding the groups. On by default so sessions
+    # last session.maxLifetime; set false to always re-sign-in at token expiry.
     #
     # Does NOT change the scopes requested. Okta and Entra return a refresh
     # token only when "offline_access" is in `scopes` above; Keycloak returns
-    # one by default. The IdP client needs the Refresh Token grant.
+    # one by default. The IdP client needs the Refresh Token grant. An IdP that
+    # returns no refresh token behaves as if this were false.
     #
     # An unreachable IdP (or 429/5xx) fails the request with 503 and keeps the
     # session; an IdP that rejects the refresh token ends the session (401).
     #
     # Requires Hub 1.6.0 or newer; an older Hub ignores it.
-    useRefreshToken: false
+    useRefreshToken: true
 
   # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
   # in Postgres; the cookie carries only a random session id, so signing out,
