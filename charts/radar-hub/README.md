@@ -28,7 +28,7 @@ number and they are not expected to match.
 
 | Field | Means | Set by |
 |---|---|---|
-| `appVersion` | The Hub release installed — the image tag for both `radar-hub` and `radar-hub-web` | The release job, from the Hub's git tag |
+| `appVersion` | The Hub release installed — the image tag for `radar-hub`, `radar-hub-web` and `radar-hub-ai-agent-sandbox` | The release job, from the Hub's git tag |
 | `version` | The chart's own version — templates, values, defaults | Patch: the release job. Minor and major: by hand, in a pull request here |
 
 **Why they differ.** A chart-only fix — a template change, a new value, a
@@ -41,7 +41,7 @@ How the numbers move:
 
 | Change | `version` | `appVersion` |
 |---|---|---|
-| New Hub release | patch +1 | the new Hub version |
+| New Hub release | patch +1, or a staged prerelease promoted (below) | the new Hub version |
 | Chart fix, no new images | patch +1, by hand | unchanged |
 | New or renamed values | minor +1, by hand | unchanged |
 | Removed or breaking values | major +1, by hand | unchanged |
@@ -52,9 +52,10 @@ How the numbers move:
 helm show chart skyhook/radar-hub --version 1.5.1 | grep appVersion
 ```
 
-**Pinning.** `image.hub.tag` and `image.web.tag` default to `appVersion` when
-left empty. Set them only to stage a specific release, and always set both to
-the same tag — a mismatched Hub and Web pair is not a tested combination.
+**Pinning.** `image.hub.tag`, `image.web.tag` and `image.agentSandbox.tag`
+default to `appVersion` when left empty. Set them only to stage a specific
+release, and always set all three to the same tag — a mismatched set is not a
+tested combination.
 
 ### Staging a chart change before the Hub release exists
 
@@ -86,11 +87,12 @@ badge stays on the newest stable release. That step must be on `main` before a
 prerelease chart is merged; without it chart-releaser publishes the rc as an
 ordinary release marked Latest.
 
-**Promoting it.** When the Hub release lands, bump `version` to the stable
-number and `appVersion` to that Hub version in the same change. Do not promote a
-staged chart without moving `appVersion` — `image.hub.tag` defaults to it, so the
-published chart would install a Hub that predates the feature the chart
-configures.
+**Promoting it.** The Hub release does this; don't promote by hand. When a Hub
+`vX.Y.Z` tag is pushed, the release job in skyhook-dev/radar-hub sees the staged
+`version: 1.7.0-rc.1`, publishes it as `1.7.0`, and sets `appVersion` to `X.Y.Z`
+in the same commit. A hand promotion that left `appVersion` behind would ship a
+chart whose default images (`image.*.tag` defaults to it) predate the feature
+the chart configures.
 
 ## Values
 
