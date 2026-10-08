@@ -545,8 +545,8 @@ auth:
     #
     # idp without OIDC (issuer) or groupsClaim fails the install.
     #
-    # Requires a Hub that reads RADAR_HUB_OIDC_CLUSTER_ACCESS; an older Hub
-    # ignores it and behaves as roles.
+    # Requires Hub 1.11.0 or newer; an older Hub installs new clusters as roles
+    # whatever this says.
     clusterAccess: ""
 
   # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
