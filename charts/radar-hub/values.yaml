@@ -445,8 +445,9 @@ auth:
     # "groups", which is what Okta, Keycloak and Entra emit. Set it empty to
     # disable group passthrough entirely.
     #
-    # A claim your IdP does not emit is harmless: no groups are forwarded and
-    # sign-in is unaffected. Nothing reaches a cluster until you write a
+    # A claim your IdP does not emit doesn't break sign-in: no groups are
+    # forwarded. It does matter for clusterAccess below, which follows this
+    # setting when left empty. Nothing reaches a cluster until you write a
     # RoleBinding naming one of the subjects below.
     #
     # Each group value is forwarded to your connected clusters as a
@@ -526,6 +527,27 @@ auth:
     #
     # Requires Hub 1.6.0 or newer; an older Hub ignores it.
     useRefreshToken: true
+    # How NEW cluster installs grant Kubernetes access to hub users.
+    #   roles -> the Radar chart's default ClusterRoleBindings for hub roles
+    #            (owner/member/viewer) stay on.
+    #   idp   -> the connect wizard installs with cloud.defaultRbac.create=false,
+    #            so hub roles grant nothing in the cluster and your own
+    #            RoleBindings on radar:idp:<group> subjects decide access.
+    #   ""    -> (default) idp while IdP group passthrough is on (groupsClaim
+    #            set), roles otherwise. Set roles to opt out.
+    #
+    # Under idp, a groupsClaim your IdP doesn't emit means clusters installed
+    # then are visible to nobody. Check that groups arrive (Settings shows the
+    # ones your session forwards) before installing clusters.
+    #
+    # Existing clusters are never changed. The Hub shows this read-only in
+    # Settings; it cannot be changed from the UI on a self-hosted install.
+    #
+    # idp without OIDC (issuer) or groupsClaim fails the install.
+    #
+    # Requires Hub 1.11.0 or newer; an older Hub installs new clusters as roles
+    # whatever this says.
+    clusterAccess: ""
 
   # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
   # in Postgres; the cookie carries only a random session id, so signing out,
