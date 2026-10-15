@@ -4,11 +4,7 @@
 {{- if and (eq .Values.timeline.storage "postgres") (not .Values.timeline.postgres.existingSecret) }}
 {{- fail "timeline.postgres.existingSecret is required when timeline.storage=postgres" }}
 {{- end }}
-{{- $basePath := "" -}}
-{{- $trimmedBasePath := trimAll "/" (default "" .Values.basePath) -}}
-{{- if $trimmedBasePath -}}
-{{- $basePath = printf "/%s" $trimmedBasePath -}}
-{{- end -}}
+{{- $basePath := include "radar.basePath" . -}}
 {{- if and $basePath .Values.cloud.enabled }}
 {{- fail "basePath is not supported with cloud.enabled=true: Radar Cloud owns the URL path, and the binary refuses the combination at startup — unset one of them" }}
 {{- end }}
@@ -46,15 +42,18 @@ spec:
       {{- include "radar.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- if or .Values.podAnnotations (not .Values.cloud.enabled) }}
       annotations:
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- /* Radar decides what it can watch at startup and keeps serving its
+               cache after a grant is revoked, so a grant change needs a new pod.
+               auth.mode and cloud.enabled also shape the ClusterRole, but they
+               already change the container args. */}}
+        checksum/rbac: {{ toJson .Values.rbac | sha256sum }}
         {{- if not .Values.cloud.enabled }}
         checksum/operator-settings: {{ include "radar.operatorSettings" . | sha256sum }}
         {{- end }}
-      {{- end }}
       labels:
         {{- include "radar.selectorLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
@@ -84,6 +83,9 @@ spec:
             - --no-browser
             {{- if $basePath }}
             - {{ printf "--base-path=%s" $basePath | quote }}
+            {{- end }}
+            {{- with .Values.trustedOrigins }}
+            - {{ printf "--trusted-origins=%s" (join "," .) | quote }}
             {{- end }}
             - --timeline-storage={{ .Values.timeline.storage }}
             {{- if eq .Values.timeline.storage "sqlite" }}
@@ -167,6 +169,9 @@ spec:
             {{- /* clientSecret is injected via RADAR_OIDC_CLIENT_SECRET env var below */}}
             {{- if .Values.auth.oidc.redirectURL }}
             - {{ printf "--auth-oidc-redirect-url=%s" .Values.auth.oidc.redirectURL | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.usernameClaim }}
+            - {{ printf "--auth-oidc-username-claim=%s" .Values.auth.oidc.usernameClaim | quote }}
             {{- end }}
             {{- if .Values.auth.oidc.groupsClaim }}
             - {{ printf "--auth-oidc-groups-claim=%s" .Values.auth.oidc.groupsClaim | quote }}
