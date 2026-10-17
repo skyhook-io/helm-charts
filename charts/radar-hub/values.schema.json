@@ -477,8 +477,17 @@
               "enum": [
                 "",
                 "roles",
-                "idp"
+                "idp",
+                "token"
               ]
+            },
+            "k8sUsernamePrefix": {
+              "type": "string",
+              "not": { "pattern": "^(-$|radar:|cloud:|system:)" }
+            },
+            "k8sGroupsPrefix": {
+              "type": "string",
+              "not": { "pattern": "^(-$|radar:|cloud:|system:)" }
             }
           },
           "additionalProperties": false

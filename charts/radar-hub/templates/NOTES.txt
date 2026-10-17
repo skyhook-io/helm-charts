@@ -63,7 +63,13 @@ Auth:
   - OIDC enabled: issuer={{ .Values.auth.oidc.issuer }} client_id={{ .Values.auth.oidc.clientID }}
   - OIDC callback: {{ default (printf "%s/api/auth/oidc/callback" $publicURL) .Values.auth.oidc.callbackURL }}
   {{- $ca := .Values.auth.oidc.clusterAccess }}
-  {{- if eq $ca "idp" }}
+  {{- if eq $ca "token" }}
+  - Cluster access for NEW clusters: each person's own Kubernetes RBAC.
+    Radar uses the person's ID token from this OIDC client instead of
+    impersonating. Your API servers must accept those tokens. Existing
+    clusters are unchanged until upgraded with
+    auth.kubernetesCredentials=user-token.
+  {{- else if eq $ca "idp" }}
   - Cluster access for NEW clusters: IdP groups.
     New installs get no hub-role bindings: only radar:idp:<group> subjects you
     bind in Kubernetes RBAC grant access. Existing clusters are unchanged.

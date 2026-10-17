@@ -533,7 +533,22 @@ auth:
     #   idp   -> the connect wizard installs with cloud.defaultRbac.create=false,
     #            so hub roles grant nothing in the cluster and your own
     #            RoleBindings on radar:idp:<group> subjects decide access.
-    #   ""    -> (default) roles. Set idp to opt in.
+    #   token -> in-cluster Radar acts with each person's own ID token from
+    #            this OIDC client instead of impersonating: installs set
+    #            auth.kubernetesCredentials=user-token and
+    #            cloud.defaultRbac.create=false, and your existing RBAC on each
+    #            person's Kubernetes username and groups decides access, as it
+    #            does for kubectl. Your API servers must accept ID tokens issued
+    #            to this client (simplest: sign the Hub in with the client
+    #            kubectl already uses). Needs useRefreshToken. Set
+    #            k8sUsernamePrefix/k8sGroupsPrefix to match the API servers'
+    #            --oidc-username-prefix/--oidc-groups-prefix (leave empty
+    #            for "-"). Okta/Entra need offline_access in scopes, or
+    #            sessions end with the ID token. Agents must verify the Hub's
+    #            certificate: not with web.tls.selfSigned or localCluster.
+    #            Requires Hub
+    #            1.12.0 and Radar 1.18.0 or newer.
+    #   ""    -> (default) roles. Set idp or token to opt in.
     #
     # Under idp, a new cluster is visible to nobody until you bind a
     # radar:idp:<group> subject, and a groupsClaim your IdP doesn't emit leaves
@@ -548,6 +563,11 @@ auth:
     # Requires Hub 1.11.0 or newer; an older Hub installs new clusters as roles
     # whatever this says.
     clusterAccess: ""
+    # clusterAccess=token only: the prefixes your API servers add to OIDC
+    # usernames and groups. The Hub forwards <prefix><email> and
+    # <prefix><group> so Radar's cached views match what the API server allows.
+    k8sUsernamePrefix: ""
+    k8sGroupsPrefix: ""
 
   # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
   # in Postgres; the cookie carries only a random session id, so signing out,
