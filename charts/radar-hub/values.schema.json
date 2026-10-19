@@ -488,6 +488,15 @@
             "k8sGroupsPrefix": {
               "type": "string",
               "not": { "pattern": "^(-$|radar:|cloud:|system:)" }
+            },
+            "mcpOAuth": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "scopes": { "type": "array", "items": { "type": "string" } },
+                "audience": { "type": "string" }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

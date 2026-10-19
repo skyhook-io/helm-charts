@@ -301,6 +301,18 @@ spec:
               value: {{ . | quote }}
             {{- end }}
             {{- end }}
+            {{- if .Values.auth.oidc.mcpOAuth.enabled }}
+            - name: MCP_OAUTH_ENABLED
+              value: "true"
+            {{- with .Values.auth.oidc.mcpOAuth.scopes }}
+            - name: RADAR_HUB_MCP_OAUTH_SCOPES
+              value: {{ join " " . | quote }}
+            {{- end }}
+            {{- with .Values.auth.oidc.mcpOAuth.audience }}
+            - name: RADAR_HUB_MCP_OAUTH_AUDIENCE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
             {{- end }}
 
             {{- /* The cluster the hub runs in, registered by the hub itself

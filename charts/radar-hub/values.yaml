@@ -568,6 +568,22 @@ auth:
     # <prefix><group> so Radar's cached views match what the API server allows.
     k8sUsernamePrefix: ""
     k8sGroupsPrefix: ""
+    # MCP clients (Claude Code, Cursor) sign in with this IdP over OAuth: the
+    # Hub advertises the issuer as the authorization server at
+    # <hub.publicURL>/.well-known/oauth-protected-resource/mcp and accepts the
+    # IdP's access tokens on /mcp. Needs hub.publicURL on https. The access
+    # token must carry email and, for IdP groups, groupsClaim.
+    #   scopes   -> what clients request. Empty = openid email profile
+    #               offline_access. Entra needs its API scope first:
+    #               ["<hub.publicURL>/mcp/<scope>", "openid", "profile",
+    #               "email", "offline_access"].
+    #   audience -> the access token's aud. Empty = <hub.publicURL>/mcp.
+    #               Entra v2 tokens carry the app's client ID.
+    # Entra: the app's Application ID URI must be exactly <hub.publicURL>/mcp.
+    mcpOAuth:
+      enabled: false
+      scopes: []
+      audience: ""
 
   # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
   # in Postgres; the cookie carries only a random session id, so signing out,

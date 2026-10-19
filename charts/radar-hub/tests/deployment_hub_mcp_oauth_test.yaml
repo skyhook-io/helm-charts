@@ -1,0 +1,70 @@
+# auth.oidc.mcpOAuth -> the env names cmd/hub/main.go reads. Scopes are
+# space-separated (the hub splits them with strings.Fields).
+suite: hub deployment MCP OAuth env
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  - it: emits no MCP OAuth env by default
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://login.microsoftonline.com/t/v2.0
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MCP_OAUTH_ENABLED
+          any: true
+
+  - it: renders enabled, scopes and audience
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://login.microsoftonline.com/t/v2.0
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+      auth.oidc.mcpOAuth.enabled: true
+      auth.oidc.mcpOAuth.scopes: ["https://radar.test.example/mcp/mcp", "openid", "offline_access"]
+      auth.oidc.mcpOAuth.audience: cid
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MCP_OAUTH_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_SCOPES
+            value: "https://radar.test.example/mcp/mcp openid offline_access"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_AUDIENCE
+            value: cid
+
+  - it: enabled alone leaves scopes and audience to the hub defaults
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://login.microsoftonline.com/t/v2.0
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+      auth.oidc.mcpOAuth.enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_SCOPES
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_AUDIENCE
+          any: true
