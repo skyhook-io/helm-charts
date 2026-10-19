@@ -494,7 +494,17 @@
               "properties": {
                 "enabled": { "type": "boolean" },
                 "scopes": { "type": "array", "items": { "type": "string" } },
-                "audience": { "type": "string" }
+                "audience": { "type": "string" },
+                "requiredScope": { "type": "string" },
+                "tokenExchange": {
+                  "type": "object",
+                  "properties": {
+                    "strategy": { "type": "string", "enum": ["", "rfc8693", "entra-obo"] },
+                    "audience": { "type": "string" },
+                    "scopes": { "type": "array", "items": { "type": "string" } }
+                  },
+                  "additionalProperties": false
+                }
               },
               "additionalProperties": false
             }

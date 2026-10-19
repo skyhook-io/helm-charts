@@ -579,11 +579,26 @@ auth:
     #               "email", "offline_access"].
     #   audience -> the access token's aud. Empty = <hub.publicURL>/mcp.
     #               Entra v2 tokens carry the app's client ID.
+    #   requiredScope -> a scope every MCP access token must carry (e.g.
+    #               "mcp"). Required when audience is clientID: an ID token
+    #               has the same audience but no scope.
+    #   tokenExchange -> clusterAccess=token only. The Hub trades the MCP
+    #               access token at the IdP for the person's Kubernetes token
+    #               (the MCP token never reaches a cluster). strategy:
+    #               "entra-obo" (scopes default ["<clientID>/.default"]) or
+    #               "rfc8693" (Keycloak 26.2+, Okta, Auth0; audience defaults
+    #               to clientID). Empty = MCP calls carry no Kubernetes token
+    #               and live calls are refused.
     # Entra: the app's Application ID URI must be exactly <hub.publicURL>/mcp.
     mcpOAuth:
       enabled: false
       scopes: []
       audience: ""
+      requiredScope: ""
+      tokenExchange:
+        strategy: ""
+        audience: ""
+        scopes: []
 
   # Server-side session limits for OIDC and break-glass sign-ins. Sessions live
   # in Postgres; the cookie carries only a random session id, so signing out,

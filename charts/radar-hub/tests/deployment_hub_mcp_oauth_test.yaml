@@ -68,3 +68,46 @@ tests:
           content:
             name: RADAR_HUB_MCP_OAUTH_AUDIENCE
           any: true
+
+  - it: renders the required scope and token exchange
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://login.microsoftonline.com/t/v2.0
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+      auth.oidc.mcpOAuth.enabled: true
+      auth.oidc.mcpOAuth.requiredScope: mcp
+      auth.oidc.mcpOAuth.tokenExchange.strategy: entra-obo
+      auth.oidc.mcpOAuth.tokenExchange.scopes: ["cid/.default"]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_REQUIRED_SCOPE
+            value: mcp
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_TOKEN_EXCHANGE
+            value: entra-obo
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_TOKEN_EXCHANGE_SCOPES
+            value: cid/.default
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_TOKEN_EXCHANGE_AUDIENCE
+          any: true
+
+  - it: rejects an unknown token exchange strategy
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.mcpOAuth.tokenExchange.strategy: keycloak-v1
+    asserts:
+      - failedTemplate: {}
