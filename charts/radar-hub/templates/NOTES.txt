@@ -22,8 +22,9 @@ In-cluster agent address (self-signed https on the web Service):
   {{ include "radar-hub.inClusterAgentURL" . }}
   Radar in this cluster uses this as cloud.url, with cloud.insecureSkipVerify=true.
 {{- if eq .Values.auth.oidc.clusterAccess "token" }}
-  Radar refuses auth.kubernetesCredentials=user-token on this address: an agent
-  here keeps impersonating. Point user-token agents at hub.publicURL instead.
+  An agent on this address can't be used in token mode: Radar refuses
+  auth.kubernetesCredentials=user-token without a verified certificate, and the
+  Hub refuses agents that impersonate. Point agents at hub.publicURL instead.
 {{- end }}
 {{- end }}
 
@@ -70,8 +71,8 @@ Auth:
   {{- if eq $ca "token" }}
   - Cluster access for NEW clusters: user tokens. Radar calls the
     Kubernetes API with each person's ID token from this OIDC client
-    instead of impersonating. Your API servers must accept those tokens. Existing
-    clusters are unchanged until upgraded with
+    instead of impersonating. Your API servers must accept those tokens. The Hub
+    refuses existing clusters until each is upgraded with
     auth.kubernetesCredentials=user-token.
   {{- else if eq $ca "idp" }}
   - Cluster access for NEW clusters: IdP groups.

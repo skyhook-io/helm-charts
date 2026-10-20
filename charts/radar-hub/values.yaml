@@ -556,8 +556,9 @@ auth:
     # nothing to bind. Check that groups arrive (Settings shows the ones your
     # session forwards) before installing clusters.
     #
-    # Existing clusters are never changed. Under token they keep impersonating
-    # with Hub roles until each runs with auth.kubernetesCredentials=user-token.
+    # Existing clusters are never changed, but under token the Hub refuses
+    # every cluster whose Radar still impersonates (409 user_token_unsupported)
+    # until it runs with auth.kubernetesCredentials=user-token.
     # The Hub shows this read-only in Settings; it cannot be changed from the
     # UI on a self-hosted install.
     #
