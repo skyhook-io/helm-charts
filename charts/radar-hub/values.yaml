@@ -595,6 +595,9 @@ auth:
     #               to clientID). Empty = MCP calls carry no Kubernetes token
     #               and live calls are refused.
     # Entra: the app's Application ID URI must be exactly <hub.publicURL>/mcp.
+    # scopes, audience, requiredScope and tokenExchange need Hub 1.12.0 or
+    # newer: an older Hub ignores them and accepts only <hub.publicURL>/mcp as
+    # the audience.
     mcpOAuth:
       enabled: false
       scopes: []
