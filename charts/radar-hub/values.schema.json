@@ -483,10 +483,14 @@
             },
             "k8sUsernamePrefix": {
               "type": "string",
+              "maxLength": 128,
+              "pattern": "^[!-+\\--~]*$",
               "not": { "pattern": "^(-$|radar:|cloud:|system:)" }
             },
             "k8sGroupsPrefix": {
               "type": "string",
+              "maxLength": 128,
+              "pattern": "^[!-+\\--~]*$",
               "not": { "pattern": "^(-$|radar:|cloud:|system:)" }
             },
             "mcpOAuth": {
