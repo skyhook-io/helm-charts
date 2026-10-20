@@ -156,6 +156,28 @@ tests:
       - failedTemplate:
           errorPattern: "needs agents to verify the Hub's certificate"
 
+  - it: allows token behind external TLS with the in-cluster listener kept
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      service.web.type: LoadBalancer
+      web.tls.inCluster: true
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: refuses token with an http Hub URL
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      hub.publicURL: http://radar.test.example
+    asserts:
+      - failedTemplate:
+          errorPattern: "clusterAccess=token needs an https hub.publicURL"
+
   - it: rejects a reserved Kubernetes groups prefix
     template: templates/secret.yaml
     values:

@@ -545,7 +545,8 @@ auth:
     #            --oidc-username-prefix/--oidc-groups-prefix (leave empty
     #            for "-"). Okta/Entra need offline_access in scopes, or
     #            sessions end with the ID token. Agents must verify the Hub's
-    #            certificate: not with web.tls.selfSigned or localCluster.
+    #            certificate: needs an https hub.publicURL, and not with
+    #            web.tls.selfSigned or localCluster.
     #            Requires Hub
     #            1.12.0 and Radar 1.18.0 or newer.
     #   ""    -> (default) roles. Set idp or token to opt in.
@@ -573,7 +574,8 @@ auth:
     # MCP clients (Claude Code, Cursor) sign in with this IdP over OAuth: the
     # Hub advertises the issuer as the authorization server at
     # <hub.publicURL>/.well-known/oauth-protected-resource/mcp and accepts the
-    # IdP's access tokens on /mcp. Needs hub.publicURL on https. The access
+    # IdP's access tokens on /mcp. Needs auth.oidc.issuer and hub.publicURL on
+    # https (http only on localhost). The access
     # token must carry email and, for IdP groups, groupsClaim.
     #   scopes   -> what clients request. Empty = openid email profile
     #               offline_access. Entra needs its API scope first:

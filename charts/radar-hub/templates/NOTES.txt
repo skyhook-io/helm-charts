@@ -21,6 +21,10 @@ Services:
 In-cluster agent address (self-signed https on the web Service):
   {{ include "radar-hub.inClusterAgentURL" . }}
   Radar in this cluster uses this as cloud.url, with cloud.insecureSkipVerify=true.
+{{- if eq .Values.auth.oidc.clusterAccess "token" }}
+  Radar refuses auth.kubernetesCredentials=user-token on this address: an agent
+  here keeps impersonating. Point user-token agents at hub.publicURL instead.
+{{- end }}
 {{- end }}
 
 Exposure:

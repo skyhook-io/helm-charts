@@ -111,3 +111,59 @@ tests:
       auth.oidc.mcpOAuth.tokenExchange.strategy: keycloak-v1
     asserts:
       - failedTemplate: {}
+
+  - it: refuses MCP OAuth without OIDC
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.enabled needs OIDC configured"
+
+  - it: refuses MCP OAuth with an http Hub URL
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      hub.publicURL: http://radar.test.example
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.enabled needs an https hub.publicURL"
+
+  - it: allows MCP OAuth on an http localhost Hub URL
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      hub.publicURL: http://localhost:8080
+      web.tls.selfSigned: true
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: refuses MCP OAuth on http to every interface
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      hub.publicURL: http://0.0.0.0:8080
+      service.web.type: LoadBalancer
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.enabled needs an https hub.publicURL"
+
+  - it: refuses MCP OAuth on a non-http localhost scheme
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      hub.publicURL: ftp://localhost:8080
+      service.web.type: LoadBalancer
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.enabled needs an https hub.publicURL"
