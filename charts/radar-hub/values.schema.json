@@ -477,8 +477,40 @@
               "enum": [
                 "",
                 "roles",
-                "idp"
+                "idp",
+                "token"
               ]
+            },
+            "k8sUsernamePrefix": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[!-+\\--~]*$",
+              "not": { "pattern": "^(-$|radar:|cloud:|system:)" }
+            },
+            "k8sGroupsPrefix": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[!-+\\--~]*$",
+              "not": { "pattern": "^(-$|radar:|cloud:|system:)" }
+            },
+            "mcpOAuth": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "scopes": { "type": "array", "items": { "type": "string" } },
+                "audience": { "type": "string" },
+                "requiredScope": { "type": "string" },
+                "tokenExchange": {
+                  "type": "object",
+                  "properties": {
+                    "strategy": { "type": "string", "enum": ["", "rfc8693", "entra-obo"] },
+                    "audience": { "type": "string" },
+                    "scopes": { "type": "array", "items": { "type": "string" } }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

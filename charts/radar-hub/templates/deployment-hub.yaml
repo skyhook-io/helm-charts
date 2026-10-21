@@ -291,6 +291,46 @@ spec:
             - name: RADAR_HUB_OIDC_CLUSTER_ACCESS
               value: {{ . | quote }}
             {{- end }}
+            {{- if eq .Values.auth.oidc.clusterAccess "token" }}
+            {{- with .Values.auth.oidc.k8sUsernamePrefix }}
+            - name: RADAR_HUB_OIDC_K8S_USERNAME_PREFIX
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.auth.oidc.k8sGroupsPrefix }}
+            - name: RADAR_HUB_OIDC_K8S_GROUPS_PREFIX
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.auth.oidc.mcpOAuth.enabled }}
+            - name: MCP_OAUTH_ENABLED
+              value: "true"
+            {{- with .Values.auth.oidc.mcpOAuth.scopes }}
+            - name: RADAR_HUB_MCP_OAUTH_SCOPES
+              value: {{ join " " . | quote }}
+            {{- end }}
+            {{- with .Values.auth.oidc.mcpOAuth.audience }}
+            - name: RADAR_HUB_MCP_OAUTH_AUDIENCE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.auth.oidc.mcpOAuth.requiredScope }}
+            - name: RADAR_HUB_MCP_OAUTH_REQUIRED_SCOPE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.auth.oidc.mcpOAuth.tokenExchange }}
+            {{- with .strategy }}
+            - name: RADAR_HUB_MCP_TOKEN_EXCHANGE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .audience }}
+            - name: RADAR_HUB_MCP_TOKEN_EXCHANGE_AUDIENCE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .scopes }}
+            - name: RADAR_HUB_MCP_TOKEN_EXCHANGE_SCOPES
+              value: {{ join " " . | quote }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
             {{- end }}
 
             {{- /* The cluster the hub runs in, registered by the hub itself

@@ -1,0 +1,211 @@
+# auth.oidc.mcpOAuth -> the env names cmd/hub/main.go reads. Scopes are
+# space-separated (the hub splits them with strings.Fields).
+suite: hub deployment MCP OAuth env
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  - it: emits no MCP OAuth env by default
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://login.microsoftonline.com/t/v2.0
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MCP_OAUTH_ENABLED
+          any: true
+
+  - it: renders enabled, scopes and audience
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://login.microsoftonline.com/t/v2.0
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+      auth.oidc.mcpOAuth.enabled: true
+      auth.oidc.mcpOAuth.scopes: ["https://radar.test.example/mcp/mcp", "openid", "offline_access"]
+      auth.oidc.mcpOAuth.audience: cid
+      auth.oidc.mcpOAuth.requiredScope: mcp
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MCP_OAUTH_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_SCOPES
+            value: "https://radar.test.example/mcp/mcp openid offline_access"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_AUDIENCE
+            value: cid
+
+  - it: enabled alone leaves scopes and audience to the hub defaults
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://login.microsoftonline.com/t/v2.0
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+      auth.oidc.mcpOAuth.enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_SCOPES
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_AUDIENCE
+          any: true
+
+  - it: renders the required scope and token exchange
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://login.microsoftonline.com/t/v2.0
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+      auth.oidc.clusterAccess: token
+      auth.oidc.useRefreshToken: true
+      auth.oidc.mcpOAuth.enabled: true
+      auth.oidc.mcpOAuth.requiredScope: mcp
+      auth.oidc.mcpOAuth.tokenExchange.strategy: entra-obo
+      auth.oidc.mcpOAuth.tokenExchange.scopes: ["cid/.default"]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_REQUIRED_SCOPE
+            value: mcp
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_TOKEN_EXCHANGE
+            value: entra-obo
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_TOKEN_EXCHANGE_SCOPES
+            value: cid/.default
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_TOKEN_EXCHANGE_AUDIENCE
+          any: true
+
+  - it: rejects an unknown token exchange strategy
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.mcpOAuth.tokenExchange.strategy: keycloak-v1
+    asserts:
+      - failedTemplate: {}
+
+  - it: refuses MCP OAuth without OIDC
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.enabled needs OIDC configured"
+
+  - it: refuses MCP OAuth with an http Hub URL
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      hub.publicURL: http://radar.test.example
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.enabled needs an https hub.publicURL"
+
+  - it: allows MCP OAuth on an http localhost Hub URL
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      hub.publicURL: http://localhost:8080
+      web.tls.selfSigned: true
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: refuses MCP OAuth on http to every interface
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      hub.publicURL: http://0.0.0.0:8080
+      service.web.type: LoadBalancer
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.enabled needs an https hub.publicURL"
+
+  - it: refuses MCP OAuth on a non-http localhost scheme
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      hub.publicURL: ftp://localhost:8080
+      service.web.type: LoadBalancer
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.enabled needs an https hub.publicURL"
+
+  # The Hub refuses these at boot; the chart refuses them before the rollout.
+  - it: refuses the client ID as audience without a required scope
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.mcpOAuth.enabled: true
+      auth.oidc.mcpOAuth.audience: radar-hub
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.audience is the OIDC client ID, so auth.oidc.mcpOAuth.requiredScope must name the MCP scope"
+
+  - it: refuses token exchange outside token mode
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: roles
+      auth.oidc.mcpOAuth.enabled: true
+      auth.oidc.mcpOAuth.tokenExchange.strategy: rfc8693
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.tokenExchange needs auth.oidc.clusterAccess=token"
+
+  - it: refuses a token exchange scope naming the MCP scope
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.useRefreshToken: true
+      auth.oidc.mcpOAuth.enabled: true
+      auth.oidc.mcpOAuth.requiredScope: mcp
+      auth.oidc.mcpOAuth.tokenExchange.strategy: entra-obo
+      auth.oidc.mcpOAuth.tokenExchange.scopes: ["api://radar-hub/mcp"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "scopes entry \"api://radar-hub/mcp\" requests the MCP scope \"mcp\""

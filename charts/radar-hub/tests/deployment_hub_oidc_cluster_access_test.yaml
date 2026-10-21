@@ -84,3 +84,139 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "needs auth.oidc.groupsClaim"
+
+  - it: emits token mode with the Kubernetes prefixes
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.useRefreshToken: true
+      auth.oidc.k8sUsernamePrefix: "oidc:"
+      auth.oidc.k8sGroupsPrefix: "oidc:"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_ACCESS
+            value: "token"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_K8S_USERNAME_PREFIX
+            value: "oidc:"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_K8S_GROUPS_PREFIX
+            value: "oidc:"
+
+  - it: ignores the Kubernetes prefixes outside token mode
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.k8sUsernamePrefix: "oidc:"
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_K8S_USERNAME_PREFIX
+          any: true
+
+  - it: refuses token without refresh tokens
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.useRefreshToken: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "clusterAccess=token needs auth.oidc.useRefreshToken=true"
+
+  - it: refuses token without OIDC
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+    asserts:
+      - failedTemplate:
+          errorPattern: "clusterAccess=token needs OIDC configured"
+
+  - it: refuses token with a self-signed Hub certificate
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      web.tls.selfSigned: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "needs agents to verify the Hub's certificate"
+
+  - it: allows token behind external TLS with the in-cluster listener kept
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      service.web.type: LoadBalancer
+      web.tls.inCluster: true
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: refuses token with an http Hub URL
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      hub.publicURL: http://radar.test.example
+    asserts:
+      - failedTemplate:
+          errorPattern: "clusterAccess=token needs an https hub.publicURL"
+
+  - it: rejects a reserved Kubernetes groups prefix
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.k8sGroupsPrefix: "radar:"
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects a Kubernetes username prefix with whitespace
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.k8sUsernamePrefix: "oidc user:"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/auth/oidc/k8sUsernamePrefix'"
+
+  - it: rejects a Kubernetes groups prefix with a comma
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.k8sGroupsPrefix: "a,b:"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/auth/oidc/k8sGroupsPrefix'"
+
+  - it: rejects a Kubernetes groups prefix over 128 bytes
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.k8sGroupsPrefix: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/auth/oidc/k8sGroupsPrefix'"
