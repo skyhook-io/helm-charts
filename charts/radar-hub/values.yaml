@@ -526,6 +526,9 @@ auth:
     # session; an IdP that rejects the refresh token ends the session (401).
     #
     # Requires Hub 1.6.0 or newer; an older Hub ignores it.
+    #
+    # Under clusterAccess=token it also refreshes the relayed token (see
+    # clusterToken), so sessions outlive that token's expiry.
     useRefreshToken: true
     # How NEW cluster installs grant Kubernetes access to hub users.
     #   roles -> the Radar chart's default ClusterRoleBindings for hub roles
@@ -533,8 +536,9 @@ auth:
     #   idp   -> the connect wizard installs with cloud.defaultRbac.create=false,
     #            so hub roles grant nothing in the cluster and your own
     #            RoleBindings on radar:idp:<group> subjects decide access.
-    #   token -> in-cluster Radar acts with each person's own ID token from
-    #            this OIDC client instead of impersonating: installs set
+    #   token -> in-cluster Radar acts with each person's own ID token (or
+    #            access token, see clusterToken) from this OIDC client
+    #            instead of impersonating: installs set
     #            auth.kubernetesCredentials=user-token and
     #            cloud.defaultRbac.create=false, and your existing RBAC on each
     #            person's Kubernetes username and groups decides access, as it
@@ -572,6 +576,24 @@ auth:
     # <prefix><group> so Radar's cached views match what the API server allows.
     k8sUsernamePrefix: ""
     k8sGroupsPrefix: ""
+    # clusterAccess=token only: which IdP token the Hub relays to clusters.
+    #   id_token     -> (default) the ID token issued to clientID.
+    #   access_token -> the access token, which must be a JWT from issuer
+    #                   with clusterTokenAudience in aud and emailClaim equal
+    #                   to the ID token's. Your API servers must accept that
+    #                   audience.
+    # Changing it signs everyone out on their next cluster request.
+    # Requires a Hub image that understands RADAR_HUB_OIDC_CLUSTER_TOKEN; an
+    # older Hub ignores it and relays the ID token.
+    clusterToken: id_token
+    # Required with clusterToken=access_token: the aud the access token must
+    # carry.
+    clusterTokenAudience: ""
+    # The claim that carries the user's email, in the ID token, the relayed
+    # access token and MCP access tokens. Under clusterAccess=token it must be
+    # the claim your API servers map to the username (claimMappings.username /
+    # --oidc-username-claim). Empty = email.
+    emailClaim: "email"
     # MCP clients (Claude Code, Cursor) sign in with this IdP over OAuth: the
     # Hub advertises the issuer as the authorization server at
     # <hub.publicURL>/.well-known/oauth-protected-resource/mcp and accepts the

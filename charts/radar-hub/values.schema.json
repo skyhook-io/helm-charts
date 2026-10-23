@@ -493,6 +493,19 @@
               "pattern": "^[!-+\\--~]*$",
               "not": { "pattern": "^(-$|radar:|cloud:|system:)" }
             },
+            "clusterToken": {
+              "type": "string",
+              "enum": [
+                "id_token",
+                "access_token"
+              ]
+            },
+            "clusterTokenAudience": {
+              "type": "string"
+            },
+            "emailClaim": {
+              "type": "string"
+            },
             "mcpOAuth": {
               "type": "object",
               "properties": {

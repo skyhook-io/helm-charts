@@ -70,10 +70,18 @@ Auth:
   {{- $ca := .Values.auth.oidc.clusterAccess }}
   {{- if eq $ca "token" }}
   - Cluster access for NEW clusters: user tokens. Radar calls the
-    Kubernetes API with each person's ID token from this OIDC client
+    Kubernetes API with each person's token from this OIDC client
     instead of impersonating. Your API servers must accept those tokens. The Hub
     refuses existing clusters until each is upgraded with
     auth.kubernetesCredentials=user-token.
+    {{- if eq .Values.auth.oidc.clusterToken "access_token" }}
+    Relayed token: the access token for audience {{ .Values.auth.oidc.clusterTokenAudience }}
+    (auth.oidc.clusterToken=access_token).
+    {{- else }}
+    Relayed token: the ID token (auth.oidc.clusterToken=id_token).
+    {{- end }}
+    Changing auth.oidc.clusterToken signs everyone out on their next cluster
+    request.
   {{- else if eq $ca "idp" }}
   - Cluster access for NEW clusters: IdP groups.
     New installs get no hub-role bindings: only radar:idp:<group> subjects you
