@@ -220,6 +220,39 @@ secretref "existingSecret defaults to key token" HUB_LOCAL_CLUSTER_TOKEN lc toke
 secretref "existingSecretKey is honoured"       HUB_LOCAL_CLUSTER_TOKEN lc agent-token --set localCluster.id=$LC_ID --set localCluster.existingSecret=lc --set localCluster.existingSecretKey=agent-token
 lacks "existingSecret writes no token"          'local-cluster-token:' --set localCluster.id=$LC_ID --set localCluster.existingSecret=lc
 lacks "no local cluster by default"             'name: HUB_LOCAL_CLUSTER_'
+echo "enrollment key"
+EK=rhe_0123456789abcdefghijABCDEFGHIJ-_0123456789a
+check "inline key"                              render --set enrollment.key=$EK --set image.hub.tag=1.13.0
+check "existingSecret"                          render --set enrollment.existingSecret=ek --set image.hub.tag=1.13.0
+check "key and existingSecret together"         refuse --set enrollment.key=$EK --set enrollment.existingSecret=ek --set image.hub.tag=1.13.0
+check "key without the rhe_ prefix"             refuse --set enrollment.key=${EK#rhe_}xxxx --set image.hub.tag=1.13.0
+check "key of 42 characters after rhe_"         refuse --set enrollment.key=${EK%?} --set image.hub.tag=1.13.0
+check "key of 44 characters after rhe_"         refuse --set enrollment.key=${EK}x --set image.hub.tag=1.13.0
+check "approval manual"                         refuse --set enrollment.key=$EK --set enrollment.approval=manual --set image.hub.tag=1.13.0
+check "approval unknown"                        refuse --set enrollment.key=$EK --set enrollment.approval=sometimes --set image.hub.tag=1.13.0
+check "rejoin reclaim"                          render --set enrollment.key=$EK --set enrollment.rejoin=reclaim --set image.hub.tag=1.13.0
+check "rejoin unknown"                          refuse --set enrollment.key=$EK --set enrollment.rejoin=merge --set image.hub.tag=1.13.0
+manual_out=$(helm template t . "${BASE[@]}" --set enrollment.key=$EK --set enrollment.approval=manual 2>&1)
+if grep -qF 'enrollment.approval: manual is not supported yet; use auto' <<<"$manual_out"; then
+  printf '  ok    %-46s %s\n' "approval manual says not supported" "message"
+else printf '  FAIL  %-46s message missing\n' "approval manual says not supported"; fails=$((fails+1)); fi
+has   "key lands in the chart Secret"           "enrollment-key: \"$EK\"" --set enrollment.key=$EK --set image.hub.tag=1.13.0
+secretref "key is read from the chart Secret"   HUB_ENROLLMENT_KEY t-radar-hub-config enrollment-key --set enrollment.key=$EK --set image.hub.tag=1.13.0
+secretref "existingSecret defaults to key key"  HUB_ENROLLMENT_KEY ek key --set enrollment.existingSecret=ek --set image.hub.tag=1.13.0
+secretref "existingSecretKey is honoured"       HUB_ENROLLMENT_KEY ek install-key --set enrollment.existingSecret=ek --set enrollment.existingSecretKey=install-key --set image.hub.tag=1.13.0
+envis "approval defaults to auto"               HUB_ENROLLMENT_APPROVAL auto --set enrollment.key=$EK --set image.hub.tag=1.13.0
+envis "rejoin defaults to new"                  HUB_ENROLLMENT_REJOIN new --set enrollment.key=$EK --set image.hub.tag=1.13.0
+envis "rejoin reclaim is wired"                 HUB_ENROLLMENT_REJOIN reclaim --set enrollment.key=$EK --set enrollment.rejoin=reclaim --set image.hub.tag=1.13.0
+check "enrollment map absent (--reuse-values)"  render --set enrollment=null
+check "old hub tag with a key"                  refuse --set enrollment.key=$EK --set image.hub.tag=1.12.1
+check "old hub tag with existingSecret"         refuse --set enrollment.existingSecret=ek --set image.hub.tag=1.12.1
+check "hub tag 1.13.0 with a key"               render --set enrollment.key=$EK --set image.hub.tag=1.13.0
+check "hub tag 1.13.0-rc.1 with a key"          render --set enrollment.key=$EK --set image.hub.tag=1.13.0-rc.1
+check "hub tag 1.12.9 with a key"               refuse --set enrollment.key=$EK --set image.hub.tag=1.12.9
+check "non-semver hub tag with a key"           render --set enrollment.key=$EK --set image.hub.tag=main-abc123
+check "old hub tag without enrollment"          render --set image.hub.tag=1.12.1
+lacks "existingSecret writes no key"            'enrollment-key:' --set enrollment.existingSecret=ek --set image.hub.tag=1.13.0
+lacks "no enrollment by default"                'name: HUB_ENROLLMENT_'
 # A new token must restart the hub, or it keeps authenticating the old one.
 # The pod checksum covers the chart Secret the inline token is written to.
 sum_for() { render --set localCluster.id=$LC_ID "$@" --show-only templates/deployment-hub.yaml | awk '/checksum\/secret:/{print $2}'; }
