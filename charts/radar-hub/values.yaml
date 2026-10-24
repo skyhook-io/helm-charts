@@ -428,7 +428,9 @@ enrollment:
   # Written to the chart's Secret. Prefer existingSecret for GitOps so the key
   # is not in your values file.
   key: ""
-  # Secret you manage, in this release's namespace, holding the key.
+  # Secret you manage, in this release's namespace, holding the key. The hub
+  # reads it at startup, so after changing it restart the hub:
+  #   kubectl rollout restart deployment/<release>-radar-hub-hub -n <namespace>
   existingSecret: ""
   # Key inside existingSecret. Empty means "key".
   existingSecretKey: "key"
