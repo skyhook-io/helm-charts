@@ -413,6 +413,33 @@
       },
       "additionalProperties": false
     },
+    "enrollment": {
+      "type": "object",
+      "description": "Install key that lets Radar agents join this hub. Set key or existingSecret.",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Install key, written to the chart's Secret. \"rhe_\" followed by 43 characters of A-Z, a-z, 0-9, - and _."
+        },
+        "existingSecret": {
+          "type": "string",
+          "description": "Secret in the release namespace holding the install key."
+        },
+        "existingSecretKey": {
+          "type": "string",
+          "description": "Key inside existingSecret. Empty means key."
+        },
+        "approval": {
+          "type": "string",
+          "description": "How a new cluster is admitted. Only auto is supported."
+        },
+        "rejoin": {
+          "type": "string",
+          "description": "What happens when an enrolled cluster enrolls again: new or reclaim."
+        }
+      },
+      "additionalProperties": false
+    },
     "auth": {
       "type": "object",
       "properties": {

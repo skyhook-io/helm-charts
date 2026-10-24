@@ -354,6 +354,26 @@ spec:
                   {{- end }}
             {{- end }}
 
+            {{- /* Install key a Radar agent presents to join this hub. Without
+                   it, enrollment is off. */}}
+            {{- $en := .Values.enrollment | default dict }}
+            {{- if or $en.key $en.existingSecret }}
+            - name: HUB_ENROLLMENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  {{- if $en.existingSecret }}
+                  name: {{ $en.existingSecret | quote }}
+                  key: {{ $en.existingSecretKey | default "key" | quote }}
+                  {{- else }}
+                  name: {{ include "radar-hub.secretName" . | quote }}
+                  key: enrollment-key
+                  {{- end }}
+            - name: HUB_ENROLLMENT_APPROVAL
+              value: {{ $en.approval | default "auto" | quote }}
+            - name: HUB_ENROLLMENT_REJOIN
+              value: {{ $en.rejoin | default "new" | quote }}
+            {{- end }}
+
             {{- /* Outside the OIDC block: break-glass sessions obey the same
                    limits. Emitted only when set so the Hub keeps its own
                    defaults otherwise. */}}

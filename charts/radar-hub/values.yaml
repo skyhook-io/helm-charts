@@ -417,6 +417,29 @@ localCluster:
   existingSecretKey: ""
 
 # ---------------------------------------------------------------------------
+# Enrollment
+# ---------------------------------------------------------------------------
+# An install key lets Radar agents join this hub on their own, with no sign-in
+# step per cluster. With no key set, enrollment is off. Set EITHER key OR
+# existingSecret.
+enrollment:
+  # "rhe_" followed by 43 characters of A-Z, a-z, 0-9, "-" and "_". Generate one:
+  #   echo "rhe_$(openssl rand 32 | base64 | tr '+/' '-_' | tr -d '=')"
+  # Written to the chart's Secret. Prefer existingSecret for GitOps so the key
+  # is not in your values file.
+  key: ""
+  # Secret you manage, in this release's namespace, holding the key.
+  existingSecret: ""
+  # Key inside existingSecret. Empty means "key".
+  existingSecretKey: "key"
+  # How a new cluster is admitted. Only "auto" is supported: any agent with
+  # the key joins.
+  approval: auto
+  # What happens when a cluster that already joined enrolls again. "new"
+  # registers it as a new cluster. "reclaim" gives it its existing record back.
+  rejoin: new
+
+# ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
 auth:
