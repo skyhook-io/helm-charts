@@ -13,9 +13,20 @@ spec:
       app.kubernetes.io/component: web
   template:
     metadata:
-      {{- with .Values.web.podAnnotations }}
+      {{- /* A certificate from web.tls.certificate rolls the web pods when it
+             changes. A generated or existingSecret certificate does not. */}}
+      {{- $certSum := "" }}
+      {{- if and (include "radar-hub.inClusterTLS" .) (not .Values.web.tls.existingSecret) .Values.web.tls.certificate .Values.web.tls.privateKey }}
+      {{- $certSum = printf "%s%s" .Values.web.tls.certificate .Values.web.tls.privateKey | sha256sum }}
+      {{- end }}
+      {{- if or .Values.web.podAnnotations $certSum }}
       annotations:
+        {{- if $certSum }}
+        checksum/web-tls: {{ $certSum }}
+        {{- end }}
+        {{- with .Values.web.podAnnotations }}
         {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- end }}
       labels:
         {{- include "radar-hub.selectorLabels" . | nindent 8 }}
@@ -69,8 +80,16 @@ spec:
                    URL brackets, the form the image passes to OpenSSL as
                    IP:<address>. */}}
             - name: WEB_TLS_SELF_SIGNED_HOST
-              value: {{ regexReplaceAll ":[0-9]+$" (urlParse .Values.hub.publicURL).host "" | trimPrefix "[" | trimSuffix "]" | quote }}
+              value: {{ include "radar-hub.webTLSHost" . | quote }}
+            - name: WEB_TLS_CERT_DIR
+              value: /etc/radar-hub/tls
             {{- end }}
+          {{- if include "radar-hub.inClusterTLS" . }}
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/radar-hub/tls
+              readOnly: true
+          {{- end }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
           # nginx serves the SPA bundle; / is the simplest healthy path.
@@ -97,6 +116,12 @@ spec:
               {{- end }}
             initialDelaySeconds: 2
             periodSeconds: 10
+      {{- if include "radar-hub.inClusterTLS" . }}
+      volumes:
+        - name: tls
+          secret:
+            secretName: {{ include "radar-hub.webTLSSecretName" . | quote }}
+      {{- end }}
       {{- with .Values.web.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

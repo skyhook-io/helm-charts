@@ -368,10 +368,17 @@ spec:
                   name: {{ include "radar-hub.secretName" . | quote }}
                   key: enrollment-key
                   {{- end }}
-            - name: HUB_ENROLLMENT_APPROVAL
-              value: {{ $en.approval | default "auto" | quote }}
-            - name: HUB_ENROLLMENT_REJOIN
-              value: {{ $en.rejoin | default "new" | quote }}
+            {{- end }}
+            {{- if $en.trustByDefault }}
+            - name: HUB_ENROLLMENT_TRUST_BY_DEFAULT
+              value: "true"
+            {{- end }}
+            {{- if include "radar-hub.webTLSIsPublic" . }}
+            {{- /* The certificate that serves the hub's public address,
+                   public half only, so the hub can hand it to agents that
+                   must trust it. */}}
+            - name: HUB_WEB_TLS_CA_FILE
+              value: /etc/radar-hub/web-tls/tls.crt
             {{- end }}
 
             {{- /* Outside the OIDC block: break-glass sessions obey the same
@@ -453,14 +460,30 @@ spec:
             periodSeconds: {{ .Values.hub.readinessProbe.periodSeconds }}
           resources:
             {{- toYaml .Values.hub.resources | nindent 12 }}
-          {{- if or .Values.license.key .Values.license.existingSecret }}
+          {{- if or .Values.license.key .Values.license.existingSecret (include "radar-hub.webTLSIsPublic" .) }}
           volumeMounts:
+            {{- if or .Values.license.key .Values.license.existingSecret }}
             - name: license
               mountPath: /etc/radar-hub
               readOnly: true
+            {{- end }}
+            {{- if include "radar-hub.webTLSIsPublic" . }}
+            - name: web-tls
+              mountPath: /etc/radar-hub/web-tls
+              readOnly: true
+            {{- end }}
           {{- end }}
-      {{- if or .Values.license.key .Values.license.existingSecret }}
+      {{- if or .Values.license.key .Values.license.existingSecret (include "radar-hub.webTLSIsPublic" .) }}
       volumes:
+        {{- if include "radar-hub.webTLSIsPublic" . }}
+        - name: web-tls
+          secret:
+            secretName: {{ include "radar-hub.webTLSSecretName" . | quote }}
+            items:
+              - key: tls.crt
+                path: tls.crt
+        {{- end }}
+        {{- if or .Values.license.key .Values.license.existingSecret }}
         - name: license
           secret:
             {{- /* The chart's own Secret stores it under license-key; an
@@ -471,6 +494,7 @@ spec:
             items:
               - key: {{ ternary "license" "license-key" (ne .Values.license.existingSecret "") | quote }}
                 path: license
+        {{- end }}
       {{- end }}
       {{- with .Values.hub.nodeSelector }}
       nodeSelector:

@@ -254,16 +254,53 @@ true
 {{- end }}
 
 {{/*
+In-cluster DNS name of the web Service.
+*/}}
+{{- define "radar-hub.webServiceFQDN" -}}
+{{- printf "%s.%s.svc.%s" (include "radar-hub.webName" .) .Release.Namespace .Values.clusterDomain -}}
+{{- end }}
+
+{{/*
 Address a Radar agent in this cluster dials to reach the hub: the web
 Service's self-signed https port, by in-cluster FQDN. Only meaningful when
 radar-hub.inClusterTLS is on, because the plain-http port carries no wss.
 */}}
 {{- define "radar-hub.inClusterAgentURL" -}}
 {{- $port := int (.Values.service.web.tlsPort | default 443) -}}
-{{- $host := printf "%s.%s.svc.%s" (include "radar-hub.webName" .) .Release.Namespace .Values.clusterDomain -}}
+{{- $host := include "radar-hub.webServiceFQDN" . -}}
 {{- if eq $port 443 -}}
 {{- printf "wss://%s/agent" $host -}}
 {{- else -}}
 {{- printf "wss://%s:%d/agent" $host $port -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+The host the web pod's self-signed certificate names: hub.publicURL's host
+without the port. An IPv6 host goes without its URL brackets, the form the
+web image passes to OpenSSL as IP:<address>.
+*/}}
+{{- define "radar-hub.webTLSHost" -}}
+{{- regexReplaceAll ":[0-9]+$" (urlParse .Values.hub.publicURL).host "" | trimPrefix "[" | trimSuffix "]" -}}
+{{- end }}
+
+{{/*
+Name of the Secret holding the web pod's certificate: web.tls.existingSecret,
+or the one this chart renders.
+*/}}
+{{- define "radar-hub.webTLSSecretName" -}}
+{{- default (printf "%s-web-tls" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-") .Values.web.tls.existingSecret -}}
+{{- end }}
+
+{{/*
+Whether the hub's public address is served by the web pod's own certificate
+(web.tls.selfSigned), as opposed to an Ingress, Gateway or load balancer with
+its own certificate in front of it. Only then is that certificate the one an
+agent must trust to reach the hub. Also off when web.tls.showInInstallSteps is
+false, so the hub does not hand the certificate out. Returns "true" or "".
+*/}}
+{{- define "radar-hub.webTLSIsPublic" -}}
+{{- if and .Values.web.tls.selfSigned (ne (.Values.web.tls.showInInstallSteps | toString) "false") -}}
+true
 {{- end -}}
 {{- end }}

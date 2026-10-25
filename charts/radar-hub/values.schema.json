@@ -378,6 +378,22 @@
             "selfSigned": {
               "type": "boolean"
             },
+            "showInInstallSteps": {
+              "type": "boolean",
+              "description": "Show the hub's certificate (public part only) in the cluster install steps. Turn off to leave it out; people then add cloud.caBundle themselves."
+            },
+            "certificate": {
+              "type": "string",
+              "description": "PEM certificate the web pod serves on its https port. Set with privateKey. existingSecret takes precedence."
+            },
+            "privateKey": {
+              "type": "string",
+              "description": "PEM private key for certificate. Set with certificate."
+            },
+            "existingSecret": {
+              "type": "string",
+              "description": "Secret of type kubernetes.io/tls in the release namespace that the web pod serves on its https port. Empty means the chart renders a self-signed one for the host in hub.publicURL."
+            },
             "inCluster": {
               "type": "boolean",
               "description": "Keep the self-signed https listener on the web Service for Radar agents in this cluster, also when public traffic goes through an Ingress or Gateway."
@@ -429,13 +445,9 @@
           "type": "string",
           "description": "Key inside existingSecret. Empty means key."
         },
-        "approval": {
-          "type": "string",
-          "description": "How a new cluster is admitted. Only auto is supported."
-        },
-        "rejoin": {
-          "type": "string",
-          "description": "What happens when an enrolled cluster enrolls again: new or reclaim."
+        "trustByDefault": {
+          "type": "boolean",
+          "description": "Whether clusters that join with this install key start out trusted."
         }
       },
       "additionalProperties": false

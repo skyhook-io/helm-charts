@@ -145,7 +145,7 @@ tests:
       - failedTemplate:
           errorPattern: "clusterAccess=token needs OIDC configured"
 
-  - it: refuses token with a self-signed Hub certificate
+  - it: allows token with a self-signed Hub certificate
     template: templates/secret.yaml
     values:
       - values/oidc-base.yaml
@@ -153,8 +153,19 @@ tests:
       auth.oidc.clusterAccess: token
       web.tls.selfSigned: true
     asserts:
+      - notFailedTemplate: {}
+
+  - it: refuses token with the local cluster
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      localCluster.id: k3Fg-9pA_x1
+      localCluster.existingSecret: lc
+    asserts:
       - failedTemplate:
-          errorPattern: "needs agents to verify the Hub's certificate"
+          errorPattern: "can't be used with localCluster"
 
   - it: allows token behind external TLS with the in-cluster listener kept
     template: templates/secret.yaml

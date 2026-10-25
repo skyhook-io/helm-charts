@@ -376,8 +376,35 @@ web:
   # The Radar connector must set cloud.insecureSkipVerify=true (encrypted, not
   # authenticated). Leave false and terminate TLS at an Ingress (cert-manager)
   # for a browser-trusted certificate.
+  # Clusters that join with an enrollment key instead verify the hub's
+  # certificate: with showInInstallSteps on, the install steps include it
+  # (public part); otherwise people add cloud.caBundle themselves.
   tls:
     selfSigned: false
+    # The certificate the web pod serves on its https port, in one of three
+    # ways. Highest precedence first: existingSecret, then certificate with
+    # privateKey, then a generated one.
+    #
+    # Secret (kubernetes.io/tls, keys tls.crt and tls.key) in this release's
+    # namespace. Argo CD and Flux users should use this: keep the private key
+    # out of Git. The README has the commands to create the Secret.
+    existingSecret: ""
+    # PEM certificate and private key, both required together. The chart
+    # stores them in <fullname>-web-tls (radar-hub-web-tls for a release named
+    # radar-hub). The private key is then in your values, so for GitOps use
+    # existingSecret instead.
+    certificate: ""
+    privateKey: ""
+    # With none of the three set, the chart creates <fullname>-web-tls with a
+    # self-signed certificate for the host in hub.publicURL, on first install.
+    # It is kept on upgrade, including after helm uninstall. Argo CD renders
+    # without a cluster lookup, so it would get a new certificate on every
+    # sync; use one of the options above there.
+    # Show the hub's certificate (public part only) in the cluster install
+    # steps, so clusters trust a self-signed or private certificate without
+    # extra setup. Turn off to leave it out; people then add cloud.caBundle
+    # themselves. Applies when selfSigned is on.
+    showInInstallSteps: true
     # Keep the self-signed https listener for Radar agents in this cluster,
     # which dial it at the in-cluster address the install notes print. Public
     # traffic is unaffected: an Ingress or Gateway keeps using the http port,
@@ -419,9 +446,9 @@ localCluster:
 # ---------------------------------------------------------------------------
 # Enrollment
 # ---------------------------------------------------------------------------
-# An install key lets Radar agents join this hub on their own, with no sign-in
-# step per cluster. With no key set, enrollment is off. Set EITHER key OR
-# existingSecret.
+# Owners create enrollment keys in the hub under Settings > Enrollment keys.
+# An install key set here is optional. It lets automation join clusters before
+# anyone has signed in. Set EITHER key OR existingSecret.
 enrollment:
   # "rhe_" followed by 43 characters of A-Z, a-z, 0-9, "-" and "_". Generate one:
   #   echo "rhe_$(openssl rand 32 | base64 | tr '+/' '-_' | tr -d '=')"
@@ -429,17 +456,16 @@ enrollment:
   # is not in your values file.
   key: ""
   # Secret you manage, in this release's namespace, holding the key. The hub
-  # reads it at startup, so after changing it restart the hub:
-  #   kubectl rollout restart deployment/<release>-radar-hub-hub -n <namespace>
+  # reads it at startup, so after changing it restart the hub Deployment
+  # (radar-hub-hub for a release named radar-hub):
+  #   kubectl rollout restart deployment/radar-hub-hub -n <namespace>
   existingSecret: ""
   # Key inside existingSecret. Empty means "key".
   existingSecretKey: "key"
-  # How a new cluster is admitted. Only "auto" is supported: any agent with
-  # the key joins.
-  approval: auto
-  # What happens when a cluster that already joined enrolls again. "new"
-  # registers it as a new cluster. "reclaim" gives it its existing record back.
-  rejoin: new
+  # Whether a cluster that joins with this install key starts out trusted. Read
+  # from this hub pod's config each time a cluster joins. Keys created in the
+  # hub have their own setting.
+  trustByDefault: false
 
 # ---------------------------------------------------------------------------
 # Auth
