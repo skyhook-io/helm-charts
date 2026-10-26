@@ -105,6 +105,17 @@ Auth:
 {{- else if not .Values.auth.breakGlass.email }}
   WARNING: no auth method configured. Set auth.breakGlass.* and/or auth.oidc.*
 {{- end }}
+{{- if and (eq (toString .Values.auth.oidc.clusterAccess) "token") .Values.web.tls.selfSigned }}
+
+WARNING: people's sign-ins reach clusters through a self-signed certificate.
+  auth.oidc.clusterAccess=token passes each person's ID token to the clusters
+  they open, and web.tls.selfSigned is on. Anyone who can read the Secret
+  "{{ include "radar-hub.webTLSSecretName" . }}" can pose as this hub and collect those tokens. Browsers
+  also warn on every visit, which teaches people to click past certificate
+  warnings. Here clusters can join only with an enrollment key: the install
+  steps give them this certificate. For production, put a trusted certificate
+  in front (Ingress or Gateway with cert-manager) and set web.tls.selfSigned=false.
+{{- end }}
 
 NEXT STEPS
 ----------

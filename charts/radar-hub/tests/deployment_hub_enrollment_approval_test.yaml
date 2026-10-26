@@ -1,0 +1,61 @@
+# enrollment.approval: HUB_ENROLLMENT_APPROVAL is emitted only for manual, so an
+# install that sets nothing renders the same env as before.
+suite: hub deployment enrollment approval env
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  - it: emits no approval env by default
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.key: rhe_0123456789012345678901234567890123456789012
+      image.hub.tag: "1.14.0"
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_APPROVAL
+          any: true
+
+  - it: emits no approval env for auto
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.key: rhe_0123456789012345678901234567890123456789012
+      image.hub.tag: "1.14.0"
+      enrollment.approval: auto
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_APPROVAL
+          any: true
+
+  - it: emits HUB_ENROLLMENT_APPROVAL=manual for manual
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.key: rhe_0123456789012345678901234567890123456789012
+      image.hub.tag: "1.14.0"
+      enrollment.approval: manual
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_APPROVAL
+            value: manual
+
+  - it: rejects a value other than auto or manual
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.key: rhe_0123456789012345678901234567890123456789012
+      image.hub.tag: "1.14.0"
+      enrollment.approval: sometimes
+    asserts:
+      - failedTemplate: {}

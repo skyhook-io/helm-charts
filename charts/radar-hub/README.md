@@ -92,6 +92,69 @@ staged chart without moving `appVersion` — `image.hub.tag` defaults to it, so 
 published chart would install a Hub that predates the feature the chart
 configures.
 
+## Joining clusters with enrollment keys
+
+Radar agents join the hub with an enrollment key.
+
+- **Create keys in the hub.** An owner opens Settings > Enrollment keys, creates a key, and gives it to the cluster installs that should use it.
+- **Set a key in config for automation.** On a self-hosted hub you can also set an install key when you install the chart, for automation that installs Radar before anyone has signed in. Put it in `enrollment.key` (`rhe_` followed by 43 characters), or keep it in a Secret you manage and name it in `enrollment.existingSecret` (the Secret key defaults to `key`, change it with `enrollment.existingSecretKey`). Set only one of the two. Set `enrollment.trustByDefault=true` if a cluster that joins with this key should start out trusted (default `false`). The hub reads it from its config each time a cluster joins. Keys created in the hub have their own setting. Set `enrollment.approval=manual` if an owner should approve each new cluster that joins with this key on the Clusters page (default `auto`: clusters join right away). The hub reads the key at startup, so restart the hub Deployment after you change it.
+- **A key is a password.** Every cluster that uses it can join. Keep it out of shared chats and public repos.
+- **If a key leaks**, delete or replace it in the hub (or change the value in config and restart the hub), set the new key on every cluster that uses it, and restart Radar there.
+- **Removed clusters stay out.** A cluster an owner removes does not come back by enrolling again, even with a valid key. An owner has to let it back in.
+
+## Self-signed certificate
+
+With `web.tls.selfSigned=true`, or whenever the web pod keeps its https listener for a Radar agent in the same cluster (`web.tls.inCluster`, a localhost `hub.publicURL`, or `localCluster`), the chart creates a Secret named `<fullname>-web-tls` (`radar-hub-web-tls` for a release named `radar-hub`; `<fullname>` is the release name if it contains `radar-hub`, else `<release>-radar-hub`, or `fullnameOverride` if set) holding a self-signed certificate for the host in `hub.publicURL`. The chart makes it once and reuses that Secret on every upgrade, so the certificate stays the same and clusters that trust it keep working. The chart marks the Secret `helm.sh/resource-policy: keep`, so `helm uninstall` leaves it in place. To replace it, delete the Secret and restart the web pods, then run `helm upgrade`:
+
+```sh
+kubectl delete secret <fullname>-web-tls -n <namespace>
+helm upgrade ...
+kubectl rollout restart deployment/<fullname>-web -n <namespace>
+```
+
+ Clusters that trusted the old certificate need to trust the new one.
+
+With `web.tls.selfSigned=true`, the cluster install steps show the hub's certificate (public part only) so clusters trust it. If you use Argo CD with the chart-generated certificate, supply your own (values or Secret, below): otherwise the steps can show a certificate the hub isn't serving.
+
+**Your own certificate.** Two ways to give the web pod a certificate you made. If both are set, `web.tls.existingSecret` wins over the values.
+
+*Option 1: values.* Set `web.tls.certificate` and `web.tls.privateKey` to PEM text (both are required together). The chart stores them in the Secret `<fullname>-web-tls`.
+
+```yaml
+web:
+  tls:
+    certificate: |
+      -----BEGIN CERTIFICATE-----
+      ...
+    privateKey: |
+      -----BEGIN PRIVATE KEY-----
+      ...
+```
+
+*Option 2: a Secret you create.* On GitOps (Argo CD, Flux), keep the private key out of Git and use this one. Argo CD renders the chart without looking at the cluster, so the chart cannot see its own Secret and would make a new certificate on every sync. Create the Secret yourself and point the chart at it. The chart then renders no certificate Secret and mounts yours. The certificate must name the host in `hub.publicURL`. For a DNS host (for an IP host use `IP:` instead of `DNS:`):
+
+```sh
+HOST=radar.example.com
+NS=radar-hub
+
+openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+  -keyout tls.key -out tls.crt -subj "/CN=$HOST" \
+  -addext "subjectAltName=DNS:$HOST"
+
+kubectl create secret tls radar-hub-web-tls-own -n "$NS" --cert=tls.crt --key=tls.key \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Then set it in your values and sync:
+
+```yaml
+web:
+  tls:
+    existingSecret: radar-hub-web-tls-own
+```
+
+Use a name other than `<fullname>-web-tls`, which the chart's own Secret would use. Keep `tls.key` out of Git. The `kubectl create ... | kubectl apply` form is safe to run again. To renew, run the steps again, then restart the web Deployment. With `web.tls.selfSigned=true`, the web pod's certificate serves the hub's public address, so the hub pod also gets its public half (never the key) at `/etc/radar-hub/web-tls/tls.crt` and can hand it to clusters that must trust it. Behind an Ingress, Gateway or load balancer with its own certificate, the hub gets no such file. Other tools that render without cluster access, such as `helm template` piped to `kubectl apply`, have the same limit.
+
 ## Values
 
 See [`values.yaml`](values.yaml) for the full set, and

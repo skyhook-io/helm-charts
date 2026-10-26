@@ -130,7 +130,9 @@ hub:
   #     /login?error=session_expired and the hub logs "state cookie missing".
   #   - in-cluster Radar refuses a ws:// tunnel to any non-loopback host.
   # Terminate TLS at your Ingress, or set web.tls.selfSigned=true for a trial
-  # (pair it with cloud.insecureSkipVerify=true on the agent).
+  # (agents installed one at a time pair it with cloud.insecureSkipVerify=true;
+  # clusters that join with an enrollment key verify the certificate, and the
+  # install steps give them its public part).
   #
   # A localhost address (localhost, *.localhost, 127.x.x.x, [::1], 0.0.0.0
   # or [::], any port) is never given to agents: a Radar in this cluster
@@ -376,8 +378,29 @@ web:
   # The Radar connector must set cloud.insecureSkipVerify=true (encrypted, not
   # authenticated). Leave false and terminate TLS at an Ingress (cert-manager)
   # for a browser-trusted certificate.
+  # Clusters that join with an enrollment key instead verify the hub's
+  # certificate: the install steps include it (public part only).
   tls:
     selfSigned: false
+    # The certificate the web pod serves on its https port, in one of three
+    # ways. Highest precedence first: existingSecret, then certificate with
+    # privateKey, then a generated one.
+    #
+    # Secret (kubernetes.io/tls, keys tls.crt and tls.key) in this release's
+    # namespace. Argo CD and Flux users should use this: keep the private key
+    # out of Git. The README has the commands to create the Secret.
+    existingSecret: ""
+    # PEM certificate and private key, both required together. The chart
+    # stores them in <fullname>-web-tls (radar-hub-web-tls for a release named
+    # radar-hub). The private key is then in your values, so for GitOps use
+    # existingSecret instead.
+    certificate: ""
+    privateKey: ""
+    # With none of the three set, the chart creates <fullname>-web-tls with a
+    # self-signed certificate for the host in hub.publicURL, on first install.
+    # It is kept on upgrade, including after helm uninstall. Argo CD renders
+    # without a cluster lookup, so it would get a new certificate on every
+    # sync; use one of the options above there.
     # Keep the self-signed https listener for Radar agents in this cluster,
     # which dial it at the in-cluster address the install notes print. Public
     # traffic is unaffected: an Ingress or Gateway keeps using the http port,
@@ -415,6 +438,33 @@ localCluster:
   existingSecret: ""
   # Key inside existingSecret. Empty means "token".
   existingSecretKey: ""
+
+# ---------------------------------------------------------------------------
+# Enrollment
+# ---------------------------------------------------------------------------
+# Owners create enrollment keys in the hub under Settings > Enrollment keys.
+# An install key set here is optional. It lets automation join clusters before
+# anyone has signed in. Set EITHER key OR existingSecret.
+enrollment:
+  # "rhe_" followed by 43 characters of A-Z, a-z, 0-9, "-" and "_". Generate one:
+  #   echo "rhe_$(openssl rand 32 | base64 | tr '+/' '-_' | tr -d '=')"
+  # Written to the chart's Secret. Prefer existingSecret for GitOps so the key
+  # is not in your values file.
+  key: ""
+  # Secret you manage, in this release's namespace, holding the key. The hub
+  # reads it at startup, so after changing it restart the hub Deployment
+  # (radar-hub-hub for a release named radar-hub):
+  #   kubectl rollout restart deployment/radar-hub-hub -n <namespace>
+  existingSecret: ""
+  # Key inside existingSecret. Empty means "key".
+  existingSecretKey: "key"
+  # Whether a cluster that joins with this install key starts out trusted. Read
+  # from this hub pod's config each time a cluster joins. Keys created in the
+  # hub have their own setting.
+  trustByDefault: false
+  # How clusters joining with this install key are admitted. auto: they join right
+  # away. manual: an owner approves each new cluster on the Clusters page.
+  approval: auto
 
 # ---------------------------------------------------------------------------
 # Auth
@@ -550,7 +600,7 @@ auth:
     #            for "-"). Okta/Entra need offline_access in scopes, or
     #            sessions end with the ID token. Agents must verify the Hub's
     #            certificate: needs an https hub.publicURL, and not with
-    #            web.tls.selfSigned or localCluster.
+    #            localCluster.
     #            Requires Hub
     #            1.12.0 and Radar 1.18.0 or newer.
     #   ""    -> (default) roles. Set idp or token to opt in.
