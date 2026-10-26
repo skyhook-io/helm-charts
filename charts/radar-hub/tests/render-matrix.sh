@@ -228,26 +228,26 @@ lacks "existingSecret writes no token"          'local-cluster-token:' --set loc
 lacks "no local cluster by default"             'name: HUB_LOCAL_CLUSTER_'
 echo "enrollment key"
 EK=rhe_0123456789abcdefghijABCDEFGHIJ-_0123456789a
-check "inline key"                              render --set enrollment.key=$EK --set image.hub.tag=1.13.1
-check "existingSecret"                          render --set enrollment.existingSecret=ek --set image.hub.tag=1.13.1
-check "key and existingSecret together"         refuse --set enrollment.key=$EK --set enrollment.existingSecret=ek --set image.hub.tag=1.13.1
-check "key without the rhe_ prefix"             refuse --set enrollment.key=${EK#rhe_}xxxx --set image.hub.tag=1.13.1
-check "key of 42 characters after rhe_"         refuse --set enrollment.key=${EK%?} --set image.hub.tag=1.13.1
-check "key of 44 characters after rhe_"         refuse --set enrollment.key=${EK}x --set image.hub.tag=1.13.1
-has   "key lands in the chart Secret"           "enrollment-key: \"$EK\"" --set enrollment.key=$EK --set image.hub.tag=1.13.1
-secretref "key is read from the chart Secret"   HUB_ENROLLMENT_KEY t-radar-hub-config enrollment-key --set enrollment.key=$EK --set image.hub.tag=1.13.1
-secretref "existingSecret defaults to key key"  HUB_ENROLLMENT_KEY ek key --set enrollment.existingSecret=ek --set image.hub.tag=1.13.1
-secretref "existingSecretKey is honoured"       HUB_ENROLLMENT_KEY ek install-key --set enrollment.existingSecret=ek --set enrollment.existingSecretKey=install-key --set image.hub.tag=1.13.1
+check "inline key"                              render --set enrollment.key=$EK --set image.hub.tag=1.14.0
+check "existingSecret"                          render --set enrollment.existingSecret=ek --set image.hub.tag=1.14.0
+check "key and existingSecret together"         refuse --set enrollment.key=$EK --set enrollment.existingSecret=ek --set image.hub.tag=1.14.0
+check "key without the rhe_ prefix"             refuse --set enrollment.key=${EK#rhe_}xxxx --set image.hub.tag=1.14.0
+check "key of 42 characters after rhe_"         refuse --set enrollment.key=${EK%?} --set image.hub.tag=1.14.0
+check "key of 44 characters after rhe_"         refuse --set enrollment.key=${EK}x --set image.hub.tag=1.14.0
+has   "key lands in the chart Secret"           "enrollment-key: \"$EK\"" --set enrollment.key=$EK --set image.hub.tag=1.14.0
+secretref "key is read from the chart Secret"   HUB_ENROLLMENT_KEY t-radar-hub-config enrollment-key --set enrollment.key=$EK --set image.hub.tag=1.14.0
+secretref "existingSecret defaults to key key"  HUB_ENROLLMENT_KEY ek key --set enrollment.existingSecret=ek --set image.hub.tag=1.14.0
+secretref "existingSecretKey is honoured"       HUB_ENROLLMENT_KEY ek install-key --set enrollment.existingSecret=ek --set enrollment.existingSecretKey=install-key --set image.hub.tag=1.14.0
 check "enrollment map absent (--reuse-values)"  render --set enrollment=null
 check "old hub tag with a key"                  refuse --set enrollment.key=$EK --set image.hub.tag=1.12.1
 check "old hub tag with existingSecret"         refuse --set enrollment.existingSecret=ek --set image.hub.tag=1.12.1
-check "hub tag 1.13.1 with a key"               render --set enrollment.key=$EK --set image.hub.tag=1.13.1
-check "hub tag 1.13.1-rc.1 with a key"          refuse --set enrollment.key=$EK --set image.hub.tag=1.13.1-rc.1
+check "hub tag 1.14.0 with a key"               render --set enrollment.key=$EK --set image.hub.tag=1.14.0
+check "hub tag 1.14.0-rc.1 with a key"          refuse --set enrollment.key=$EK --set image.hub.tag=1.14.0-rc.1
 check "hub tag 1.12.9 with a key"               refuse --set enrollment.key=$EK --set image.hub.tag=1.12.9
 check "hub tag 1.13.0 (before enrollment)"     refuse --set enrollment.key=$EK --set image.hub.tag=1.13.0
 check "non-semver hub tag with a key"           render --set enrollment.key=$EK --set image.hub.tag=main-abc123
 check "old hub tag without enrollment"          render --set image.hub.tag=1.12.1
-lacks "existingSecret writes no key"            'enrollment-key:' --set enrollment.existingSecret=ek --set image.hub.tag=1.13.1
+lacks "existingSecret writes no key"            'enrollment-key:' --set enrollment.existingSecret=ek --set image.hub.tag=1.14.0
 lacks "no enrollment by default"                'name: HUB_ENROLLMENT_'
 
 echo "web certificate"
@@ -287,13 +287,13 @@ hub_has_no_key "${SS[@]}" --set web.tls.existingSecret=mine
 both=$(render "${SS[@]}" --set license.key=abc | grep -c 'mountPath: /etc/radar-hub')
 if [ "$both" -ge 3 ]; then printf '  ok    %-46s %s\n' "license and web-tls mounts coexist" "$both mounts"
 else printf '  FAIL  %-46s only %s mounts\n' "license and web-tls mounts coexist" "$both"; fails=$((fails+1)); fi
-envis "trustByDefault is wired"                 HUB_ENROLLMENT_TRUST_BY_DEFAULT true --set enrollment.key=$EK --set enrollment.trustByDefault=true --set image.hub.tag=1.13.1
-lacks "trustByDefault off by default"           'HUB_ENROLLMENT_TRUST_BY_DEFAULT' --set enrollment.key=$EK --set image.hub.tag=1.13.1
-check "trustByDefault must be a bool"           refuse --set enrollment.key=$EK --set enrollment.trustByDefault=maybe --set image.hub.tag=1.13.1
-envis "approval manual is wired"                HUB_ENROLLMENT_APPROVAL manual --set enrollment.key=$EK --set enrollment.approval=manual --set image.hub.tag=1.13.1
-lacks "approval auto renders no env"            'HUB_ENROLLMENT_APPROVAL' --set enrollment.key=$EK --set enrollment.approval=auto --set image.hub.tag=1.13.1
-lacks "approval off by default"                 'HUB_ENROLLMENT_APPROVAL' --set enrollment.key=$EK --set image.hub.tag=1.13.1
-check "approval must be auto or manual"         refuse --set enrollment.key=$EK --set enrollment.approval=sometimes --set image.hub.tag=1.13.1
+envis "trustByDefault is wired"                 HUB_ENROLLMENT_TRUST_BY_DEFAULT true --set enrollment.key=$EK --set enrollment.trustByDefault=true --set image.hub.tag=1.14.0
+lacks "trustByDefault off by default"           'HUB_ENROLLMENT_TRUST_BY_DEFAULT' --set enrollment.key=$EK --set image.hub.tag=1.14.0
+check "trustByDefault must be a bool"           refuse --set enrollment.key=$EK --set enrollment.trustByDefault=maybe --set image.hub.tag=1.14.0
+envis "approval manual is wired"                HUB_ENROLLMENT_APPROVAL manual --set enrollment.key=$EK --set enrollment.approval=manual --set image.hub.tag=1.14.0
+lacks "approval auto renders no env"            'HUB_ENROLLMENT_APPROVAL' --set enrollment.key=$EK --set enrollment.approval=auto --set image.hub.tag=1.14.0
+lacks "approval off by default"                 'HUB_ENROLLMENT_APPROVAL' --set enrollment.key=$EK --set image.hub.tag=1.14.0
+check "approval must be auto or manual"         refuse --set enrollment.key=$EK --set enrollment.approval=sometimes --set image.hub.tag=1.14.0
 CRT_PEM=$'-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----'
 KEY_PEM=$'-----BEGIN PRIVATE KEY-----\nMIIBfake\n-----END PRIVATE KEY-----'
 VAL=(--set-string "web.tls.certificate=$CRT_PEM" --set-string "web.tls.privateKey=$KEY_PEM")
