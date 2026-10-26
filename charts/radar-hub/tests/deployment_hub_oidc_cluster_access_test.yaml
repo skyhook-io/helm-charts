@@ -220,3 +220,121 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "at '/auth/oidc/k8sGroupsPrefix'"
+
+  - it: emits the ID token as the relayed token by default in token mode
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_TOKEN
+            value: "id_token"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_TOKEN_AUDIENCE
+          any: true
+
+  - it: emits the access token and its audience when set
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.clusterToken: access_token
+      auth.oidc.clusterTokenAudience: "kubernetes"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_TOKEN
+            value: "access_token"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_TOKEN_AUDIENCE
+            value: "kubernetes"
+
+  - it: ignores the relayed token outside token mode
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_CLUSTER_TOKEN
+          any: true
+
+  - it: refuses the access token without an audience
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.clusterToken: access_token
+    asserts:
+      - failedTemplate:
+          errorPattern: "clusterToken=access_token needs auth.oidc.clusterTokenAudience"
+
+  - it: refuses the access token outside token mode
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: roles
+      auth.oidc.clusterToken: access_token
+      auth.oidc.clusterTokenAudience: "kubernetes"
+    asserts:
+      - failedTemplate:
+          errorPattern: "clusterToken=access_token needs auth.oidc.clusterAccess=token"
+
+  - it: rejects an unknown relayed token
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.clusterToken: refresh_token
+    asserts:
+      - failedTemplate:
+          errorPattern: "clusterToken': value must be one of"
+
+  - it: emits the email claim by default
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_EMAIL_CLAIM
+            value: "email"
+
+  - it: emits a custom email claim
+    template: templates/deployment-hub.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.emailClaim: upn
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_EMAIL_CLAIM
+            value: "upn"
+
+  - it: emits no email claim without OIDC
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_OIDC_EMAIL_CLAIM
+          any: true

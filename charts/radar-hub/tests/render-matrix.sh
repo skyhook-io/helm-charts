@@ -322,6 +322,11 @@ note_has "selfSigned"                    'wss://t-radar-hub-web.default.svc.clus
 note_has "Ingress + inCluster"           'wss://t-radar-hub-web.default.svc.cluster.local/agent' "${INGIC[@]}"
 note_has "Ingress + localCluster"        'wss://t-radar-hub-web.default.svc.cluster.local/agent' "${INGLC[@]}"
 note_has "fullnameOverride, tlsPort, clusterDomain" 'wss://rh-web.default.svc.c.internal:9443/agent' "${INGLC[@]}" --set fullnameOverride=rh --set service.web.tlsPort=9443 --set clusterDomain=c.internal
+echo "install notes name the relayed token in token mode"
+OIDC=(--set auth.oidc.issuer=https://idp.example --set auth.oidc.clientID=c --set auth.oidc.clientSecret=s --set auth.oidc.clusterAccess=token)
+note_has   "ID token by default"                  'Relayed token: the ID token' "${OIDC[@]}"
+note_has   "access token with its audience"       'Relayed token: the access token for audience kubernetes' "${OIDC[@]}" --set auth.oidc.clusterToken=access_token --set auth.oidc.clusterTokenAudience=kubernetes
+note_lacks "no relayed token outside token mode"  'Relayed token' --set auth.oidc.issuer=https://idp.example --set auth.oidc.clientID=c --set auth.oidc.clientSecret=s
 if notes "${ING[@]}" | grep -qF "In-cluster agent address"; then printf '  FAIL  %-46s present but must not be\n' "no in-cluster address without a listener"; fails=$((fails+1))
 else printf '  ok    %-46s absent\n' "no in-cluster address without a listener"; fi
 rm -rf "$scratch"

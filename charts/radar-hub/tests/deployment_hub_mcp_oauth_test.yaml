@@ -183,6 +183,19 @@ tests:
       - failedTemplate:
           errorPattern: "mcpOAuth.audience is the OIDC client ID, so auth.oidc.mcpOAuth.requiredScope must name the MCP scope"
 
+  - it: refuses the relayed access token's audience without a required scope
+    template: templates/secret.yaml
+    values:
+      - values/oidc-base.yaml
+    set:
+      auth.oidc.clusterAccess: token
+      auth.oidc.clusterToken: access_token
+      auth.oidc.clusterTokenAudience: https://radar.test.example/mcp
+      auth.oidc.mcpOAuth.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "mcpOAuth.audience is auth.oidc.clusterTokenAudience, so auth.oidc.mcpOAuth.requiredScope must name the MCP scope"
+
   - it: refuses token exchange outside token mode
     template: templates/secret.yaml
     values:
