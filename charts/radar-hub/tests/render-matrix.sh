@@ -248,7 +248,6 @@ check "non-semver hub tag with a key"           render --set enrollment.key=$EK 
 check "old hub tag without enrollment"          render --set image.hub.tag=1.12.1
 lacks "existingSecret writes no key"            'enrollment-key:' --set enrollment.existingSecret=ek --set image.hub.tag=1.13.0
 lacks "no enrollment by default"                'name: HUB_ENROLLMENT_'
-check "enrollment.approval is not a value"      refuse --set enrollment.key=$EK --set enrollment.approval=auto --set image.hub.tag=1.13.0
 
 echo "web certificate"
 has   "selfSigned renders the TLS Secret"       'name: t-radar-hub-web-tls' "${SS[@]}"
@@ -274,10 +273,7 @@ lacks "localCluster alone: no hub mount"        'mountPath: /etc/radar-hub/web-t
 lacks "Ingress + inCluster: no CA file"         'HUB_WEB_TLS_CA_FILE' "${ING[@]}" --set web.tls.inCluster=true
 lacks "Ingress + inCluster: no hub mount"       'mountPath: /etc/radar-hub/web-tls' "${ING[@]}" --set web.tls.inCluster=true
 lacks "Ingress + inCluster existingSecret: none" 'HUB_WEB_TLS_CA_FILE' "${ING[@]}" --set web.tls.inCluster=true --set web.tls.existingSecret=mine
-lacks "showInInstallSteps off: no CA file"      'HUB_WEB_TLS_CA_FILE' "${SS[@]}" --set web.tls.showInInstallSteps=false
-lacks "showInInstallSteps off: no hub mount"    'mountPath: /etc/radar-hub/web-tls' "${SS[@]}" --set web.tls.showInInstallSteps=false
-has   "showInInstallSteps off: web still serves" 'mountPath: /etc/radar-hub/tls' "${SS[@]}" --set web.tls.showInInstallSteps=false
-has   "showInInstallSteps defaults on"          'HUB_WEB_TLS_CA_FILE' "${SS[@]}"
+has   "selfSigned: hub gets the CA file"        'HUB_WEB_TLS_CA_FILE' "${SS[@]}"
 lacks "no CA file without the web cert"        'HUB_WEB_TLS_CA_FILE'
 lacks "no hub web-tls mount without the cert"   'mountPath: /etc/radar-hub/web-tls'
 hub_has_no_key() { # the hub Deployment never references tls.key
@@ -293,6 +289,10 @@ else printf '  FAIL  %-46s only %s mounts\n' "license and web-tls mounts coexist
 envis "trustByDefault is wired"                 HUB_ENROLLMENT_TRUST_BY_DEFAULT true --set enrollment.key=$EK --set enrollment.trustByDefault=true --set image.hub.tag=1.13.0
 lacks "trustByDefault off by default"           'HUB_ENROLLMENT_TRUST_BY_DEFAULT' --set enrollment.key=$EK --set image.hub.tag=1.13.0
 check "trustByDefault must be a bool"           refuse --set enrollment.key=$EK --set enrollment.trustByDefault=maybe --set image.hub.tag=1.13.0
+envis "approval manual is wired"                HUB_ENROLLMENT_APPROVAL manual --set enrollment.key=$EK --set enrollment.approval=manual --set image.hub.tag=1.13.0
+lacks "approval auto renders no env"            'HUB_ENROLLMENT_APPROVAL' --set enrollment.key=$EK --set enrollment.approval=auto --set image.hub.tag=1.13.0
+lacks "approval off by default"                 'HUB_ENROLLMENT_APPROVAL' --set enrollment.key=$EK --set image.hub.tag=1.13.0
+check "approval must be auto or manual"         refuse --set enrollment.key=$EK --set enrollment.approval=sometimes --set image.hub.tag=1.13.0
 CRT_PEM=$'-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----'
 KEY_PEM=$'-----BEGIN PRIVATE KEY-----\nMIIBfake\n-----END PRIVATE KEY-----'
 VAL=(--set-string "web.tls.certificate=$CRT_PEM" --set-string "web.tls.privateKey=$KEY_PEM")
@@ -319,7 +319,6 @@ san() { # san <description> <expected SAN text> <extra args...>
 lacks "generated cert: no checksum annotation"  'checksum/web-tls' "${SS[@]}"
 lacks "existingSecret: no checksum annotation"  'checksum/web-tls' "${SS[@]}" --set web.tls.existingSecret=mine
 lacks "existingSecret beats values: no checksum" 'checksum/web-tls' "${SS[@]}" "${VAL[@]}" --set web.tls.existingSecret=mine
-lacks "generated cert: no cert-hosts annotation" 'cert-hosts' "${SS[@]}"
 has   "values cert: checksum keeps podAnnotations" 'team: x' "${SS[@]}" "${VAL[@]}" --set web.podAnnotations.team=x
 sum_val() { render "${SS[@]}" "$@" | awk '/checksum\/web-tls:/{print $2; exit}'; }
 if [ "$(sum_val "${VAL[@]}")" = "$(sum_val "${VAL[@]}")" ] && [ "$(sum_val "${VAL[@]}")" != "$(sum_val --set-string "web.tls.certificate=$CRT_PEM"x --set-string "web.tls.privateKey=$KEY_PEM")" ]; then printf '  ok    %-46s %s\n' "values cert: checksum follows the value" "stable, changes with it"
@@ -408,6 +407,10 @@ note_has   "port-forward on a custom URL port"    'port-forward svc/t-radar-hub-
 note_has   "http forwards to the http port"       'port-forward svc/t-radar-hub-web 18080:http' --set hub.publicURL=http://localhost:18080 "${SS[@]}"
 note_has   "http with no port forwards 80"        'port-forward svc/t-radar-hub-web 80:http' --set hub.publicURL=http://localhost "${SS[@]}"
 note_lacks "http has no certificate step"         'accept it once' --set hub.publicURL=http://localhost:18080 "${SS[@]}"
+TOKEN=(--set auth.oidc.issuer=https://idp.example --set auth.oidc.clientID=cid --set auth.oidc.clientSecret=s --set auth.oidc.clusterAccess=token --set auth.oidc.useRefreshToken=true)
+note_has   "token on self-signed warns"           "WARNING: people's sign-ins reach clusters" "${TOKEN[@]}" "${SS[@]}"
+note_lacks "token without self-signed: no warning" "sign-ins reach clusters" "${TOKEN[@]}"
+note_lacks "self-signed without token: no warning" "sign-ins reach clusters" "${SS[@]}"
 note_has   "https keeps the certificate step"     'The certificate is self-signed' "${LH[@]}" "${SS[@]}"
 # kubectl binds 127.0.0.1 and ::1 by default; any other IP must be named.
 note_has   "port-forward binds 0.0.0.0"           'port-forward --address 0.0.0.0 svc/t-radar-hub-web 8443:443' --set hub.publicURL=https://0.0.0.0:8443 "${SS[@]}"

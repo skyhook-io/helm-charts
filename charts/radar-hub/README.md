@@ -97,7 +97,7 @@ configures.
 Radar agents join the hub with an enrollment key.
 
 - **Create keys in the hub.** An owner opens Settings > Enrollment keys, creates a key, and gives it to the cluster installs that should use it.
-- **Set a key in config for automation.** On a self-hosted hub you can also set an install key when you install the chart, for automation that installs Radar before anyone has signed in. Put it in `enrollment.key` (`rhe_` followed by 43 characters), or keep it in a Secret you manage and name it in `enrollment.existingSecret` (the Secret key defaults to `key`, change it with `enrollment.existingSecretKey`). Set only one of the two. Set `enrollment.trustByDefault=true` if a cluster that joins with this key should start out trusted (default `false`). The hub reads it from its config each time a cluster joins. Keys created in the hub have their own setting. The hub reads the key at startup, so restart the hub Deployment after you change it.
+- **Set a key in config for automation.** On a self-hosted hub you can also set an install key when you install the chart, for automation that installs Radar before anyone has signed in. Put it in `enrollment.key` (`rhe_` followed by 43 characters), or keep it in a Secret you manage and name it in `enrollment.existingSecret` (the Secret key defaults to `key`, change it with `enrollment.existingSecretKey`). Set only one of the two. Set `enrollment.trustByDefault=true` if a cluster that joins with this key should start out trusted (default `false`). The hub reads it from its config each time a cluster joins. Keys created in the hub have their own setting. Set `enrollment.approval=manual` if an owner should approve each new cluster that joins with this key on the Clusters page (default `auto`: clusters join right away). The hub reads the key at startup, so restart the hub Deployment after you change it.
 - **A key is a password.** Every cluster that uses it can join. Keep it out of shared chats and public repos.
 - **If a key leaks**, delete or replace it in the hub (or change the value in config and restart the hub), set the new key on every cluster that uses it, and restart Radar there.
 - **Removed clusters stay out.** A cluster an owner removes does not come back by enrolling again, even with a valid key. An owner has to let it back in.
@@ -114,7 +114,7 @@ kubectl rollout restart deployment/<fullname>-web -n <namespace>
 
  Clusters that trusted the old certificate need to trust the new one.
 
-With `web.tls.selfSigned=true`, the cluster install steps show the hub's certificate (public part only) so clusters trust it. Set `web.tls.showInInstallSteps=false` to leave it out; people then add `cloud.caBundle` themselves. If you use Argo CD with the chart-generated certificate, supply your own (values or Secret, below): otherwise the steps can show a certificate the hub isn't serving.
+With `web.tls.selfSigned=true`, the cluster install steps show the hub's certificate (public part only) so clusters trust it. If you use Argo CD with the chart-generated certificate, supply your own (values or Secret, below): otherwise the steps can show a certificate the hub isn't serving.
 
 **Your own certificate.** Two ways to give the web pod a certificate you made. If both are set, `web.tls.existingSecret` wins over the values.
 

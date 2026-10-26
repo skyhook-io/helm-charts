@@ -296,11 +296,10 @@ or the one this chart renders.
 Whether the hub's public address is served by the web pod's own certificate
 (web.tls.selfSigned), as opposed to an Ingress, Gateway or load balancer with
 its own certificate in front of it. Only then is that certificate the one an
-agent must trust to reach the hub. Also off when web.tls.showInInstallSteps is
-false, so the hub does not hand the certificate out. Returns "true" or "".
+agent must trust to reach the hub. Returns "true" or "".
 */}}
 {{- define "radar-hub.webTLSIsPublic" -}}
-{{- if and .Values.web.tls.selfSigned (ne (.Values.web.tls.showInInstallSteps | toString) "false") -}}
+{{- if .Values.web.tls.selfSigned -}}
 true
 {{- end -}}
 {{- end }}

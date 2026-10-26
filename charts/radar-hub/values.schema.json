@@ -378,10 +378,6 @@
             "selfSigned": {
               "type": "boolean"
             },
-            "showInInstallSteps": {
-              "type": "boolean",
-              "description": "Show the hub's certificate (public part only) in the cluster install steps. Turn off to leave it out; people then add cloud.caBundle themselves."
-            },
             "certificate": {
               "type": "string",
               "description": "PEM certificate the web pod serves on its https port. Set with privateKey. existingSecret takes precedence."
@@ -448,6 +444,11 @@
         "trustByDefault": {
           "type": "boolean",
           "description": "Whether clusters that join with this install key start out trusted."
+        },
+        "approval": {
+          "type": "string",
+          "enum": ["auto", "manual"],
+          "description": "auto: clusters join right away. manual: an owner approves each new cluster on the Clusters page."
         }
       },
       "additionalProperties": false

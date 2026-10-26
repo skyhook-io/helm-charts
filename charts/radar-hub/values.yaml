@@ -130,7 +130,9 @@ hub:
   #     /login?error=session_expired and the hub logs "state cookie missing".
   #   - in-cluster Radar refuses a ws:// tunnel to any non-loopback host.
   # Terminate TLS at your Ingress, or set web.tls.selfSigned=true for a trial
-  # (pair it with cloud.insecureSkipVerify=true on the agent).
+  # (agents installed one at a time pair it with cloud.insecureSkipVerify=true;
+  # clusters that join with an enrollment key verify the certificate, and the
+  # install steps give them its public part).
   #
   # A localhost address (localhost, *.localhost, 127.x.x.x, [::1], 0.0.0.0
   # or [::], any port) is never given to agents: a Radar in this cluster
@@ -377,8 +379,7 @@ web:
   # authenticated). Leave false and terminate TLS at an Ingress (cert-manager)
   # for a browser-trusted certificate.
   # Clusters that join with an enrollment key instead verify the hub's
-  # certificate: with showInInstallSteps on, the install steps include it
-  # (public part); otherwise people add cloud.caBundle themselves.
+  # certificate: the install steps include it (public part only).
   tls:
     selfSigned: false
     # The certificate the web pod serves on its https port, in one of three
@@ -400,11 +401,6 @@ web:
     # It is kept on upgrade, including after helm uninstall. Argo CD renders
     # without a cluster lookup, so it would get a new certificate on every
     # sync; use one of the options above there.
-    # Show the hub's certificate (public part only) in the cluster install
-    # steps, so clusters trust a self-signed or private certificate without
-    # extra setup. Turn off to leave it out; people then add cloud.caBundle
-    # themselves. Applies when selfSigned is on.
-    showInInstallSteps: true
     # Keep the self-signed https listener for Radar agents in this cluster,
     # which dial it at the in-cluster address the install notes print. Public
     # traffic is unaffected: an Ingress or Gateway keeps using the http port,
@@ -466,6 +462,9 @@ enrollment:
   # from this hub pod's config each time a cluster joins. Keys created in the
   # hub have their own setting.
   trustByDefault: false
+  # How clusters joining with this install key are admitted. auto: they join right
+  # away. manual: an owner approves each new cluster on the Clusters page.
+  approval: auto
 
 # ---------------------------------------------------------------------------
 # Auth
@@ -597,7 +596,7 @@ auth:
     #            for "-"). Okta/Entra need offline_access in scopes, or
     #            sessions end with the ID token. Agents must verify the Hub's
     #            certificate: needs an https hub.publicURL, and not with
-    #            web.tls.selfSigned or localCluster.
+    #            localCluster.
     #            Requires Hub
     #            1.12.0 and Radar 1.18.0 or newer.
     #   ""    -> (default) roles. Set idp or token to opt in.
