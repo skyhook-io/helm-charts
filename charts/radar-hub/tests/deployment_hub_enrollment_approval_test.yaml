@@ -11,7 +11,7 @@ tests:
       - values/required-base.yaml
     set:
       enrollment.key: rhe_0123456789012345678901234567890123456789012
-      image.hub.tag: "1.13.0"
+      image.hub.tag: "1.13.1"
     asserts:
       - notContains:
           path: spec.template.spec.containers[0].env
@@ -25,7 +25,7 @@ tests:
       - values/required-base.yaml
     set:
       enrollment.key: rhe_0123456789012345678901234567890123456789012
-      image.hub.tag: "1.13.0"
+      image.hub.tag: "1.13.1"
       enrollment.approval: auto
     asserts:
       - notContains:
@@ -40,7 +40,7 @@ tests:
       - values/required-base.yaml
     set:
       enrollment.key: rhe_0123456789012345678901234567890123456789012
-      image.hub.tag: "1.13.0"
+      image.hub.tag: "1.13.1"
       enrollment.approval: manual
     asserts:
       - contains:
@@ -55,7 +55,7 @@ tests:
       - values/required-base.yaml
     set:
       enrollment.key: rhe_0123456789012345678901234567890123456789012
-      image.hub.tag: "1.13.0"
+      image.hub.tag: "1.13.1"
       enrollment.approval: sometimes
     asserts:
       - failedTemplate: {}
