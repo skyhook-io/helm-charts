@@ -283,6 +283,10 @@ spec:
                    container to work at all. */}}
             - name: RADAR_HUB_OIDC_GROUP_CLAIM
               value: {{ .Values.auth.oidc.groupsClaim | quote }}
+            {{- with .Values.auth.oidc.emailClaim }}
+            - name: RADAR_HUB_OIDC_EMAIL_CLAIM
+              value: {{ . | quote }}
+            {{- end }}
             {{- if .Values.auth.oidc.useRefreshToken }}
             - name: RADAR_HUB_OIDC_USE_REFRESH_TOKEN
               value: "true"
@@ -298,6 +302,14 @@ spec:
             {{- end }}
             {{- with .Values.auth.oidc.k8sGroupsPrefix }}
             - name: RADAR_HUB_OIDC_K8S_GROUPS_PREFIX
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.auth.oidc.clusterToken }}
+            - name: RADAR_HUB_OIDC_CLUSTER_TOKEN
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.auth.oidc.clusterTokenAudience }}
+            - name: RADAR_HUB_OIDC_CLUSTER_TOKEN_AUDIENCE
               value: {{ . | quote }}
             {{- end }}
             {{- end }}
