@@ -181,8 +181,9 @@ hub:
 ```
 
 Keys and values follow Kubernetes label syntax, which the schema enforces. The
-chart's own selector labels (`app.kubernetes.io/name`, `instance`,
-`component`) can't be set through `podLabels`.
+chart's own selector labels (`app.kubernetes.io/name`,
+`app.kubernetes.io/instance` and `app.kubernetes.io/component`) can't be set
+through `podLabels`.
 
 ## AI agent
 

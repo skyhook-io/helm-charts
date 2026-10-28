@@ -444,7 +444,8 @@ rm -rf "$scratch"
 
 echo "pod labels"
 PL=(--set-string podLabels.goog-partner-solution=isol_plb32_0123abc)
-PLRE='^\s+goog-partner-solution: isol_plb32_0123abc$'
+# 8 spaces: under spec.template.metadata.labels, not the Deployment's own labels.
+PLRE='^ {8}goog-partner-solution: isol_plb32_0123abc$'
 has   "hub pod carries podLabels"            "$PLRE" "${PL[@]}" --show-only templates/deployment-hub.yaml
 has   "web pod carries podLabels"            "$PLRE" "${PL[@]}" --show-only templates/deployment-web.yaml
 has   "bundled Postgres pod carries podLabels" "$PLRE" "${PL[@]}" --show-only templates/postgres-bundled.yaml

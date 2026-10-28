@@ -831,7 +831,8 @@ securityContext:
 #   podLabels:
 #     goog-partner-solution: <the value in the Radar docs>
 # Kubernetes label syntax. The chart's own selector labels
-# (app.kubernetes.io/name, instance, component) can't be set here.
+# (app.kubernetes.io/name, app.kubernetes.io/instance and
+# app.kubernetes.io/component) can't be set here.
 podLabels: {}
 
 # ---------------------------------------------------------------------------
