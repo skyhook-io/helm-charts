@@ -109,6 +109,7 @@ rules:
       - daemonsets
       - statefulsets
       - replicasets
+      - controllerrevisions
     verbs: ["get", "list", "watch"]
 
   # Networking resources (read-only)
@@ -515,6 +516,11 @@ rules:
   {{- if .Values.rbac.crdGroups.openshift }}
   - apiGroups: ["observability.openshift.io"]
     resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+  {{- if .Values.rbac.crdGroups.flagger }}
+  - apiGroups: ["flagger.app"]
+    resources: ["canaries", "metrictemplates"]
     verbs: ["get", "list", "watch"]
   {{- end }}
   {{- if .Values.rbac.crdGroups.opentelemetry }}

@@ -418,6 +418,7 @@ trend charts remain unavailable for Kubecost.
 | `service.type` | Service type | `ClusterIP` |
 | `service.port` | Service port | `9280` |
 | `basePath` | URL prefix Radar serves under, e.g. `/radar` for no-strip-prefix subpath ingress | `""` |
+| `allowedHosts` | Hostnames Radar answers when `auth.mode` is `none`, besides `localhost`, IP addresses and Kubernetes Service names. `<service>.<namespace>`, `ingress.hosts`, `httpRoute.hostnames` and the hosts of `trustedOrigins` are added automatically; list others, such as a custom cluster domain. `*` turns the check off | `[]` |
 | `trustedOrigins` | Origins besides Radar's own address that may use Radar's API, including changes and pod terminals, e.g. `http://radar.internal`. Set only if changes fail with "Radar refused this request" because a proxy rewrites `Host` | `[]` |
 | `debug.image` | Image for ephemeral debug containers and node debug pods. In built-in restricted PodSecurity namespaces, pod debug containers may retry as the target/pod non-root UID, or UID `65532` by default; point at a compatible mirror for air-gapped / private-registry clusters. | `""` (busybox:latest) |
 | `listPageSize` | Paginate the initial LIST of high-cardinality kinds (Pods, ReplicaSets) on very large clusters; `0` = off, try `2000`. Only used when the apiserver lacks WatchList streaming. | `0` |
@@ -451,6 +452,7 @@ trend charts remain unavailable for Kubecost.
 | `argocd.token` | Inline Argo CD API token (dev only — lands in the release state) | `""` |
 | `argocd.url` | Explicit `argocd-server` URL; blank auto-discovers in-cluster | `""` |
 | `argocd.insecureTls` | Skip TLS verification for a self-signed `argocd-server` | `false` |
+| `mcp.execTools` | Opt in to `exec_pod` (`--mcp-exec-tools`); requires exec access. With auth off, every reachable client shares Radar’s ServiceAccount permissions. Ignored with `--disable-exec` or `--mcp-read-only` | `false` |
 | `usageReporting.enabled` | Anonymous daily usage stats: views, actions and MCP tools used, plus this cluster's version, platform, node-count range and known integrations. Off unless `true`; Radar never asks in a cluster ([what is sent](https://radarhq.io/docs/configuration/usage-stats)) | unset |
 | `resources.requests.cpu` | CPU request | `200m` |
 | `resources.requests.memory` | Memory request | `256Mi` |
@@ -534,7 +536,7 @@ Always granted (required for basic functionality):
 | API Group | Resources |
 |-----------|-----------|
 | Core (`""`) | pods, services, configmaps, events, namespaces, nodes, pvcs, serviceaccounts, endpoints |
-| `apps` | deployments, daemonsets, statefulsets, replicasets |
+| `apps` | deployments, daemonsets, statefulsets, replicasets, controllerrevisions |
 | `networking.k8s.io` | ingresses, networkpolicies |
 | `batch` | jobs, cronjobs |
 | `autoscaling` | horizontalpodautoscalers |
@@ -557,6 +559,26 @@ Disabled by default for security:
 | Webhooks view | `rbac.viewWebhooks: true` | Show MutatingWebhookConfigurations and ValidatingWebhookConfigurations in the resource browser. Off by default — the configurations reveal which admission controls are enforced (Gatekeeper / Kyverno policies, image scanners, DLP) and where the gaps are, which is recon value for a low-trust viewer. Auto-enabled under auth or cloud mode. |
 | Node runtime evidence | `rbac.viewNodeRuntime: true` | Let upgrade-impact checks inspect kubelet metrics and effective configuration through `nodes/proxy`. Off by default because this exposes node-level runtime and configuration details to anyone who can reach a no-auth Radar install. Under auth, grant `get` on `nodes/proxy` to each Kubernetes identity that should inspect this evidence. |
 
+### MCP container commands
+
+`mcp.execTools` registers `exec_pod`; `rbac.podExec` grants Radar's ServiceAccount
+exec permission. These are separate controls:
+
+| `mcp.execTools` | `rbac.podExec` | Result |
+|---|---|---|
+| false | false | MCP exec unavailable; chart grants no SA exec access. |
+| false | true | MCP exec unavailable; SA exec grant supports the existing terminal. |
+| true | false | MCP exec registered; no SA exec grant from this option. It works only if the executing identity has permission from another grant. |
+| true | true | MCP exec registered; SA exec grant present except in user-token mode. |
+
+With auth off, execution uses the ServiceAccount, shared by every reachable
+client. With proxy/OIDC impersonation, it uses the caller's Kubernetes permissions;
+the SA grant does not grant the caller exec. In user-token mode, the chart emits
+no SA exec rule and execution uses the forwarded caller token. The chart's SA
+rule grants `create pods/exec` (SPDY); WebSocket also needs `get pods/exec`.
+`--disable-exec`, read-only mode and disabled MCP suppress registration regardless
+of either value. See [the exec contract](../../../docs/mcp.md#exec_pod).
+
 ### In-app Agent Upgrades (opt-in, for Radar Cloud users)
 
 `rbac.selfUpgrade: true` lets a Radar Cloud organization owner trigger one-click upgrades from the web UI — no terminal or cloud credentials needed. It does not upgrade anything automatically. Disabled by default; only needed when connecting to Radar Cloud (the install wizard sets this automatically).
@@ -569,7 +591,7 @@ It creates a namespace-scoped Role (not a ClusterRole) with `get` + `patch` on t
 
 ### CRD Access
 
-Radar discovers CRDs in your cluster. Common CRD groups are enabled by default. Granting RBAC for CRDs that don't exist has no effect.
+Radar discovers CRDs in your cluster. Common CRD groups are enabled by default; Flagger is explicitly opt-in. Granting RBAC for CRDs that don't exist has no effect.
 
 **Wildcard option:** Grant the collector service account read access to every API group and resource:
 ```bash
@@ -599,6 +621,7 @@ retain their finite grants.
 | `envoyGateway` | `gateway.envoyproxy.io` |
 | `externalDns` | `externaldns.k8s.io` |
 | `externalSecrets` | `external-secrets.io` |
+| `flagger` | `flagger.app` (`canaries`, `metrictemplates` only); **off by default**. Enable `rbac.crdGroups.flagger=true` for native browsing and failed-rollout Issues. |
 | `flux` | `*.toolkit.fluxcd.io` |
 | `gatewayApi` | `gateway.networking.k8s.io` |
 | `gcpMonitoring` | `monitoring.googleapis.com` |
