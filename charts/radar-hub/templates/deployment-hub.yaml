@@ -23,6 +23,9 @@ spec:
       labels:
         {{- include "radar-hub.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: hub
+        {{- with include "radar-hub.podLabels" . }}
+        {{- . | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ include "radar-hub.serviceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
@@ -389,6 +392,13 @@ spec:
             - name: HUB_ENROLLMENT_APPROVAL
               value: "manual"
             {{- end }}
+            {{- /* Labels for the Radar install commands the hub shows.
+                   Emitted only when set, so an install that sets nothing
+                   renders the same env as before. */}}
+            {{- with include "radar-hub.labelList" .Values.hub.installPodLabels }}
+            - name: HUB_INSTALL_POD_LABELS
+              value: {{ . | quote }}
+            {{- end }}
             {{- if include "radar-hub.webTLSIsPublic" . }}
             {{- /* The certificate that serves the hub's public address,
                    public half only, so the hub can hand it to agents that
@@ -450,6 +460,12 @@ spec:
             {{- end }}
             {{- with .Values.hub.agent.engineLabel }}
             - name: HUB_AGENT_ENGINE_LABEL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- /* podLabels go on the investigation Jobs too, so every pod
+                   the release causes carries them. */}}
+            {{- with include "radar-hub.labelList" .Values.podLabels }}
+            - name: HUB_AGENT_JOB_POD_LABELS
               value: {{ . | quote }}
             {{- end }}
             {{- /* Fleet-wide kill switch for the AI analysis alert rules can

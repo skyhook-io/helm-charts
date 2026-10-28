@@ -161,6 +161,29 @@ See [`values.yaml`](values.yaml) for the full set, and
 [`values.schema.json`](values.schema.json) for the enforced schema. Invalid
 values are rejected at install time rather than surfacing as a broken pod.
 
+## Pod labels
+
+`podLabels` adds labels to every pod the chart runs: hub, web and the bundled
+Postgres. On Hub releases that support it, they also go on the AI
+investigation Jobs the hub starts. `hub.installPodLabels` adds labels to the
+Radar install commands the hub shows, so the agent in each connected cluster
+carries them; older Hub releases ignore it.
+
+If you bought Radar through Google Cloud Marketplace, set Google's
+consumption-tracking label in both:
+
+```yaml
+podLabels:
+  goog-partner-solution: <value from the Radar docs>
+hub:
+  installPodLabels:
+    goog-partner-solution: <value from the Radar docs>
+```
+
+Keys and values follow Kubernetes label syntax, which the schema enforces. The
+chart's own selector labels (`app.kubernetes.io/name`, `instance`,
+`component`) can't be set through `podLabels`.
+
 ## AI agent
 
 Release prerequisite: this feature requires a Hub release with Anthropic provider

@@ -335,6 +335,11 @@ hub:
       memory: 1Gi
 
   podAnnotations: {}
+  # Labels the hub adds to the Radar install commands it shows for connecting
+  # a cluster, so the Radar agent in each cluster carries them. Bought through
+  # Google Cloud Marketplace? Set the same label as podLabels. Needs a Hub
+  # release that supports it; older ones ignore it.
+  installPodLabels: {}
   # Official images are published for linux/amd64 and linux/arm64, so only the
   # OS is pinned by default. Add kubernetes.io/arch: <amd64|arm64> to constrain
   # it; Helm merges that key with this default selector.
@@ -818,6 +823,16 @@ securityContext:
   capabilities:
     drop: ["ALL"]
   readOnlyRootFilesystem: false  # web image needs writable /var/cache/nginx + /tmp/run
+
+# Extra labels on every pod this chart runs (hub, web and the bundled
+# Postgres) and, on Hub releases that support it, on the AI investigation Jobs
+# the hub starts. Bought through Google Cloud Marketplace? Set Google's
+# consumption-tracking label here, and in hub.installPodLabels:
+#   podLabels:
+#     goog-partner-solution: <the value in the Radar docs>
+# Kubernetes label syntax. The chart's own selector labels
+# (app.kubernetes.io/name, instance, component) can't be set here.
+podLabels: {}
 
 # ---------------------------------------------------------------------------
 # Names

@@ -39,6 +39,37 @@ app.kubernetes.io/name: {{ include "radar-hub.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{/*
+.Values.podLabels as YAML for a pod template's labels, or nothing. The chart's
+own selector keys are refused: repeated in the same map they render a
+duplicate key, and if a duplicate won it would detach the pod from its
+Deployment or StatefulSet.
+*/}}
+{{- define "radar-hub.podLabels" -}}
+{{- $reserved := list "app.kubernetes.io/name" "app.kubernetes.io/instance" "app.kubernetes.io/component" -}}
+{{- range $k, $_ := .Values.podLabels -}}
+{{- if has $k $reserved -}}
+{{- fail (printf "podLabels: %s is one of the chart's own selector labels and can't be set" $k) -}}
+{{- end -}}
+{{- end -}}
+{{- with .Values.podLabels -}}
+{{- toYaml . -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+A label map as key=value,key=value for an environment variable. Label syntax
+(enforced by the schema) has no "," or "=" in keys or values, so the hub can
+split it back unambiguously. Keys come out sorted.
+*/}}
+{{- define "radar-hub.labelList" -}}
+{{- $pairs := list -}}
+{{- range $k, $v := . -}}
+{{- $pairs = append $pairs (printf "%s=%s" $k $v) -}}
+{{- end -}}
+{{- join "," $pairs -}}
+{{- end }}
+
 {{- define "radar-hub.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
 {{- default (include "radar-hub.fullname" .) .Values.serviceAccount.name }}
