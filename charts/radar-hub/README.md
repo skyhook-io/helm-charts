@@ -183,7 +183,8 @@ hub:
 Keys and values follow Kubernetes label syntax, which the schema enforces. The
 chart's own selector labels (`app.kubernetes.io/name`,
 `app.kubernetes.io/instance` and `app.kubernetes.io/component`) can't be set
-through `podLabels`.
+through `podLabels`, nor the Radar agent chart's (`app.kubernetes.io/name` and
+`app.kubernetes.io/instance`) through `hub.installPodLabels`.
 
 ## AI agent
 

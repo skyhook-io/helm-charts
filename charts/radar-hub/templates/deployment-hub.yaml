@@ -395,7 +395,7 @@ spec:
             {{- /* Labels for the Radar install commands the hub shows.
                    Emitted only when set, so an install that sets nothing
                    renders the same env as before. */}}
-            {{- with include "radar-hub.labelList" .Values.hub.installPodLabels }}
+            {{- with include "radar-hub.installPodLabels" . }}
             - name: HUB_INSTALL_POD_LABELS
               value: {{ . | quote }}
             {{- end }}

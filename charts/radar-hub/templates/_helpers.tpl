@@ -58,6 +58,22 @@ Deployment or StatefulSet.
 {{- end }}
 
 {{/*
+.Values.hub.installPodLabels as key=value,key=value for HUB_INSTALL_POD_LABELS,
+or nothing. The Radar agent chart's selector keys are refused: the hub puts
+these labels on every agent's pod template, where either key would render a
+duplicate or detach the pod from its Deployment.
+*/}}
+{{- define "radar-hub.installPodLabels" -}}
+{{- $reserved := list "app.kubernetes.io/name" "app.kubernetes.io/instance" -}}
+{{- range $k, $_ := .Values.hub.installPodLabels -}}
+{{- if has $k $reserved -}}
+{{- fail (printf "hub.installPodLabels: %s is one of the Radar chart's selector labels and can't be set" $k) -}}
+{{- end -}}
+{{- end -}}
+{{- include "radar-hub.labelList" .Values.hub.installPodLabels -}}
+{{- end }}
+
+{{/*
 A label map as key=value,key=value for an environment variable. Label syntax
 (enforced by the schema) has no "," or "=" in keys or values, so the hub can
 split it back unambiguously. Keys come out sorted.

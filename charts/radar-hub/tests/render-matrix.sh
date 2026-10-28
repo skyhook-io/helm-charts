@@ -456,6 +456,10 @@ check "a podLabels value with a space"       refuse --set-string 'podLabels.team
 check "a podLabels key with a space"         refuse --set-string 'podLabels.bad key=x'
 check "a 64-character install label value"   refuse --set-string "hub.installPodLabels.x=$(printf 'a%.0s' $(seq 64))"
 check "a prefixed label key"                 render --set-string 'podLabels.example\.com/team=platform'
+check "a 253-character label prefix"          render --set-string "podLabels.$(printf 'a%.0s' $(seq 253))/team=x"
+check "a 254-character label prefix"          refuse --set-string "podLabels.$(printf 'a%.0s' $(seq 254))/team=x"
+check "an agent selector key in installPodLabels" refuse --set-string 'hub.installPodLabels.app\.kubernetes\.io/name=x'
+check "the other agent selector key"          refuse --set-string 'hub.installPodLabels.app\.kubernetes\.io/instance=x'
 envis "installPodLabels reach the hub"       HUB_INSTALL_POD_LABELS 'a=1,goog-partner-solution=isol_x' --set-string hub.installPodLabels.goog-partner-solution=isol_x --set-string hub.installPodLabels.a=1
 lacks "no install-labels env by default"     'name: HUB_INSTALL_POD_LABELS'
 AGF=(-f ci/agent-anthropic-values.yaml)
