@@ -546,6 +546,9 @@
             "emailClaim": {
               "type": "string"
             },
+            "allowEmailLookup": {
+              "type": "boolean"
+            },
             "mcpOAuth": {
               "type": "object",
               "properties": {
@@ -553,6 +556,7 @@
                 "scopes": { "type": "array", "items": { "type": "string" } },
                 "audience": { "type": "string" },
                 "requiredScope": { "type": "string" },
+                "subjectClaim": { "type": "string" },
                 "tokenExchange": {
                   "type": "object",
                   "properties": {
