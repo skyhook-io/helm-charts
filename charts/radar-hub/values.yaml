@@ -705,7 +705,7 @@ branding:
   brandName: "Radar"
   docsURL: "https://radarhq.io/docs"
   supportEmail: "support@radarhq.io"
-  feedbackEmail: "feedback@radarhq.io"
+  feedbackEmail: "radar@skyhook.io"
 
 # ---------------------------------------------------------------------------
 # Networking — expose the hub via traditional Ingress OR Gateway API.
