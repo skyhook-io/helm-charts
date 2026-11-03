@@ -644,14 +644,6 @@ auth:
     # the claim your API servers map to the username (claimMappings.username /
     # --oidc-username-claim). Empty = email.
     emailClaim: "email"
-    # Off: a sign-in whose email belongs to another member's account is
-    # refused; people are matched only by the IdP's user id. On: a browser
-    # sign-in whose email the IdP verified takes over the existing account
-    # with that email. Turn on only while moving to a new IdP or subject
-    # claim, then off: while on, whoever the IdP vouches for an address gets
-    # that address's account. Never applies to MCP sign-in or break-glass.
-    # Needs a Hub newer than 1.14.1; an older Hub ignores it.
-    allowEmailLookup: false
     # MCP clients (Claude Code, Cursor) sign in with this IdP over OAuth: the
     # Hub advertises the issuer as the authorization server at
     # <hub.publicURL>/.well-known/oauth-protected-resource/mcp and accepts the

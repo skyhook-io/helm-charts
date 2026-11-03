@@ -239,34 +239,3 @@ tests:
           content:
             name: RADAR_HUB_MCP_OAUTH_SUBJECT_CLAIM
             value: uid
-
-  - it: renders the email-lookup escape hatch only when on
-    template: templates/deployment-hub.yaml
-    values:
-      - values/required-base.yaml
-    set:
-      auth.oidc.issuer: https://acme.okta.com/oauth2/default
-      auth.oidc.clientID: cid
-      auth.oidc.clientSecret: s
-      auth.oidc.allowEmailLookup: true
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADAR_HUB_OIDC_ALLOW_EMAIL_LOOKUP
-            value: "true"
-
-  - it: emits no email-lookup env by default
-    template: templates/deployment-hub.yaml
-    values:
-      - values/required-base.yaml
-    set:
-      auth.oidc.issuer: https://acme.okta.com/oauth2/default
-      auth.oidc.clientID: cid
-      auth.oidc.clientSecret: s
-    asserts:
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADAR_HUB_OIDC_ALLOW_EMAIL_LOOKUP
-          any: true

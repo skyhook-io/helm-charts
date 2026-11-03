@@ -546,9 +546,6 @@
             "emailClaim": {
               "type": "string"
             },
-            "allowEmailLookup": {
-              "type": "boolean"
-            },
             "mcpOAuth": {
               "type": "object",
               "properties": {
