@@ -222,3 +222,20 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "scopes entry \"api://radar-hub/mcp\" requests the MCP scope \"mcp\""
+
+  - it: renders the MCP subject claim (Okta uid)
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      auth.oidc.issuer: https://acme.okta.com/oauth2/default
+      auth.oidc.clientID: cid
+      auth.oidc.clientSecret: s
+      auth.oidc.mcpOAuth.enabled: true
+      auth.oidc.mcpOAuth.subjectClaim: uid
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_MCP_OAUTH_SUBJECT_CLAIM
+            value: uid

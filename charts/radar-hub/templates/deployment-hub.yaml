@@ -328,6 +328,10 @@ spec:
             - name: RADAR_HUB_MCP_OAUTH_REQUIRED_SCOPE
               value: {{ . | quote }}
             {{- end }}
+            {{- with .Values.auth.oidc.mcpOAuth.subjectClaim }}
+            - name: RADAR_HUB_MCP_OAUTH_SUBJECT_CLAIM
+              value: {{ . | quote }}
+            {{- end }}
             {{- with .Values.auth.oidc.mcpOAuth.tokenExchange }}
             {{- with .strategy }}
             - name: RADAR_HUB_MCP_TOKEN_EXCHANGE

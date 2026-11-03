@@ -659,6 +659,10 @@ auth:
     #   requiredScope -> a scope every MCP access token must carry (e.g.
     #               "mcp"). Required when audience is clientID: an ID token
     #               has the same audience but no scope.
+    #   subjectClaim -> access-token claim holding the user id. Empty = sub.
+    #               Must equal the ID token's sub, which browser sign-in
+    #               uses. Okta: "uid" (its access-token sub is the login).
+    #               Needs a Hub newer than 1.14.1.
     #   tokenExchange -> clusterAccess=token only. The Hub trades the MCP
     #               access token at the IdP for the person's Kubernetes token
     #               (the MCP token never reaches a cluster). strategy:
@@ -675,6 +679,7 @@ auth:
       scopes: []
       audience: ""
       requiredScope: ""
+      subjectClaim: ""
       tokenExchange:
         strategy: ""
         audience: ""
