@@ -174,6 +174,12 @@ hub:
     #               service-specific credential for bedrock.amazonaws.com.
     #   vertex    → Claude on Google Cloud Vertex AI with a GCP service-account
     #               key (JSON). Needs a Hub release with Vertex support.
+    #   openai-compatible
+    #             → any model behind an OpenAI-compatible API (GPT on OpenAI or
+    #               Azure, Kimi/DeepSeek/gpt-oss on Bedrock, Gemini, a company
+    #               gateway, vLLM, Ollama). Set the openaiCompatible block below.
+    #               Runs on a different agent loop than Claude; see the Hub's
+    #               docs/self-hosted-models.md for tested models. Needs Hub 1.15.0.
     # Only the selected provider's broker is mounted in the pod and only its
     # credential is injected, so the other egress path does not exist there.
     provider: anthropic
@@ -202,9 +208,12 @@ hub:
       # Set this OR the inline values below — not both.
       existingSecret: ""
 
+      #   HUB_AGENT_OPENAI_COMPAT_API_KEY  (provider: openai-compatible; an
+      #                                     empty value for a keyless server)
       # Model API key. Written under the key matching `provider`, so flipping
       # provider is one value change and the unselected provider's key never
-      # exists in the cluster.
+      # exists in the cluster. Optional under openai-compatible: leave it empty
+      # for a model server that takes no key.
       apiKey: ""
 
       # GCP service-account key, as the JSON document. Read only under
@@ -224,6 +233,11 @@ hub:
     anthropic:
       # Bare model id — NOT the us.anthropic.* inference-profile form.
       model: "claude-sonnet-4-6"
+      # An Anthropic-compatible gateway (LiteLLM, a company proxy) to use
+      # instead of api.anthropic.com: scheme, host and an optional path
+      # prefix. The key is sent as both x-api-key and a bearer token. Empty =
+      # the first-party API. Needs Hub 1.15.0.
+      baseUrl: ""
 
     # Amazon Bedrock. Read only under provider: bedrock.
     bedrock:
@@ -240,6 +254,40 @@ hub:
       location: "global"
       # Bare model id, same form as anthropic.model (dated snapshots use `@`).
       model: "claude-sonnet-4-6"
+
+    # Any OpenAI-compatible endpoint. Read only under provider: openai-compatible.
+    openaiCompatible:
+      # API root including its version path; the hub appends /chat/completions
+      # or /responses. Examples:
+      #   https://api.openai.com/v1
+      #   https://<resource>.openai.azure.com/openai/v1
+      #   https://bedrock-mantle.us-east-1.api.aws/v1
+      #   http://vllm.models.svc:8000/v1   (needs a sandbox extraEgress rule)
+      # Required.
+      baseUrl: ""
+      # The model id as the endpoint names it (an Azure deployment name on
+      # Azure). The sidecar refuses every request for any other model. Required.
+      model: ""
+      # chat (Chat Completions, every compatible server) or responses (OpenAI's
+      # Responses API, for OpenAI reasoning models). Nothing is stored at the
+      # provider either way.
+      api: chat
+      # bearer (Authorization: Bearer <key>) or api-key (api-key: <key>, the
+      # header Azure OpenAI documents).
+      authHeader: bearer
+      # low | medium | high, for models that reason. Empty = provider default.
+      reasoningEffort: ""
+
+    # USD per million tokens for the openai-compatible model, so investigations
+    # show a spend figure. Informational only: the hub never limits
+    # investigations by spend. Input and output go together; the cache prices
+    # default to the input price. Strings, e.g. "0.60". Only read under
+    # provider: openai-compatible (Claude reports its own spend).
+    prices:
+      inputPerMTok: ""
+      outputPerMTok: ""
+      cacheReadPerMTok: ""
+      cacheWritePerMTok: ""
 
     sandbox:
       # Namespace the per-turn Jobs land in. Empty → "<fullname>-sandbox", which
@@ -266,7 +314,14 @@ hub:
         postgresPort: 5432
         # Extra egress rules appended verbatim, in the NetworkPolicy shape.
         # Needed for a database behind a non-standard port, an egress proxy, or
-        # a private model endpoint.
+        # a model endpoint off port 443, e.g. an in-cluster Ollama:
+        #   extraEgress:
+        #     - to:
+        #         - namespaceSelector:
+        #             matchLabels:
+        #               kubernetes.io/metadata.name: models
+        #       ports:
+        #         - { protocol: TCP, port: 11434 }
         extraEgress: []
 
   # Display name + retention.

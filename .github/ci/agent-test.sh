@@ -127,4 +127,76 @@ reject 'postgres.bundled.auth.password set explicitly' --set-string postgres.bun
 reject 'hub.agent.anthropic.model is required' --set-string hub.agent.anthropic.model=
 reject 'hub.agent.bedrock.region is required' --set hub.agent.provider=bedrock --set-string hub.agent.bedrock.region=
 reject 'provider' --set hub.agent.provider=invalid
+# openai-compatible: any model behind an OpenAI-compatible API. Rendered with
+# a 1.15.0 hub, the first release that has the provider.
+compat() { render --set image.hub.tag=1.15.0 --set hub.agent.provider=openai-compatible \
+  --set-string hub.agent.credentials.apiKey=sk-test \
+  --set-string hub.agent.openaiCompatible.baseUrl=https://bedrock-mantle.us-east-1.api.aws/v1 \
+  --set-string hub.agent.openaiCompatible.model=moonshotai.kimi-k2.5 "$@"; }
+oc=$(compat)
+contains "$oc" 'HUB_AGENT_OPENAI_COMPAT_API_KEY: "sk-test"'
+contains "$oc" 'HUB_AGENT_OPENAI_COMPAT_API_KEY_SECRET'
+contains "$oc" 'value: "https://bedrock-mantle.us-east-1.api.aws/v1"'
+contains "$oc" 'value: "moonshotai.kimi-k2.5"'
+contains "$oc" 'HUB_AGENT_OPENAI_COMPAT_API'
+contains "$oc" 'value: "chat"'
+contains "$oc" 'value: "bearer"'
+absent "$oc" 'HUB_AGENT_REASONING_EFFORT'
+absent "$oc" 'HUB_AGENT_PRICE_'
+absent "$oc" 'HUB_AGENT_ANTHROPIC_'
+absent "$oc" 'HUB_AGENT_BEDROCK_'
+absent "$oc" 'HUB_AGENT_VERTEX_'
+# The Claude providers get none of the new settings.
+for out in "$enabled" "$bedrock" "$vx"; do
+  absent "$out" 'HUB_AGENT_OPENAI_COMPAT_'
+  absent "$out" 'HUB_AGENT_PRICE_'
+  absent "$out" 'HUB_AGENT_REASONING_EFFORT'
+  absent "$out" 'HUB_AGENT_ANTHROPIC_BASE_URL'
+done
+oc_full=$(compat --set hub.agent.openaiCompatible.api=responses --set hub.agent.openaiCompatible.authHeader=api-key \
+  --set hub.agent.openaiCompatible.reasoningEffort=high \
+  --set-string hub.agent.prices.inputPerMTok=0.60 --set-string hub.agent.prices.outputPerMTok=2.5 \
+  --set-string hub.agent.prices.cacheReadPerMTok=0.15)
+contains "$oc_full" 'value: "responses"'
+contains "$oc_full" 'value: "api-key"'
+contains "$oc_full" 'HUB_AGENT_REASONING_EFFORT'
+contains "$oc_full" 'value: "high"'
+contains "$oc_full" 'HUB_AGENT_PRICE_INPUT_PER_MTOK'
+contains "$oc_full" 'value: "0.60"'
+contains "$oc_full" 'HUB_AGENT_PRICE_CACHE_READ_PER_MTOK'
+absent "$oc_full" 'HUB_AGENT_PRICE_CACHE_WRITE_PER_MTOK'
+# Keyless model server: the key is written empty, and the hub sends none.
+keyless=$(compat --set-string hub.agent.credentials.apiKey=)
+contains "$keyless" 'HUB_AGENT_OPENAI_COMPAT_API_KEY: ""'
+oc_existing=$(compat --set-string hub.agent.credentials.apiKey= --set-string hub.agent.credentials.existingSecret=model-creds)
+contains "$oc_existing" 'value: "model-creds"'
+absent "$oc_existing" 'HUB_AGENT_OPENAI_COMPAT_API_KEY:'
+reject_compat() {
+  local message=$1 output
+  shift
+  if output=$(compat "$@" 2>&1); then
+    printf 'FAIL: expected rejection: %s\n' "$message" >&2
+    exit 1
+  fi
+  contains "$output" "$message"
+}
+reject_compat 'hub.agent.openaiCompatible.baseUrl is required' --set-string hub.agent.openaiCompatible.baseUrl=
+reject_compat 'hub.agent.openaiCompatible.model is required' --set-string hub.agent.openaiCompatible.model=
+reject_compat 'needs radar-hub 1.15.0 or later' --set image.hub.tag=1.14.1
+reject_compat 'set inputPerMTok and outputPerMTok together' --set-string hub.agent.prices.inputPerMTok=1
+reject_compat 'hub.agent.anthropic.baseUrl is only read under provider: anthropic' --set-string hub.agent.anthropic.baseUrl=https://gw.example
+reject_compat 'serviceAccountJSON is only read under provider: vertex' --set-string hub.agent.credentials.serviceAccountJSON=x
+reject_compat 'baseUrl' --set-string hub.agent.openaiCompatible.baseUrl='https://x/v1?api-version=1'
+reject_compat 'api' --set hub.agent.openaiCompatible.api=completions
+reject_compat 'reasoningEffort' --set hub.agent.openaiCompatible.reasoningEffort=max
+reject_compat 'inputPerMTok' --set-string 'hub.agent.prices.inputPerMTok=$3' --set-string hub.agent.prices.outputPerMTok=1
+reject 'hub.agent.prices is only read under provider: openai-compatible' \
+  --set-string hub.agent.prices.inputPerMTok=1 --set-string hub.agent.prices.outputPerMTok=1
+
+# The Anthropic gateway: Claude through a company proxy.
+gw=$(render --set image.hub.tag=1.15.0 --set-string hub.agent.anthropic.baseUrl=https://litellm.internal/anthropic)
+contains "$gw" 'HUB_AGENT_ANTHROPIC_BASE_URL'
+contains "$gw" 'value: "https://litellm.internal/anthropic"'
+reject 'hub.agent.anthropic.baseUrl needs radar-hub 1.15.0 or later' --set-string hub.agent.anthropic.baseUrl=https://gw.example
+
 printf 'AI agent chart: %s assertions passed\n' "$checks"

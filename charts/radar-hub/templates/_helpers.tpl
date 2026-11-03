@@ -145,6 +145,8 @@ never exists in the cluster.
 HUB_AGENT_ANTHROPIC_API_KEY
 {{- else if eq .Values.hub.agent.provider "vertex" -}}
 HUB_AGENT_VERTEX_CREDENTIALS
+{{- else if eq .Values.hub.agent.provider "openai-compatible" -}}
+HUB_AGENT_OPENAI_COMPAT_API_KEY
 {{- else -}}
 HUB_AGENT_BEDROCK_API_KEY
 {{- end -}}

@@ -231,7 +231,8 @@
               "enum": [
                 "anthropic",
                 "bedrock",
-                "vertex"
+                "vertex",
+                "openai-compatible"
               ]
             },
             "engineLabel": {
@@ -263,6 +264,11 @@
               "properties": {
                 "model": {
                   "type": "string"
+                },
+                "baseUrl": {
+                  "type": "string",
+                  "pattern": "^$|^https?://[^?#@\\s]+$",
+                  "description": "Anthropic-compatible gateway to use instead of api.anthropic.com. Empty = the first-party API."
                 }
               },
               "additionalProperties": false
@@ -291,6 +297,32 @@
                 "model": {
                   "type": "string"
                 }
+              },
+              "additionalProperties": false
+            },
+            "openaiCompatible": {
+              "type": "object",
+              "properties": {
+                "baseUrl": {
+                  "type": "string",
+                  "pattern": "^$|^https?://[^?#@\\s]+$",
+                  "description": "API root including its version path, e.g. https://api.openai.com/v1. No query, fragment or credentials."
+                },
+                "model": { "type": "string" },
+                "api": { "type": "string", "enum": ["chat", "responses"] },
+                "authHeader": { "type": "string", "enum": ["bearer", "api-key"] },
+                "reasoningEffort": { "type": "string", "enum": ["", "low", "medium", "high"] }
+              },
+              "additionalProperties": false
+            },
+            "prices": {
+              "type": "object",
+              "description": "USD per million tokens for the openai-compatible model (informational spend figure only).",
+              "properties": {
+                "inputPerMTok": { "type": "string", "pattern": "^$|^[0-9]+(\\.[0-9]+)?$" },
+                "outputPerMTok": { "type": "string", "pattern": "^$|^[0-9]+(\\.[0-9]+)?$" },
+                "cacheReadPerMTok": { "type": "string", "pattern": "^$|^[0-9]+(\\.[0-9]+)?$" },
+                "cacheWritePerMTok": { "type": "string", "pattern": "^$|^[0-9]+(\\.[0-9]+)?$" }
               },
               "additionalProperties": false
             },

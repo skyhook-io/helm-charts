@@ -431,6 +431,35 @@ spec:
               value: {{ include "radar-hub.agentSecretName" . | quote }}
             - name: HUB_AGENT_ANTHROPIC_MODEL
               value: {{ .Values.hub.agent.anthropic.model | quote }}
+            {{- with .Values.hub.agent.anthropic.baseUrl }}
+            - name: HUB_AGENT_ANTHROPIC_BASE_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- else if eq .Values.hub.agent.provider "openai-compatible" }}
+            {{- $oc := .Values.hub.agent.openaiCompatible }}
+            {{- /* The key Secret is always named: an empty key value in it
+                   means a keyless model server. */}}
+            - name: HUB_AGENT_OPENAI_COMPAT_API_KEY_SECRET
+              value: {{ include "radar-hub.agentSecretName" . | quote }}
+            - name: HUB_AGENT_OPENAI_COMPAT_BASE_URL
+              value: {{ $oc.baseUrl | quote }}
+            - name: HUB_AGENT_OPENAI_COMPAT_MODEL
+              value: {{ $oc.model | quote }}
+            - name: HUB_AGENT_OPENAI_COMPAT_API
+              value: {{ $oc.api | default "chat" | quote }}
+            - name: HUB_AGENT_OPENAI_COMPAT_AUTH_HEADER
+              value: {{ $oc.authHeader | default "bearer" | quote }}
+            {{- with $oc.reasoningEffort }}
+            - name: HUB_AGENT_REASONING_EFFORT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- $pr := .Values.hub.agent.prices }}
+            {{- range $name, $key := dict "HUB_AGENT_PRICE_INPUT_PER_MTOK" "inputPerMTok" "HUB_AGENT_PRICE_OUTPUT_PER_MTOK" "outputPerMTok" "HUB_AGENT_PRICE_CACHE_READ_PER_MTOK" "cacheReadPerMTok" "HUB_AGENT_PRICE_CACHE_WRITE_PER_MTOK" "cacheWritePerMTok" }}
+            {{- with index $pr $key }}
+            - name: {{ $name }}
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
             {{- else if eq .Values.hub.agent.provider "vertex" }}
             - name: HUB_AGENT_VERTEX_CREDENTIALS_SECRET
               value: {{ include "radar-hub.agentSecretName" . | quote }}
