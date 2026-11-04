@@ -106,8 +106,12 @@ key: {{ .Values.postgres.external.secretKey | default "uri" | quote }}
 {{- end -}}
 {{- end }}
 
+{{/*
+The sandbox runs the hub's own turn worker and sidecar, so it follows the hub's
+tag: pinning image.hub.tag alone must not leave the sandbox on appVersion.
+*/}}
 {{- define "radar-hub.agentSandboxImage" -}}
-{{- $tag := default .Chart.AppVersion .Values.image.agentSandbox.tag -}}
+{{- $tag := default (default .Chart.AppVersion .Values.image.hub.tag) .Values.image.agentSandbox.tag -}}
 {{- printf "%s:%s" .Values.image.agentSandbox.repository $tag -}}
 {{- end }}
 

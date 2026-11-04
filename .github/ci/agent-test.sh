@@ -183,6 +183,13 @@ reject_compat() {
 reject_compat 'hub.agent.openaiCompatible.baseUrl is required' --set-string hub.agent.openaiCompatible.baseUrl=
 reject_compat 'hub.agent.openaiCompatible.model is required' --set-string hub.agent.openaiCompatible.model=
 reject_compat 'needs radar-hub 1.15.0 or later' --set image.hub.tag=1.14.1
+# The sandbox follows the hub's tag, so raising the hub alone raises it too;
+# a sandbox pinned below 1.15.0 on its own is refused.
+oc_default=$(compat)
+contains "$oc_default" 'radar-hub-ai-agent-sandbox:1.15.0"'
+reject_compat 'needs the radar-hub sandbox 1.15.0 or later' --set image.agentSandbox.tag=1.14.1
+oc_pinned=$(compat --set image.agentSandbox.tag=1.15.1)
+contains "$oc_pinned" 'radar-hub-ai-agent-sandbox:1.15.1"'
 reject_compat 'set inputPerMTok and outputPerMTok together' --set-string hub.agent.prices.inputPerMTok=1
 reject_compat 'hub.agent.anthropic.baseUrl is only read under provider: anthropic' --set-string hub.agent.anthropic.baseUrl=https://gw.example
 reject_compat 'serviceAccountJSON is only read under provider: vertex' --set-string hub.agent.credentials.serviceAccountJSON=x
@@ -197,6 +204,6 @@ reject 'hub.agent.prices is only read under provider: openai-compatible' \
 gw=$(render --set image.hub.tag=1.15.0 --set-string hub.agent.anthropic.baseUrl=https://litellm.internal/anthropic)
 contains "$gw" 'HUB_AGENT_ANTHROPIC_BASE_URL'
 contains "$gw" 'value: "https://litellm.internal/anthropic"'
-reject 'hub.agent.anthropic.baseUrl needs radar-hub 1.15.0 or later' --set-string hub.agent.anthropic.baseUrl=https://gw.example
+reject 'hub.agent.anthropic.baseUrl needs radar-hub 1.15.0 or later' --set image.hub.tag=1.14.1 --set-string hub.agent.anthropic.baseUrl=https://gw.example
 
 printf 'AI agent chart: %s assertions passed\n' "$checks"

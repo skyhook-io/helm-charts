@@ -36,12 +36,13 @@ image:
   # Per-turn sandbox image for AI agent (hub.agent). Only pulled when
   # hub.agent.enabled=true. Version-locked to the hub image: the turn
   # contract, the sessions RPC and the DB transport table are all hub-side, so
-  # this tag tracks appVersion and should not be pinned independently.
+  # this tag follows image.hub.tag (appVersion when that is empty) and should
+  # not be pinned independently.
   # No pullPolicy knob — the hub hardcodes PullIfNotPresent on the Job spec,
   # which is why the tag must be an immutable version, never a moving one.
   agentSandbox:
     repository: ghcr.io/skyhook-dev/radar-hub-ai-agent-sandbox
-    tag: ""           # defaults to chart appVersion when empty
+    tag: ""           # defaults to image.hub.tag, then chart appVersion, when empty
 imagePullSecrets: []
 
 # ---------------------------------------------------------------------------
