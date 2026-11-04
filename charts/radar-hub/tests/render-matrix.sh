@@ -70,7 +70,7 @@ check "auth.breakGlass.emial"        refuse --set auth.breakGlass.emial=a@b.c
 check "auth.oidc.issuerr"           refuse --set auth.oidc.issuerr=https://idp.example
 check "hub.agent.vertex.projct"     refuse --set hub.agent.vertex.projct=p
 check "hub.agent.openaiCompatible.modle" refuse --set hub.agent.openaiCompatible.modle=m
-check "hub.agent.prices.inputPerMtok"   refuse --set-string hub.agent.prices.inputPerMtok=1
+check "hub.agent.prices (removed)"     refuse --set-string hub.agent.prices.inputPerMTok=1
 
 echo "hub.cloudAppURL must be a bare http(s) origin"
 check "cloudAppURL https origin"         render --set hub.cloudAppURL=https://app.example

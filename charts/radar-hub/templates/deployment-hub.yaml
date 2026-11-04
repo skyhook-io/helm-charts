@@ -457,13 +457,6 @@ spec:
             - name: HUB_AGENT_OPENAI_COMPAT_MAX_OUTPUT_TOKENS
               value: {{ . | int | toString | quote }}
             {{- end }}
-            {{- $pr := .Values.hub.agent.prices | default dict }}
-            {{- range $name, $key := dict "HUB_AGENT_PRICE_INPUT_PER_MTOK" "inputPerMTok" "HUB_AGENT_PRICE_OUTPUT_PER_MTOK" "outputPerMTok" "HUB_AGENT_PRICE_CACHE_READ_PER_MTOK" "cacheReadPerMTok" "HUB_AGENT_PRICE_CACHE_WRITE_PER_MTOK" "cacheWritePerMTok" }}
-            {{- with index $pr $key }}
-            - name: {{ $name }}
-              value: {{ . | quote }}
-            {{- end }}
-            {{- end }}
             {{- else if eq .Values.hub.agent.provider "vertex" }}
             - name: HUB_AGENT_VERTEX_CREDENTIALS_SECRET
               value: {{ include "radar-hub.agentSecretName" . | quote }}

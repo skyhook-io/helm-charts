@@ -283,17 +283,6 @@ hub:
       # otherwise refuses every request.
       maxOutputTokens: null
 
-    # USD per million tokens for the openai-compatible model, so investigations
-    # show a spend figure. Informational only: the hub never limits
-    # investigations by spend. Input and output go together; the cache prices
-    # default to the input price. Strings, e.g. "0.60". Only read under
-    # provider: openai-compatible (Claude reports its own spend).
-    prices:
-      inputPerMTok: ""
-      outputPerMTok: ""
-      cacheReadPerMTok: ""
-      cacheWritePerMTok: ""
-
     sandbox:
       # Namespace the per-turn Jobs land in. Empty → "<fullname>-sandbox", which
       # is release-scoped so two installs in one cluster cannot collide and a

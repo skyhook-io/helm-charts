@@ -143,36 +143,23 @@ contains "$oc" 'value: "chat"'
 contains "$oc" 'value: "bearer"'
 absent "$oc" 'HUB_AGENT_REASONING_EFFORT'
 absent "$oc" 'HUB_AGENT_OPENAI_COMPAT_MAX_OUTPUT_TOKENS'
-absent "$oc" 'HUB_AGENT_PRICE_'
 absent "$oc" 'HUB_AGENT_ANTHROPIC_'
 absent "$oc" 'HUB_AGENT_BEDROCK_'
 absent "$oc" 'HUB_AGENT_VERTEX_'
 # The Claude providers get none of the new settings.
 for out in "$enabled" "$bedrock" "$vx"; do
   absent "$out" 'HUB_AGENT_OPENAI_COMPAT_'
-  absent "$out" 'HUB_AGENT_PRICE_'
   absent "$out" 'HUB_AGENT_REASONING_EFFORT'
   absent "$out" 'HUB_AGENT_ANTHROPIC_BASE_URL'
 done
 oc_full=$(compat --set hub.agent.openaiCompatible.api=responses --set hub.agent.openaiCompatible.authHeader=api-key \
-  --set hub.agent.openaiCompatible.reasoningEffort=high --set hub.agent.openaiCompatible.maxOutputTokens=16384 \
-  --set-string hub.agent.prices.inputPerMTok=0.60 --set-string hub.agent.prices.outputPerMTok=2.5 \
-  --set-string hub.agent.prices.cacheReadPerMTok=0.15)
+  --set hub.agent.openaiCompatible.reasoningEffort=high --set hub.agent.openaiCompatible.maxOutputTokens=16384)
 contains "$oc_full" 'value: "responses"'
 contains "$oc_full" 'HUB_AGENT_OPENAI_COMPAT_MAX_OUTPUT_TOKENS'
 contains "$oc_full" 'value: "16384"'
 contains "$oc_full" 'value: "api-key"'
 contains "$oc_full" 'HUB_AGENT_REASONING_EFFORT'
 contains "$oc_full" 'value: "high"'
-contains "$oc_full" 'HUB_AGENT_PRICE_INPUT_PER_MTOK'
-contains "$oc_full" 'value: "0.60"'
-contains "$oc_full" 'HUB_AGENT_PRICE_CACHE_READ_PER_MTOK'
-absent "$oc_full" 'HUB_AGENT_PRICE_CACHE_WRITE_PER_MTOK'
-# An upgrade with --reuse-values from a chart without hub.agent.prices: no
-# prices map at all still renders, with no price env.
-no_prices=$(compat --set hub.agent.prices=null)
-contains "$no_prices" 'HUB_AGENT_OPENAI_COMPAT_MODEL'
-absent "$no_prices" 'HUB_AGENT_PRICE_'
 # Keyless model server: the key is written empty, and the hub sends none.
 keyless=$(compat --set-string hub.agent.credentials.apiKey=)
 contains "$keyless" 'HUB_AGENT_OPENAI_COMPAT_API_KEY: ""'
@@ -198,7 +185,6 @@ contains "$oc_default" 'radar-hub-ai-agent-sandbox:1.15.0"'
 reject_compat 'needs the radar-hub sandbox 1.15.0 or later' --set image.agentSandbox.tag=1.14.1
 oc_pinned=$(compat --set image.agentSandbox.tag=1.15.1)
 contains "$oc_pinned" 'radar-hub-ai-agent-sandbox:1.15.1"'
-reject_compat 'set inputPerMTok and outputPerMTok together' --set-string hub.agent.prices.inputPerMTok=1
 reject_compat 'hub.agent.anthropic.baseUrl is only read under provider: anthropic' --set-string hub.agent.anthropic.baseUrl=https://gw.example
 reject_compat 'serviceAccountJSON is only read under provider: vertex' --set-string hub.agent.credentials.serviceAccountJSON=x
 reject_compat 'baseUrl' --set-string hub.agent.openaiCompatible.baseUrl='https://x/v1?api-version=1'
@@ -206,9 +192,6 @@ reject_compat 'api' --set hub.agent.openaiCompatible.api=completions
 reject_compat 'reasoningEffort' --set hub.agent.openaiCompatible.reasoningEffort=max
 reject_compat 'maxOutputTokens' --set hub.agent.openaiCompatible.maxOutputTokens=0
 reject_compat 'maxOutputTokens' --set-string hub.agent.openaiCompatible.maxOutputTokens=16k
-reject_compat 'inputPerMTok' --set-string 'hub.agent.prices.inputPerMTok=$3' --set-string hub.agent.prices.outputPerMTok=1
-reject 'hub.agent.prices is only read under provider: openai-compatible' \
-  --set-string hub.agent.prices.inputPerMTok=1 --set-string hub.agent.prices.outputPerMTok=1
 
 # The Anthropic gateway: Claude through a company proxy.
 gw=$(render --set image.hub.tag=1.15.0 --set-string hub.agent.anthropic.baseUrl=https://litellm.internal/anthropic)

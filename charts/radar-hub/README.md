@@ -263,11 +263,10 @@ helm upgrade --install radar-hub skyhook/radar-hub \
 - `openaiCompatible.authHeader` is `bearer` (default) or `api-key` (Azure).
 - `openaiCompatible.reasoningEffort` is `low`, `medium` or `high`, for models
   that reason; empty leaves the provider's default.
+- `openaiCompatible.maxOutputTokens` caps each model reply; empty is 32000.
+  Lower it for a model with a smaller output limit (GPT-4o: 16384), which
+  otherwise refuses every request.
 - `credentials.apiKey` may be empty for a model server that takes no key.
-- `prices` (USD per million tokens, as strings: use `--set-string`) gives
-  investigations a spend figure. Informational only; the Hub never limits
-  investigations by spend. Refused under the Claude providers, which report
-  their own spend.
 
 A model endpoint off port 443 (vLLM, Ollama, a gateway on its own port) needs a
 sandbox egress rule:

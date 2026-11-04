@@ -320,17 +320,6 @@
               },
               "additionalProperties": false
             },
-            "prices": {
-              "type": "object",
-              "description": "USD per million tokens for the openai-compatible model (informational spend figure only).",
-              "properties": {
-                "inputPerMTok": { "type": "string", "pattern": "^$|^[0-9]+(\\.[0-9]+)?$" },
-                "outputPerMTok": { "type": "string", "pattern": "^$|^[0-9]+(\\.[0-9]+)?$" },
-                "cacheReadPerMTok": { "type": "string", "pattern": "^$|^[0-9]+(\\.[0-9]+)?$" },
-                "cacheWritePerMTok": { "type": "string", "pattern": "^$|^[0-9]+(\\.[0-9]+)?$" }
-              },
-              "additionalProperties": false
-            },
             "sandbox": {
               "type": "object",
               "properties": {
