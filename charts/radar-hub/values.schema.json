@@ -311,6 +311,11 @@
                 "model": { "type": "string" },
                 "api": { "type": "string", "enum": ["chat", "responses"] },
                 "authHeader": { "type": "string", "enum": ["bearer", "api-key"] },
+                "maxOutputTokens": {
+                  "type": ["integer", "null"],
+                  "minimum": 1,
+                  "description": "Longest model reply in tokens. Empty = 32000; lower it for models with a smaller output limit."
+                },
                 "reasoningEffort": { "type": "string", "enum": ["", "low", "medium", "high"] }
               },
               "additionalProperties": false

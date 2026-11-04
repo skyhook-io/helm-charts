@@ -278,6 +278,10 @@ hub:
       authHeader: bearer
       # low | medium | high, for models that reason. Empty = provider default.
       reasoningEffort: ""
+      # The longest reply the model may write, in tokens. Empty = 32000. Lower
+      # it for a model whose output limit is smaller (GPT-4o: 16384), which
+      # otherwise refuses every request.
+      maxOutputTokens: null
 
     # USD per million tokens for the openai-compatible model, so investigations
     # show a spend figure. Informational only: the hub never limits

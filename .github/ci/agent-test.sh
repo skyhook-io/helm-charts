@@ -142,6 +142,7 @@ contains "$oc" 'HUB_AGENT_OPENAI_COMPAT_API'
 contains "$oc" 'value: "chat"'
 contains "$oc" 'value: "bearer"'
 absent "$oc" 'HUB_AGENT_REASONING_EFFORT'
+absent "$oc" 'HUB_AGENT_OPENAI_COMPAT_MAX_OUTPUT_TOKENS'
 absent "$oc" 'HUB_AGENT_PRICE_'
 absent "$oc" 'HUB_AGENT_ANTHROPIC_'
 absent "$oc" 'HUB_AGENT_BEDROCK_'
@@ -154,10 +155,12 @@ for out in "$enabled" "$bedrock" "$vx"; do
   absent "$out" 'HUB_AGENT_ANTHROPIC_BASE_URL'
 done
 oc_full=$(compat --set hub.agent.openaiCompatible.api=responses --set hub.agent.openaiCompatible.authHeader=api-key \
-  --set hub.agent.openaiCompatible.reasoningEffort=high \
+  --set hub.agent.openaiCompatible.reasoningEffort=high --set hub.agent.openaiCompatible.maxOutputTokens=16384 \
   --set-string hub.agent.prices.inputPerMTok=0.60 --set-string hub.agent.prices.outputPerMTok=2.5 \
   --set-string hub.agent.prices.cacheReadPerMTok=0.15)
 contains "$oc_full" 'value: "responses"'
+contains "$oc_full" 'HUB_AGENT_OPENAI_COMPAT_MAX_OUTPUT_TOKENS'
+contains "$oc_full" 'value: "16384"'
 contains "$oc_full" 'value: "api-key"'
 contains "$oc_full" 'HUB_AGENT_REASONING_EFFORT'
 contains "$oc_full" 'value: "high"'
@@ -201,6 +204,8 @@ reject_compat 'serviceAccountJSON is only read under provider: vertex' --set-str
 reject_compat 'baseUrl' --set-string hub.agent.openaiCompatible.baseUrl='https://x/v1?api-version=1'
 reject_compat 'api' --set hub.agent.openaiCompatible.api=completions
 reject_compat 'reasoningEffort' --set hub.agent.openaiCompatible.reasoningEffort=max
+reject_compat 'maxOutputTokens' --set hub.agent.openaiCompatible.maxOutputTokens=0
+reject_compat 'maxOutputTokens' --set-string hub.agent.openaiCompatible.maxOutputTokens=16k
 reject_compat 'inputPerMTok' --set-string 'hub.agent.prices.inputPerMTok=$3' --set-string hub.agent.prices.outputPerMTok=1
 reject 'hub.agent.prices is only read under provider: openai-compatible' \
   --set-string hub.agent.prices.inputPerMTok=1 --set-string hub.agent.prices.outputPerMTok=1
