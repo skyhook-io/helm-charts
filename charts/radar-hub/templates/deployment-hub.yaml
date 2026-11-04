@@ -453,7 +453,7 @@ spec:
             - name: HUB_AGENT_REASONING_EFFORT
               value: {{ . | quote }}
             {{- end }}
-            {{- $pr := .Values.hub.agent.prices }}
+            {{- $pr := .Values.hub.agent.prices | default dict }}
             {{- range $name, $key := dict "HUB_AGENT_PRICE_INPUT_PER_MTOK" "inputPerMTok" "HUB_AGENT_PRICE_OUTPUT_PER_MTOK" "outputPerMTok" "HUB_AGENT_PRICE_CACHE_READ_PER_MTOK" "cacheReadPerMTok" "HUB_AGENT_PRICE_CACHE_WRITE_PER_MTOK" "cacheWritePerMTok" }}
             {{- with index $pr $key }}
             - name: {{ $name }}

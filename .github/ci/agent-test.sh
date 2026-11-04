@@ -165,6 +165,11 @@ contains "$oc_full" 'HUB_AGENT_PRICE_INPUT_PER_MTOK'
 contains "$oc_full" 'value: "0.60"'
 contains "$oc_full" 'HUB_AGENT_PRICE_CACHE_READ_PER_MTOK'
 absent "$oc_full" 'HUB_AGENT_PRICE_CACHE_WRITE_PER_MTOK'
+# An upgrade with --reuse-values from a chart without hub.agent.prices: no
+# prices map at all still renders, with no price env.
+no_prices=$(compat --set hub.agent.prices=null)
+contains "$no_prices" 'HUB_AGENT_OPENAI_COMPAT_MODEL'
+absent "$no_prices" 'HUB_AGENT_PRICE_'
 # Keyless model server: the key is written empty, and the hub sends none.
 keyless=$(compat --set-string hub.agent.credentials.apiKey=)
 contains "$keyless" 'HUB_AGENT_OPENAI_COMPAT_API_KEY: ""'
