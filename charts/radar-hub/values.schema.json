@@ -201,6 +201,9 @@
         "podAnnotations": {
           "type": "object"
         },
+        "installPodLabels": {
+          "$ref": "#/definitions/labels"
+        },
         "nodeSelector": {
           "type": "object"
         },
@@ -808,6 +811,9 @@
     "securityContext": {
       "type": "object"
     },
+    "podLabels": {
+      "$ref": "#/definitions/labels"
+    },
     "nameOverride": {
       "type": "string"
     },
@@ -815,5 +821,21 @@
       "type": "string"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "labels": {
+      "description": "Kubernetes labels: keys are an optional DNS-subdomain prefix (at most 253 characters) and a name of at most 63 characters; values are strings of at most 63 letters, digits, '-', '_' or '.', starting and ending with a letter or digit.",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$",
+        "not": {
+          "pattern": "^[^/]{254,}/"
+        }
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9])?$"
+      }
+    }
+  }
 }

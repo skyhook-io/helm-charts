@@ -442,6 +442,31 @@ if notes "${ING[@]}" | grep -qF "In-cluster agent address"; then printf '  FAIL 
 else printf '  ok    %-46s absent\n' "no in-cluster address without a listener"; fi
 rm -rf "$scratch"
 
+echo "pod labels"
+PL=(--set-string podLabels.goog-partner-solution=isol_plb32_0123abc)
+# 8 spaces: under spec.template.metadata.labels, not the Deployment's own labels.
+PLRE='^ {8}goog-partner-solution: isol_plb32_0123abc$'
+has   "hub pod carries podLabels"            "$PLRE" "${PL[@]}" --show-only templates/deployment-hub.yaml
+has   "web pod carries podLabels"            "$PLRE" "${PL[@]}" --show-only templates/deployment-web.yaml
+has   "bundled Postgres pod carries podLabels" "$PLRE" "${PL[@]}" --show-only templates/postgres-bundled.yaml
+lacks "no podLabels by default"              'goog-partner-solution'
+check "a selector key in podLabels"          refuse --set-string 'podLabels.app\.kubernetes\.io/component=x'
+check "a non-string podLabels value"         refuse --set podLabels.team=1
+check "a podLabels value with a space"       refuse --set-string 'podLabels.team=a b'
+check "a podLabels key with a space"         refuse --set-string 'podLabels.bad key=x'
+check "a 64-character install label value"   refuse --set-string "hub.installPodLabels.x=$(printf 'a%.0s' $(seq 64))"
+check "a prefixed label key"                 render --set-string 'podLabels.example\.com/team=platform'
+check "a 253-character label prefix"          render --set-string "podLabels.$(printf 'a%.0s' $(seq 253))/team=x"
+check "a 254-character label prefix"          refuse --set-string "podLabels.$(printf 'a%.0s' $(seq 254))/team=x"
+check "an agent selector key in installPodLabels" refuse --set-string 'hub.installPodLabels.app\.kubernetes\.io/name=x'
+check "the other agent selector key"          refuse --set-string 'hub.installPodLabels.app\.kubernetes\.io/instance=x'
+envis "installPodLabels reach the hub"       HUB_INSTALL_POD_LABELS 'a=1,goog-partner-solution=isol_x' --set-string hub.installPodLabels.goog-partner-solution=isol_x --set-string hub.installPodLabels.a=1
+lacks "no install-labels env by default"     'name: HUB_INSTALL_POD_LABELS'
+AGF=(-f ci/agent-anthropic-values.yaml)
+envis "podLabels reach the AI investigation Jobs" HUB_AGENT_JOB_POD_LABELS 'goog-partner-solution=isol_plb32_0123abc' "${AGF[@]}" "${PL[@]}"
+lacks "no Job-labels env without podLabels"  'name: HUB_AGENT_JOB_POD_LABELS' "${AGF[@]}"
+lacks "no Job-labels env with the agent off" 'name: HUB_AGENT_JOB_POD_LABELS' "${PL[@]}"
+
 echo
 if [ $fails -eq 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; fi
 exit $fails

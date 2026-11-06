@@ -31,6 +31,9 @@ spec:
       labels:
         {{- include "radar-hub.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: web
+        {{- with include "radar-hub.podLabels" . }}
+        {{- . | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ include "radar-hub.serviceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
