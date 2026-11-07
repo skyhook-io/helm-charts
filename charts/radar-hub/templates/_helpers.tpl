@@ -106,8 +106,12 @@ key: {{ .Values.postgres.external.secretKey | default "uri" | quote }}
 {{- end -}}
 {{- end }}
 
+{{/*
+The sandbox runs the hub's own turn worker and sidecar, so it follows the hub's
+tag: pinning image.hub.tag alone must not leave the sandbox on appVersion.
+*/}}
 {{- define "radar-hub.agentSandboxImage" -}}
-{{- $tag := default .Chart.AppVersion .Values.image.agentSandbox.tag -}}
+{{- $tag := default (default .Chart.AppVersion .Values.image.hub.tag) .Values.image.agentSandbox.tag -}}
 {{- printf "%s:%s" .Values.image.agentSandbox.repository $tag -}}
 {{- end }}
 
@@ -145,6 +149,8 @@ never exists in the cluster.
 HUB_AGENT_ANTHROPIC_API_KEY
 {{- else if eq .Values.hub.agent.provider "vertex" -}}
 HUB_AGENT_VERTEX_CREDENTIALS
+{{- else if eq .Values.hub.agent.provider "openai-compatible" -}}
+HUB_AGENT_OPENAI_COMPAT_API_KEY
 {{- else -}}
 HUB_AGENT_BEDROCK_API_KEY
 {{- end -}}

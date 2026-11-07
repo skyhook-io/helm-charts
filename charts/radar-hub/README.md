@@ -164,7 +164,8 @@ values are rejected at install time rather than surfacing as a broken pod.
 ## AI agent
 
 Release prerequisite: this feature requires a Hub release with Anthropic provider
-support (and, for `provider: vertex`, Vertex provider support) and a public `radar-hub-ai-agent-sandbox` image at the same version as
+support (for `provider: vertex`, Vertex provider support; for
+`provider: openai-compatible` and `anthropic.baseUrl`, Hub 1.15.0) and a public `radar-hub-ai-agent-sandbox` image at the same version as
 Hub. Chart maintainers must select that verified version in `appVersion` before
 publishing this chart; merging chart changes publishes immediately, independently
 of the Hub image pipeline. Hub `1.5.0` does not support this configuration.
@@ -178,9 +179,11 @@ only into the sidecar container, not the agent container in the same pod.
 Pick a provider. `anthropic` talks to `api.anthropic.com` with an Anthropic API
 key and works from any cloud; `bedrock` talks to `bedrock-runtime.<region>.amazonaws.com`
 with an IAM service-specific credential for `bedrock.amazonaws.com`; `vertex`
-talks to Claude on Google Cloud Vertex AI with a service-account key. Only the
-selected provider's broker is mounted and only its credential is written, so
-the other egress path does not exist in the pod.
+talks to Claude on Google Cloud Vertex AI with a service-account key;
+`openai-compatible` talks to any model behind an OpenAI-compatible API (see
+[Any model](#any-model-openai-compatible) below). Only the selected provider's
+broker is mounted and only its credential is written, so the other egress path
+does not exist in the pod.
 
 With the bundled evaluation Postgres, set its password explicitly and the
 chart derives the DSN the sandbox pod uses:
@@ -223,9 +226,64 @@ helm upgrade --install radar-hub skyhook/radar-hub \
 For a sealed-secrets or external-secrets workflow, skip the inline values and
 set `hub.agent.credentials.existingSecret` to an object you manage. It must
 live in the sandbox namespace and carry `HUB_AGENT_DB_DSN` plus
-`HUB_AGENT_ANTHROPIC_API_KEY`, `HUB_AGENT_BEDROCK_API_KEY` or
-`HUB_AGENT_VERTEX_CREDENTIALS` (the service-account key JSON), matching the
-provider.
+`HUB_AGENT_ANTHROPIC_API_KEY`, `HUB_AGENT_BEDROCK_API_KEY`,
+`HUB_AGENT_VERTEX_CREDENTIALS` (the service-account key JSON) or
+`HUB_AGENT_OPENAI_COMPAT_API_KEY` (empty for a keyless model server), matching
+the provider.
+
+To reach Claude through a company gateway (LiteLLM, a proxy) instead of
+`api.anthropic.com`, keep `provider: anthropic` and set
+`hub.agent.anthropic.baseUrl` (needs Hub 1.15.0). The key is sent as both
+`x-api-key` and a bearer token.
+
+### Any model (openai-compatible)
+
+`provider: openai-compatible` runs investigations on any model behind an
+OpenAI-compatible API: GPT on OpenAI or Azure, Kimi, DeepSeek or gpt-oss on
+Amazon Bedrock, Gemini, a company AI gateway, or vLLM and Ollama in your
+cluster. It needs Hub 1.15.0. Claude stays the recommended choice; these models
+run on a different agent loop, and the Hub's `docs/self-hosted-models.md` lists
+which were tested and how they scored.
+
+```bash
+helm upgrade --install radar-hub skyhook/radar-hub \
+  --set hub.agent.enabled=true \
+  --set hub.agent.provider=openai-compatible \
+  --set hub.agent.openaiCompatible.baseUrl=https://bedrock-mantle.us-east-1.api.aws/v1 \
+  --set hub.agent.openaiCompatible.model=moonshotai.kimi-k2.5 \
+  --set hub.agent.credentials.apiKey=<key> \
+  --set postgres.bundled.auth.password='<password>'
+```
+
+- `openaiCompatible.baseUrl` is the API root **including its version path**
+  (`https://api.openai.com/v1`, `https://<resource>.openai.azure.com/openai/v1`,
+  `http://vllm.models.svc:8000/v1`). Required, with `openaiCompatible.model`.
+- `openaiCompatible.api` is `chat` (default, every compatible server) or
+  `responses` (OpenAI's Responses API, for OpenAI reasoning models).
+- `openaiCompatible.authHeader` is `bearer` (default) or `api-key` (Azure).
+- `openaiCompatible.reasoningEffort` is `low`, `medium` or `high`, for models
+  that reason; empty leaves the provider's default.
+- `openaiCompatible.maxOutputTokens` caps each model reply; empty is 32000.
+  Lower it for a model with a smaller output limit (GPT-4o: 16384), which
+  otherwise refuses every request.
+- `credentials.apiKey` may be empty for a model server that takes no key.
+
+A model endpoint off port 443 (vLLM, Ollama, a gateway on its own port) needs a
+sandbox egress rule:
+
+```yaml
+hub:
+  agent:
+    sandbox:
+      networkPolicy:
+        extraEgress:
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: models
+            ports:
+              - { protocol: TCP, port: 11434 }
+```
 
 ### AI analysis in alerts
 

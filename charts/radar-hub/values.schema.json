@@ -231,7 +231,8 @@
               "enum": [
                 "anthropic",
                 "bedrock",
-                "vertex"
+                "vertex",
+                "openai-compatible"
               ]
             },
             "engineLabel": {
@@ -263,6 +264,11 @@
               "properties": {
                 "model": {
                   "type": "string"
+                },
+                "baseUrl": {
+                  "type": "string",
+                  "pattern": "^$|^https?://[^?#@\\s]+$",
+                  "description": "Anthropic-compatible gateway to use instead of api.anthropic.com. Empty = the first-party API."
                 }
               },
               "additionalProperties": false
@@ -291,6 +297,26 @@
                 "model": {
                   "type": "string"
                 }
+              },
+              "additionalProperties": false
+            },
+            "openaiCompatible": {
+              "type": "object",
+              "properties": {
+                "baseUrl": {
+                  "type": "string",
+                  "pattern": "^$|^https?://[^?#@\\s]+$",
+                  "description": "API root including its version path, e.g. https://api.openai.com/v1. No query, fragment or credentials."
+                },
+                "model": { "type": "string" },
+                "api": { "type": "string", "enum": ["chat", "responses"] },
+                "authHeader": { "type": "string", "enum": ["bearer", "api-key"] },
+                "maxOutputTokens": {
+                  "type": ["integer", "null"],
+                  "minimum": 1,
+                  "description": "Longest model reply in tokens. Empty = 32000; lower it for models with a smaller output limit."
+                },
+                "reasoningEffort": { "type": "string", "enum": ["", "low", "medium", "high"] }
               },
               "additionalProperties": false
             },
