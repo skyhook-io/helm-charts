@@ -106,8 +106,9 @@ def fake_cli(tool):
 
     if tool == "cosign":
         reference = args[-1]
-        if not reference.startswith("ghcr.io/skyhook-io/charts/radar-hub@sha256:"):
-            finish(1, "Cosign must receive an immutable Radar Hub digest\n")
+        if not reference.startswith(("ghcr.io/skyhook-io/charts/radar-hub@sha256:",
+                                     "ghcr.io/skyhook-io/charts/radar@sha256:")):
+            finish(1, "Cosign must receive an immutable Radar or Radar Hub digest\n")
         if not (Path(os.environ["DOCKER_CONFIG"]) / "config.json").is_file():
             finish(1, "Cosign registry credentials missing\n")
         if args[0] == "sign":
@@ -145,6 +146,7 @@ class PublishingTests(unittest.TestCase):
         for name, version in [
             ("radar-hub", "1.2.3"), ("radar", "2.3.4"),
             ("skyhook-connector", "3.4.5"), ("radar-hub", "1.2.3-rc.1+build.2"),
+            ("radar", "2.3.4-rc.1+build.2"),
         ]:
             chart = cls.fixture_root / f"{name}-{version}"
             chart.mkdir()
@@ -187,9 +189,10 @@ class PublishingTests(unittest.TestCase):
             self.state["pages"].append([])
         self.state["pages"][page].append({"tag_name": tag, "target_commitish": sha, "draft": draft})
         self.state["tag_commits"][tag] = tag_sha
-        if tag.startswith("radar-hub-"):
+        if tag.startswith(("radar-hub-", "radar-")):
             # Model the exact source chart in the workflow's checked-out commit.
-            source = self.root / "charts/radar-hub"
+            name = "radar-hub" if tag.startswith("radar-hub-") else "radar"
+            source = self.root / "charts" / name
             source.parent.mkdir(exist_ok=True)
             shutil.copytree(self.fixture_root / tag, source, dirs_exist_ok=True)
 
@@ -240,10 +243,9 @@ class PublishingTests(unittest.TestCase):
         self.assertEqual(len(self.calls("helm", "push")), 1)
 
     def test_unsigned_only_batch_has_no_cosign_calls(self):
-        self.release("radar-2.3.4")
         self.release("skyhook-connector-3.4.5")
         self.run_publisher()
-        self.assertEqual(len(self.calls("helm", "push")), 2)
+        self.assertEqual(len(self.calls("helm", "push")), 1)
         self.assertFalse(any(event[0] == "cosign" for event in self.state["events"]))
 
     def test_partial_mixed_batch_retry_preserves_existing_digests(self):
@@ -257,6 +259,81 @@ class PublishingTests(unittest.TestCase):
         for tag, entry in existing.items():
             self.assertEqual(self.state["registry"][tag], entry)
         self.assertEqual(len(self.state["registry"]), 3)
+        self.assertEqual(len(self.calls("cosign", "verify")), 4)
+        references = {call[-1] for call in self.calls("cosign", "verify")}
+        expected = {f"ghcr.io/skyhook-io/charts/{name}@{existing[tag]['digest']}"
+                    for name, tag in (("radar", "radar-2.3.4"), ("radar-hub", "radar-hub-1.2.3"))}
+        self.assertEqual(references, expected)
+
+    def test_fresh_radar_publish_then_retry_without_cr_packages(self):
+        self.release("radar-2.3.4")
+        self.run_publisher()
+        digest = self.state["registry"]["radar-2.3.4"]["digest"]
+        self.run_publisher()
+        self.assertEqual(len(self.calls("helm", "push")), 1)
+        self.assertEqual(len(self.calls("cosign", "sign")), 2)
+        self.assertEqual(len(self.calls("cosign", "verify")), 2)
+        self.assertTrue(all(call[-1] == f"ghcr.io/skyhook-io/charts/radar@{digest}"
+                            for call in self.calls("cosign", "sign")))
+        self.assertFalse((self.root / ".cr-release-packages").exists())
+
+    def test_radar_sign_failure_is_repaired_without_repush(self):
+        self.release("radar-2.3.4")
+        self.state["sign_failure"] = True
+        self.run_publisher(succeeds=False, contains="OIDC signing failed")
+        self.assertFalse(self.calls("cosign", "verify"))
+        self.state["sign_failure"] = False
+        self.run_publisher()
+        self.assertEqual(len(self.calls("helm", "push")), 1)
+        self.assertEqual(len(self.calls("cosign", "verify")), 1)
+
+    def test_radar_wrong_identity_issuer_and_verification_failure_fail_job(self):
+        self.release("radar-2.3.4")
+        for field, value in [("signer_identity", "wrong-workflow"),
+                             ("signer_issuer", "wrong-issuer"), ("verify_failure", True)]:
+            with self.subTest(field=field):
+                self.state[field] = value
+                expected = "Signature verification failed" if field == "verify_failure" else "Certificate identity or issuer mismatch"
+                self.run_publisher(succeeds=False, contains=expected)
+                del self.state[field]
+        self.assertEqual(len(self.calls("helm", "push")), 1)
+
+    def test_existing_radar_archive_mismatch_is_not_signed(self):
+        self.release("radar-2.3.4")
+        self.state["registry"]["radar-2.3.4"] = {
+            "archive": self.assets["radar-hub-1.2.3"], "digest": "sha256:" + "b" * 64,
+        }
+        self.run_publisher(succeeds=False, contains="refusing to sign")
+        self.assertFalse(self.calls("cosign", "sign"))
+        self.assertFalse(self.calls("helm", "push"))
+
+    def test_replaced_radar_release_asset_cannot_be_pushed_or_signed(self):
+        self.release("radar-2.3.4")
+        replacement = self.root / "radar-2.3.4.tgz"
+        with tarfile.open(self.assets["radar-2.3.4"]) as source, tarfile.open(replacement, "w:gz") as target:
+            for member in source:
+                if member.name == "radar/templates/configmap.yaml":
+                    payload = b"{{ fail \"replaced release asset\" }}"
+                    member.size = len(payload)
+                    target.addfile(member, io.BytesIO(payload))
+                else:
+                    target.addfile(member, source.extractfile(member))
+        self.state["assets"] = dict(self.assets, **{"radar-2.3.4": str(replacement)})
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                if existing:
+                    self.state["registry"]["radar-2.3.4"] = {
+                        "archive": str(replacement), "digest": "sha256:" + "b" * 64,
+                    }
+                self.run_publisher(succeeds=False, contains="does not match the chart at this run's commit")
+        self.assertFalse(self.calls("helm", "push"))
+        self.assertFalse(self.calls("cosign", "sign"))
+
+    def test_radar_prerelease_build_metadata_uses_helm_oci_tag(self):
+        self.release("radar-2.3.4-rc.1+build.2")
+        self.run_publisher()
+        self.run_publisher()
+        self.assertEqual(len(self.calls("helm", "push")), 1)
         self.assertEqual(len(self.calls("cosign", "verify")), 2)
 
     def test_existing_hub_archive_mismatch_is_not_signed(self):

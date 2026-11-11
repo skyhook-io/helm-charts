@@ -87,8 +87,8 @@ jobs:
           done
 
       # Recover the published release archives even when a retry has no local
-      # packages or changed_charts output. Existing Hub digests still need signing.
-      - name: Mirror charts to OCI and sign Radar Hub
+      # packages or changed_charts output. Existing Radar and Hub digests still need signing.
+      - name: Mirror charts to OCI and sign Radar and Radar Hub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
