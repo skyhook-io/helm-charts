@@ -116,6 +116,11 @@ default image version is not a statement that it supports the feature. Set
 requires an explicit Hub tag before activation, but cannot verify the contents
 of an arbitrary image tag.
 
+The Radar agent chart and image must also include signing support. The planned
+first candidate is **1.20.3**, which is not published yet. Wait for a supporting
+release before using the published Radar chart for this mode, or use a tested
+development chart and image that include the implementation.
+
 Keep `enrollment.publicKeyEnabled: false` while upgrading Hub replicas. After
 every replica runs the supporting build, set it to `true` and complete that
 rollout before configuring agents. This also makes **Register public key**
@@ -182,6 +187,8 @@ enrollment.
 
    ```yaml
    cloud:
+     enabled: true
+     hubURL: https://hub.example.com
      enrollment:
        organization: self-hosted
        publicKey:
