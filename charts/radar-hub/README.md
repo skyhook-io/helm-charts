@@ -175,10 +175,12 @@ enrollment.
    the Hub. Changing the install public key requires a Hub rollout.
 
 3. Provision the private file in the namespace of each Radar agent. For an
-   agent installed in namespace `radar`:
+   agent installed in namespace `radar`, use a separate private-key Secret.
+   When migrating, keep the old enrollment Secret until the new agents
+   and their access are verified:
 
    ```sh
-   kubectl -n radar create secret generic radar-hub-enrollment \
+   kubectl -n radar create secret generic radar-hub-enrollment-private \
      --from-file=private-key=radar-enrollment.key \
      --dry-run=client -o yaml | kubectl apply -f -
    ```
@@ -192,7 +194,7 @@ enrollment.
      enrollment:
        organization: self-hosted
        publicKey:
-         existingSecret: radar-hub-enrollment
+         existingSecret: radar-hub-enrollment-private
          existingSecretKey: private-key
    ```
 
