@@ -1,0 +1,280 @@
+suite: hub public-key enrollment configuration
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  - it: leaves public-key enrollment off by default
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_PUBLIC_KEY_ENROLLMENT_ENABLED
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_PUBLIC_KEY
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_AUDIENCES
+          any: true
+
+  - it: passes the public PEM and activation flag to the hub without a bearer install key
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_PUBLIC_KEY_ENROLLMENT_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_PUBLIC_KEY
+            value: |
+              -----BEGIN PUBLIC KEY-----
+              MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+              -----END PUBLIC KEY-----
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_KEY
+          any: true
+
+  - it: does not store public material as a bearer secret
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    asserts:
+      - isNull:
+          path: stringData.enrollment-key
+
+  - it: enables app-created public keys while keeping an install secret for migration
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      image.hub.tag: enrollment-keypairs-snapshot
+      enrollment.publicKeyEnabled: true
+      enrollment.existingSecret: enrollment-before-migration
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_PUBLIC_KEY_ENROLLMENT_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_KEY
+            valueFrom:
+              secretKeyRef:
+                name: enrollment-before-migration
+                key: key
+
+  - it: reuses approval and trust settings for a public install key
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.approval: manual
+      enrollment.trustByDefault: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_APPROVAL
+            value: manual
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_TRUST_BY_DEFAULT
+            value: "true"
+
+  - it: joins exact additional origins as the backend configuration expects
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.allowedOrigins:
+        - https://radar.internal.example
+        - https://radar.internal.example:8443
+        - http://localhost:9091
+        - http://127.0.0.1:9091
+        - http://[::1]:9091
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_AUDIENCES
+            value: https://radar.internal.example,https://radar.internal.example:8443,http://localhost:9091,http://127.0.0.1:9091,http://[::1]:9091
+
+  - it: rejects an install public key while activation is off
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKeyEnabled: false
+    asserts:
+      - failedTemplate:
+          errorMessage: enrollment.publicKey requires enrollment.publicKeyEnabled=true after all Hub replicas run a supporting build
+
+  - it: requires an explicitly selected supporting hub image
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.publicKeyEnabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: enrollment.publicKeyEnabled requires image.hub.tag set explicitly to a build with public-key enrollment support; upgrade all Hub replicas before enabling it
+
+  - it: rejects a public key combined with an inline install secret
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.key: rhe_0123456789012345678901234567890123456789012
+    asserts:
+      - failedTemplate:
+          errorMessage: enrollment.publicKey conflicts with enrollment.key and enrollment.existingSecret - choose one install credential
+
+  - it: rejects a public key combined with an existing install secret
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.existingSecret: old-install-key
+    asserts:
+      - failedTemplate:
+          errorMessage: enrollment.publicKey conflicts with enrollment.key and enrollment.existingSecret - choose one install credential
+
+  - it: rejects a pasted private PEM without echoing its content
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PRIVATE KEY-----
+        sensitive-input-not-echoed
+        -----END PRIVATE KEY-----
+    asserts:
+      - failedTemplate:
+          errorMessage: enrollment.publicKey must contain one Ed25519 PUBLIC KEY PEM block. Keep the private key only in each Radar agent's Secret
+
+  - it: rejects malformed Ed25519 public material
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PUBLIC KEY-----
+        not-a-public-key
+        -----END PUBLIC KEY-----
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects multiple public keys
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PUBLIC KEY-----
+        MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+        -----END PUBLIC KEY-----
+        -----BEGIN PUBLIC KEY-----
+        MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+        -----END PUBLIC KEY-----
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects non-loopback plain HTTP origins
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.allowedOrigins: [http://radar.internal.example]
+    asserts:
+      - failedTemplate:
+          errorMessage: enrollment.allowedOrigins must use https:// except for localhost, 127.x.x.x or [::1] development origins
+
+  - it: rejects wildcard origins
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.allowedOrigins: [https://*.example.com]
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects origins with paths
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.allowedOrigins: [https://radar.internal.example/api]
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects origins with credentials
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.allowedOrigins: [https://user@radar.internal.example]
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects origins with queries or fragments
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.allowedOrigins: ["https://radar.internal.example?other"]
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects duplicate origins
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.allowedOrigins: [https://radar.internal.example, https://radar.internal.example]
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects an origins string instead of a list
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.allowedOrigins: https://radar.internal.example
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects a string activation flag
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      enrollment.publicKeyEnabled: "true"
+    asserts:
+      - failedTemplate: {}

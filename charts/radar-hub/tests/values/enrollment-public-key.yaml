@@ -1,0 +1,9 @@
+image:
+  hub:
+    tag: enrollment-keypairs-snapshot
+enrollment:
+  publicKeyEnabled: true
+  publicKey: |
+    -----BEGIN PUBLIC KEY-----
+    MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+    -----END PUBLIC KEY-----

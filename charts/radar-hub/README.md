@@ -102,6 +102,152 @@ Radar agents join the hub with an enrollment key.
 - **If a key leaks**, delete or replace it in the hub (or change the value in config and restart the hub), set the new key on every cluster that uses it, and restart Radar there.
 - **Removed clusters stay out.** A cluster an owner removes does not come back by enrolling again, even with a valid key. An owner has to let it back in.
 
+### Customer-owned public keys
+
+Public-key enrollment lets you generate the enrollment credential yourself. Hub
+receives only an Ed25519 public key. Each Radar keeps the private key in a
+Kubernetes Secret and signs a fresh enrollment challenge. The private key is
+never sent to Hub. Customer keys remain valid until revoked; a signed proof is
+single-use and expires after 60 seconds.
+
+Use Hub, web and Radar builds that include public-key enrollment. This chart's
+default image version is not a statement that it supports the feature. Set
+`image.hub.tag` and `image.web.tag` explicitly to supporting builds. The chart
+requires an explicit Hub tag before activation, but cannot verify the contents
+of an arbitrary image tag.
+
+Keep `enrollment.publicKeyEnabled: false` while upgrading Hub replicas. After
+every replica runs the supporting build, set it to `true` and complete that
+rollout before configuring agents. This also makes **Register public key**
+available under Settings > Enrollment keys. Shared-secret enrollment keeps
+working during the upgrade. Public-key enrollment uses the existing shared
+`hub.cookiePassword`; it adds no operator secret. All replicas need the same
+cookie password. Rotating it invalidates outstanding challenges, which agents
+retry automatically.
+
+For an organization that already exists, register the public key in Settings >
+Enrollment keys and follow its install instructions. Those instructions include
+the intended organization ID. Radar signs that ID with the request, so
+registering the same public key in a different organization cannot redirect
+enrollment.
+
+#### Configure an install public key before first sign-in
+
+1. Generate the pair locally with a supporting Radar CLI:
+
+   ```sh
+   radar cloud enrollment-keygen --out radar-enrollment.key
+   ```
+
+   This writes the private file and `radar-enrollment.key.pub`. The command
+   refuses to overwrite an existing file. Keep the private file out of Git,
+   Helm values and workspace configuration. OpenSSL 3 can generate the same
+   PKCS#8/SPKI PEM pair; the OpenSSL bundled with some operating systems cannot
+   generate Ed25519 keys.
+
+2. Put the required Hub settings and explicit supporting image tags in
+   `hub-values.yaml`. Enable public-key enrollment and choose the policy for
+   this install key:
+
+   ```yaml
+   enrollment:
+     publicKeyEnabled: true
+     approval: manual
+     trustByDefault: false
+   ```
+
+   Install with the public file only:
+
+   ```sh
+   helm upgrade --install radar-hub skyhook/radar-hub \
+     -n radar-hub --create-namespace -f hub-values.yaml \
+     --set-file enrollment.publicKey=radar-enrollment.key.pub
+   ```
+
+   `enrollment.publicKey` accepts one Ed25519 `PUBLIC KEY` PEM block. It
+   conflicts with `enrollment.key` and `enrollment.existingSecret`. The Hub
+   receives it as public configuration; the private file is never mounted in
+   the Hub. Changing the install public key requires a Hub rollout.
+
+3. Provision the private file in the namespace of each Radar agent. For an
+   agent installed in namespace `radar`:
+
+   ```sh
+   kubectl -n radar create secret generic radar-hub-enrollment \
+     --from-file=private-key=radar-enrollment.key \
+     --dry-run=client -o yaml | kubectl apply -f -
+   ```
+
+   Configure that agent with the Hub's reachable HTTPS address and:
+
+   ```yaml
+   cloud:
+     enrollment:
+       organization: self-hosted
+       publicKey:
+         existingSecret: radar-hub-enrollment
+         existingSecretKey: private-key
+   ```
+
+   The reserved `self-hosted` target works only with this Hub's configured
+   install public key. App-created keys use the actual organization ID from
+   their install instructions. Do not set a cloud token or bearer enrollment
+   key alongside public-key settings.
+
+Agents may start before anyone signs in. They wait while Hub has no
+organization, then join its singleton organization after first sign-in. With
+`approval: manual`, new clusters wait for an owner to approve them. Approval
+also marks the cluster trusted. `trustByDefault` applies to new clusters
+admitted automatically.
+
+#### TLS, aliases and GitOps
+
+The agent verifies Hub's TLS certificate. For a private or self-signed Hub,
+give Radar the certificate through `cloud.caBundle`; do not disable TLS
+verification. The existing setup page supplies the public CA bundle when the
+Hub chart manages that certificate.
+
+The Hub's public origin is accepted by default. If agents dial an additional
+address, add its exact origin to `enrollment.allowedOrigins`:
+
+```yaml
+enrollment:
+  allowedOrigins:
+    - https://radar.internal.example
+```
+
+Each address needs a matching trusted certificate. Origins cannot contain
+credentials, paths, queries, fragments or wildcards. Plain HTTP is accepted
+only for loopback development addresses. A browser-only port-forward address
+does not make Hub reachable from remote clusters.
+
+For Argo CD, Flux and NKP, provision the private-key Secret through your secret
+manager in every target namespace before enabling the referenced settings.
+Commit only the Secret reference and public configuration. NKP's workspace
+values cannot create that Secret in every cluster; pre-provisioning is a
+required step. Never paste the private key into NKP workspace values or a
+ConfigMap.
+
+#### Migrate or rotate without changing cluster trust
+
+For an existing fleet, register an app public key in the UI and select
+**Replace existing key**, including when replacing an install secret. Confirm
+the affected clusters. That explicit replacement preserves each cluster's
+existing trust value as it rejoins; new clusters use the new key's policy.
+Check that the replacement's cluster maximum accommodates the fleet.
+
+Keep the old install secret configured while moving agents to the new private
+Secret and organization settings. Restart agents deliberately, verify their
+cluster IDs, history and access, then revoke the old enrollment credential and
+remove its install config. Switching `enrollment.key` directly to
+`enrollment.publicKey` is a hard cutover: Hub retires the previous install key
+as its replicas start.
+
+Revocation stops future enrollment. It does not disconnect active tunnels or
+revoke already issued cluster tokens. Compromise response may require separate
+cluster actions; removing a cluster registration can remove its history. Do
+not treat key revocation as immediate fleet isolation.
+
 ## Self-signed certificate
 
 With `web.tls.selfSigned=true`, or whenever the web pod keeps its https listener for a Radar agent in the same cluster (`web.tls.inCluster`, a localhost `hub.publicURL`, or `localCluster`), the chart creates a Secret named `<fullname>-web-tls` (`radar-hub-web-tls` for a release named `radar-hub`; `<fullname>` is the release name if it contains `radar-hub`, else `<release>-radar-hub`, or `fullnameOverride` if set) holding a self-signed certificate for the host in `hub.publicURL`. The chart makes it once and reuses that Secret on every upgrade, so the certificate stays the same and clusters that trust it keep working. The chart marks the Secret `helm.sh/resource-policy: keep`, so `helm uninstall` leaves it in place. To replace it, delete the Secret and restart the web pods, then run `helm upgrade`:
