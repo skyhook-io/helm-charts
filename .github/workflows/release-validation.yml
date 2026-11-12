@@ -1,0 +1,40 @@
+name: Validate chart publishing
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/workflows/release-validation.yml'
+      - '.github/scripts/publish-oci.sh'
+      - '.github/ci/publish-oci-test.py'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/workflows/release-validation.yml'
+      - '.github/scripts/publish-oci.sh'
+      - '.github/ci/publish-oci-test.py'
+
+permissions:
+  contents: read
+
+jobs:
+  publishing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.14.0
+
+      - name: Check publisher shell
+        run: |
+          bash -n .github/scripts/publish-oci.sh
+          shellcheck .github/scripts/publish-oci.sh
+
+      - name: Test publishing and retry behavior
+        run: python3 .github/ci/publish-oci-test.py
