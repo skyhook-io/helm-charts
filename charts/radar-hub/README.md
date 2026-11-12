@@ -182,7 +182,7 @@ enrollment.
    ```sh
    kubectl -n radar create secret generic radar-hub-enrollment-private \
      --from-file=private-key=radar-enrollment.key \
-     --dry-run=client -o yaml | kubectl apply -f -
+     --dry-run=client -o yaml | kubectl apply --server-side --field-manager=radar-enrollment -f -
    ```
 
    Configure that agent with the Hub's reachable HTTPS address and:
@@ -237,20 +237,25 @@ values cannot create that Secret in every cluster; pre-provisioning is a
 required step. Never paste the private key into NKP workspace values or a
 ConfigMap.
 
-#### Migrate or rotate without changing cluster trust
+#### Migrate or rotate one predecessor at a time
 
 For an existing fleet, register an app public key in the UI and select
 **Replace existing key**, including when replacing an install secret. Confirm
-the affected clusters. That explicit replacement preserves each cluster's
-existing trust value as it rejoins; new clusters use the new key's policy.
+the affected clusters. Hub preserves exact trust only when a cluster moves
+from the named old key to its replacement. Complete that step before starting
+another replacement; new clusters use the new key's policy.
 Check that the replacement's cluster maximum accommodates the fleet.
 
 Keep the old install secret configured while moving agents to the new private
 Secret and organization settings. Restart agents deliberately, verify their
 cluster IDs, history and access, then revoke the old enrollment credential and
-remove its install config. Switching `enrollment.key` directly to
-`enrollment.publicKey` is a hard cutover: Hub retires the previous install key
-as its replicas start.
+remove its install config. Keeping the old Secret preserves the enrollment
+credential for rollback. Switching back to that key, or skipping to another
+replacement, can apply that key's trust default again. An owner must check and
+restore trust before users rely on a rolled-back cluster.
+
+Switching `enrollment.key` directly to `enrollment.publicKey` is a hard cutover:
+Hub retires the previous install key as its replicas start.
 
 Revocation stops future enrollment. It does not disconnect active tunnels or
 revoke already issued cluster tokens. Compromise response may require separate
