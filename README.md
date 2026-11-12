@@ -46,15 +46,17 @@ New Radar and Radar Hub OCI releases use [Cosign](https://docs.sigstore.dev/cosi
 Install Cosign v3.1.4 or later. Set `chart` to `radar` or `radar-hub` and `version` to the chart version you want, then pull and verify it:
 
 ```bash
-set -euo pipefail
 chart=radar
 version='<chart-version>'
+(
+set -euo pipefail
 helm pull "oci://ghcr.io/skyhook-io/charts/${chart}" --version "$version" 2>&1 | tee "${chart}-pull.log"
 digest="$(sed -n 's/^Digest: //p' "${chart}-pull.log")"
 cosign verify \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --certificate-identity https://github.com/skyhook-io/helm-charts/.github/workflows/release.yml@refs/heads/main \
   "ghcr.io/skyhook-io/charts/${chart}@${digest}"
+)
 ```
 
 Continue only if verification succeeds. Install the exact archive you pulled. For Radar:

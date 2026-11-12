@@ -18,6 +18,7 @@ ISSUER = "https://token.actions.githubusercontent.com"
 IDENTITY = "https://github.com/skyhook-io/helm-charts/.github/workflows/release.yml@refs/heads/main"
 SHA = "a" * 40
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/publish-oci.sh"
+INDEX_SCRIPT = SCRIPT.with_name("index-published-charts.sh")
 
 
 def fake_cli(tool):
@@ -64,6 +65,15 @@ def fake_cli(tool):
                 finish(1, "Wrong release asset requested\n")
             shutil.copyfile(source, Path(option("--dir")) / source.name)
             finish()
+
+    if tool == "cr":
+        if args != ["index", "--owner", "skyhook-io", "--git-repo", "helm-charts", "--push"]:
+            finish(1, "Unexpected index command\n")
+        for package in Path(".cr-release-packages").glob("*.tgz"):
+            canonical = Path(state["assets"][package.stem])
+            if package.read_bytes() != canonical.read_bytes():
+                finish(1, "Index would hash a repackaged archive\n")
+        finish()
 
     if tool == "helm":
         if args[:2] == ["show", "chart"] or args[0] == "package":
@@ -169,7 +179,7 @@ class PublishingTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.bin = self.root / "bin"
         self.bin.mkdir()
-        for tool in ("gh", "helm", "cosign"):
+        for tool in ("gh", "helm", "cosign", "cr"):
             shim = self.bin / tool
             shim.write_text(f"#!{sys.executable}\nimport os,runpy\nos.environ['PUBLISH_TEST_TOOL']={tool!r}\n"
                             f"runpy.run_path({str(Path(__file__).resolve())!r}, run_name='__main__')\n")
@@ -208,6 +218,47 @@ class PublishingTests(unittest.TestCase):
 
     def calls(self, tool, command):
         return [event for event in self.state["events"] if event[:2] == [tool, command]]
+
+    def run_index(self, *, succeeds=True):
+        self.state_path.write_text(json.dumps(self.state))
+        result = subprocess.run(["bash", str(INDEX_SCRIPT)], cwd=self.root, env=self.env,
+                                text=True, capture_output=True)
+        self.state = json.loads(self.state_path.read_text())
+        self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+        return result
+
+    def local_repackage(self):
+        self.release()
+        packages = self.root / ".cr-release-packages"
+        packages.mkdir()
+        package = packages / "radar-hub-1.2.3.tgz"
+        # A retry can have different archive bytes despite unchanged chart files.
+        package.write_bytes(Path(self.assets[package.stem]).read_bytes() + b"retry")
+        return package
+
+    def test_index_uses_canonical_release_archive_on_retry(self):
+        package = self.local_repackage()
+        self.run_index()
+        self.assertEqual(package.read_bytes(), Path(self.assets[package.stem]).read_bytes())
+        self.assertEqual(len(self.calls("cr", "index")), 1)
+
+    def test_index_rejects_existing_version_at_another_commit(self):
+        self.local_repackage()
+        self.state["tag_commits"]["radar-hub-1.2.3"] = "b" * 40
+        result = self.run_index(succeeds=False)
+        self.assertIn("bump the chart version", result.stderr + result.stdout)
+        self.assertFalse(self.calls("gh", "release"))
+        self.assertFalse(self.calls("cr", "index"))
+
+    def test_index_download_failure_does_not_publish_index(self):
+        self.local_repackage()
+        self.state["download_failure"] = True
+        self.run_index(succeeds=False)
+        self.assertFalse(self.calls("cr", "index"))
+
+    def test_index_with_no_packages_does_not_publish(self):
+        self.run_index()
+        self.assertEqual(self.state["events"], [])
 
     def test_fresh_hub_publish_then_retry_without_cr_packages(self):
         self.release()
@@ -469,7 +520,7 @@ class PublishingTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    if os.environ.get("PUBLISH_TEST_TOOL") in ("gh", "helm", "cosign"):
+    if os.environ.get("PUBLISH_TEST_TOOL") in ("gh", "helm", "cosign", "cr"):
         fake_cli(os.environ["PUBLISH_TEST_TOOL"])
     else:
         unittest.main(verbosity=2)
