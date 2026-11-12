@@ -58,12 +58,12 @@ for pkg in "${packages[@]}"; do
     exit 1
   fi
 
-  if [[ "$name" == radar-hub ]]; then
+  if [[ "$name" == radar-hub || "$name" == radar ]]; then
     # A release asset can be replaced independently of its tag. Compare its
     # content with the checked-out chart; ignore only tar/gzip packaging metadata.
     # The original published archive remains the input to the OCI push.
-    helm package charts/radar-hub --destination "$work_dir/source"
-    python3 - "$pkg" "$work_dir/source/${name}-${version}.tgz" <<'PY'
+    helm package "charts/${name}" --destination "$work_dir/source"
+    python3 - "$pkg" "$work_dir/source/${name}-${version}.tgz" "$name" <<'PY'
 import sys
 import tarfile
 from pathlib import PurePosixPath
@@ -89,7 +89,7 @@ try:
     if contents(sys.argv[1]) != contents(sys.argv[2]):
         raise ValueError("archive content differs")
 except (OSError, tarfile.TarError, ValueError):
-    sys.exit("::error::Radar Hub release archive does not match the chart at this run's commit; refusing to sign")
+    sys.exit(f"::error::{sys.argv[3]} release archive does not match the chart at this run's commit; refusing to sign")
 PY
   fi
 
@@ -101,7 +101,7 @@ PY
     --destination "$work_dir/pulled" > "$output" 2>&1; then
     cat "$output"
     echo "::notice::${name}-${version} already in GHCR OCI; keeping its digest"
-    if [[ "$name" == radar-hub ]] && ! cmp -s "$pkg" "$work_dir/pulled/${name}-${version}.tgz"; then
+    if [[ "$name" == radar-hub || "$name" == radar ]] && ! cmp -s "$pkg" "$work_dir/pulled/${name}-${version}.tgz"; then
       echo "::error::Existing ${name}-${version} OCI chart differs from its GitHub Release archive; refusing to sign"
       exit 1
     fi
@@ -125,7 +125,7 @@ PY
     exit 1
   fi
 
-  if [[ "$name" == radar-hub ]]; then
+  if [[ "$name" == radar-hub || "$name" == radar ]]; then
     reference="${image}@${digest}"
     cosign sign --yes --oidc-provider=github-actions "$reference"
     cosign verify \
