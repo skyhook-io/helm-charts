@@ -206,6 +206,154 @@ tests:
     asserts:
       - failedTemplate: {}
 
+  - it: rejects an inserted space inside the BEGIN marker
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PUBLIC  KEY-----
+        MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+        -----END PUBLIC KEY-----
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects an inserted space inside the END marker
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PUBLIC KEY-----
+        MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+        -----END PUBLIC  KEY-----
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects a newline inserted inside a marker
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PUBLIC
+        KEY-----
+        MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+        -----END PUBLIC KEY-----
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects all markers and the body on the same line
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: "-----BEGIN PUBLIC KEY-----MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=-----END PUBLIC KEY-----"
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects the body joined to the BEGIN marker line
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PUBLIC KEY-----MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+        -----END PUBLIC KEY-----
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects the body joined to the END marker line
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PUBLIC KEY-----
+        MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=-----END PUBLIC KEY-----
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects an indented END marker
+    template: templates/secret.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n  -----END PUBLIC KEY-----\n"
+    asserts:
+      - failedTemplate: {}
+
+  - it: accepts intact CRLF PEM lines without changing the value passed to Hub
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: "-----BEGIN PUBLIC KEY-----\r\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\r\n-----END PUBLIC KEY-----\r\n"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_PUBLIC_KEY
+            value: "-----BEGIN PUBLIC KEY-----\r\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\r\n-----END PUBLIC KEY-----\r\n"
+
+  - it: accepts a normally wrapped base64 body
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: |
+        -----BEGIN PUBLIC KEY-----
+        MCowBQYDK2VwAyEA11qYAYKxCrfVS/7T
+        yWQHOg7hcvPapiMlrwIaaPcHURo=
+        -----END PUBLIC KEY-----
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_PUBLIC_KEY
+            value: |
+              -----BEGIN PUBLIC KEY-----
+              MCowBQYDK2VwAyEA11qYAYKxCrfVS/7T
+              yWQHOg7hcvPapiMlrwIaaPcHURo=
+              -----END PUBLIC KEY-----
+
+  - it: accepts ordinary whitespace outside the intact block
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: "\n \t-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n\t "
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_PUBLIC_KEY
+            value: "\n \t-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n\t "
+
+  - it: accepts PEM body spaces and tabs allowed by the Hub parser
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+      - values/enrollment-public-key.yaml
+    set:
+      enrollment.publicKey: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7T \tyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_ENROLLMENT_PUBLIC_KEY
+            value: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7T \tyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n"
+
   - it: rejects non-loopback plain HTTP origins
     template: templates/secret.yaml
     values:
