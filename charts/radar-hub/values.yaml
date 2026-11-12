@@ -493,8 +493,19 @@ localCluster:
 # ---------------------------------------------------------------------------
 # Owners create enrollment keys in the hub under Settings > Enrollment keys.
 # An install key set here is optional. It lets automation join clusters before
-# anyone has signed in. Set EITHER key OR existingSecret.
+# anyone has signed in. Choose key, existingSecret, or publicKey.
 enrollment:
+  # Keep false until every Hub replica runs a build with public-key enrollment.
+  # Set image.hub.tag explicitly to that supporting build before enabling.
+  publicKeyEnabled: false
+  # Customer-owned Ed25519 public key, as one PUBLIC KEY PEM block. The private
+  # key belongs only in the Radar agent's Secret, never in these values.
+  # Requires publicKeyEnabled and conflicts with key/existingSecret.
+  publicKey: ""
+  # Extra exact origins agents may use for signed enrollment, in addition to
+  # the Hub's public address. Each needs a matching trusted TLS certificate.
+  # HTTPS only, except http://localhost, http://127.x.x.x or http://[::1].
+  allowedOrigins: []
   # "rhe_" followed by 43 characters of A-Z, a-z, 0-9, "-" and "_". Generate one:
   #   echo "rhe_$(openssl rand 32 | base64 | tr '+/' '-_' | tr -d '=')"
   # Written to the chart's Secret. Prefer existingSecret for GitOps so the key
