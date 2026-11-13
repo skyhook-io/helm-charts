@@ -445,7 +445,7 @@ trend charts remain unavailable for Kubecost.
 | `traffic.prometheusHeaders` | HTTP headers sent with every Prometheus request (auth-protected backends). Requires `traffic.prometheusUrl` — credentials are never sent to auto-discovered endpoints | `{}` |
 | `traffic.prometheusHeadersFromEnv` | Prometheus headers sourced from environment variables, for secret-backed auth headers. Requires `traffic.prometheusUrl` | `{}` |
 | `traffic.prometheusSingleCluster` | Assert that the backend is dedicated to this cluster for workload metrics and PVC usage. Replaces automatic matching. [Scope limits](../../../docs/workload-metrics.md#optional-operator-override) | `false` |
-| `traffic.prometheusClusterLabels` | Exact cluster label/value constraints for workload metrics and PVC usage, combined with AND. Labels must exist on each affected metric source. Alternative to `prometheusSingleCluster`; leave both unset for automatic matching | `{}` |
+| `traffic.prometheusClusterLabels` | Exact cluster label/value constraints for workload metrics, PVC usage and, when `prometheusUrl` is set, the Caretta/Beyla/Istio traffic map, combined with AND. Labels must exist on each affected metric source. Alternative to `prometheusSingleCluster`; leave both unset for automatic matching | `{}` |
 | `traffic.beylaJobSelector` | Beyla Live Traffic matcher fragment. Workload charts use it only with an explicit scope override and accept one `job` equality or regex matcher; custom workload jobs are normally discovered automatically | `""` |
 | `argocd.existingSecret` | Name of a Secret holding the Argo CD API token (recommended — keeps it out of the release) | `""` |
 | `argocd.existingSecretKey` | Key within `argocd.existingSecret` holding the token | `token` |
@@ -591,7 +591,7 @@ Disabled by default for security:
 | Port Forward | `rbac.portForward: true` | Port forwarding to pods. Also the fallback for traffic sources (Hubble/Caretta) — Radar dials the relay/metrics Service directly first, so in-cluster installs only need this when a NetworkPolicy or routing blocks Radar's namespace from reaching the service |
 | Logs | `rbac.podLogs: true` | View pod logs (**enabled by default**) |
 | Helm Write | `rbac.helm: true` | Install/upgrade/rollback/uninstall Helm releases. Installs with auth and Cloud off: grants Radar's ServiceAccount create/update/patch/delete on all resource types, since Helm runs as it. Under auth or cloud-mode Helm runs as the signed-in user, so the ServiceAccount gets no write grant; instead a split helm add-on ClusterRole is emitted — `radar-helm` (member-safe: CRDs, storage, namespaces) and `radar-helm-admin` (owner-only: RBAC, webhooks, ApiServices) |
-| RBAC view | `rbac.viewRBAC: true` | Show ClusterRoles, ClusterRoleBindings, Roles, RoleBindings in the resource browser. Off by default — cache-served reads bypass per-user RBAC, so this exposes the cluster's authorization graph to every authenticated Radar user. Auto-enabled under auth or cloud mode (every read is re-checked per user there). |
+| RBAC view | `rbac.viewRBAC: true` | Show ClusterRoles, ClusterRoleBindings, Roles, RoleBindings and CertificateSigningRequests in the resource browser. Off by default — cache-served reads bypass per-user RBAC, so this exposes the cluster's authorization graph to every authenticated Radar user. Auto-enabled under auth or cloud mode (every read is re-checked per user there). |
 | Webhooks view | `rbac.viewWebhooks: true` | Show MutatingWebhookConfigurations and ValidatingWebhookConfigurations in the resource browser. Off by default — the configurations reveal which admission controls are enforced (Gatekeeper / Kyverno policies, image scanners, DLP) and where the gaps are, which is recon value for a low-trust viewer. Auto-enabled under auth or cloud mode. |
 | Admission policies view | `rbac.viewAdmissionPolicies: true` | Show native ValidatingAdmissionPolicies and ValidatingAdmissionPolicyBindings in the resource browser. Off by default for no-auth installs because the declarations expose admission-control coverage and gaps. Auto-enabled under auth or cloud mode, where reads are re-checked per user. |
 | Node runtime evidence | `rbac.viewNodeRuntime: true` | Let upgrade-impact checks inspect kubelet metrics and effective configuration through `nodes/proxy`. Off by default because this exposes node-level runtime and configuration details to anyone who can reach a no-auth Radar install. Under auth, grant `get` on `nodes/proxy` to each Kubernetes identity that should inspect this evidence. |
@@ -749,6 +749,7 @@ retain their finite grants.
 | `kured` | `kured.io` |
 | `kyverno` | `kyverno.io`, `policies.kyverno.io`, `wgpolicyk8s.io`, `reports.kyverno.io`, `openreports.io` |
 | `mariadb` | `mariadb.mmontes.io` |
+| `multus` | `k8s.cni.cncf.io` (`network-attachment-definitions`) |
 | `networkPolicyApi` | `policy.networking.k8s.io` |
 | `nginx` | `nginx.org` |
 | `openshift` | `observability.openshift.io` |
@@ -757,6 +758,7 @@ retain their finite grants.
 | `reflector` | `reflector.v1.k8s.emberstack.com` |
 | `reloader` | `reloader.stakater.com` |
 | `sealedSecrets` | `bitnami.com` |
+| `secretsStoreCsi` | `secrets-store.csi.x-k8s.io` (`secretproviderclasses`, `secretproviderclasspodstatuses` only) |
 | `strimzi` | `strimzi.io`, `kafka.strimzi.io`, `core.strimzi.io` (`strimzipodsets` only) |
 | `tekton` | `tekton.dev` |
 | `traefik` | `traefik.io`, `traefik.containo.us` |

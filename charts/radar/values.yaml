@@ -110,7 +110,8 @@ rbac:
 
   # Allow reading RBAC objects (Roles, RoleBindings, ClusterRoles, ClusterRoleBindings)
   # so the resource browser can list them and the per-ServiceAccount "blast radius"
-  # Permissions panel can render. Auto-enabled when auth is on (auth.mode != none)
+  # Permissions panel can render. Also grants CertificateSigningRequest reads, since
+  # each request records its requester's username and groups. Auto-enabled when auth is on (auth.mode != none)
   # or in cloud mode, where every RBAC read is re-checked against the requesting
   # user's own permissions so the shared cache can't leak the authorization graph.
   # This flag therefore only matters for no-auth installs: there, cache-served reads
@@ -226,6 +227,7 @@ rbac:
     kyverno: true           # kyverno.io, policies.kyverno.io (modern CEL policy family), wgpolicyk8s.io, reports.kyverno.io, openreports.io
     lws: true               # leaderworkerset.x-k8s.io
     mariadb: true           # mariadb.mmontes.io
+    multus: true            # k8s.cni.cncf.io (Multus NetworkAttachmentDefinitions, read to link a Pod's secondary networks)
     networkPolicyApi: true  # policy.networking.k8s.io (Admin/Baseline/ClusterNetworkPolicy — SIG-network)
     nginx: true             # nginx.org
     nimOperator: true       # apps.nvidia.com (NVIDIA NIM: NIMServices, NIMCaches, NIMPipelines)
@@ -237,6 +239,7 @@ rbac:
     reflector: true         # reflector.v1.k8s.emberstack.com
     reloader: true          # reloader.stakater.com
     sealedSecrets: true     # bitnami.com
+    secretsStoreCsi: true   # secrets-store.csi.x-k8s.io (Secrets Store CSI Driver: SecretProviderClasses, SecretProviderClassPodStatuses)
     strimzi: true           # strimzi.io, kafka.strimzi.io, core.strimzi.io (StrimziPodSet only)
     tekton: true            # tekton.dev
     traefik: true           # traefik.io, traefik.containo.us
@@ -422,6 +425,11 @@ auth:
     # invalidate the session at this URL — Radar only clears its own cookie
     # (Basic Auth has no logout). Empty = clear Radar's cookie only.
     logoutURL: ""
+    # Names of the auth proxy's session cookies, e.g. "_oauth2_proxy*"
+    # (* matches any characters). Logout deletes every matching cookie the
+    # browser sends, so the next request goes back through the proxy's sign-in.
+    # Use it when the proxy has no sign-out URL, or together with logoutURL.
+    logoutCookies: []
   # OIDC mode settings
   oidc:
     issuerURL: ""
@@ -684,6 +692,8 @@ traffic:
   # Optional workload/PVC metrics scope override, not a feature enable switch.
   # Leave both unset for automatic matching; set at most one mode.
   # Does not scope rightsizing, node/HPA or legacy network/storage queries.
+  # prometheusClusterLabels also scopes the Caretta, Beyla and Istio traffic map
+  # when prometheusUrl is set.
   prometheusSingleCluster: false
   prometheusClusterLabels: {}
   # Beyla Live Traffic matcher fragment. Workload charts use it only with an

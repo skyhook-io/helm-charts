@@ -176,6 +176,13 @@ rules:
       - clusterroles
       - clusterrolebindings
     verbs: ["get", "list", "watch"]
+  # CertificateSigningRequests record the requester's username, groups and
+  # authenticator extra data, which is the same authorization information,
+  # so they share this gate.
+  - apiGroups: ["certificates.k8s.io"]
+    resources:
+      - certificatesigningrequests
+    verbs: ["get", "list", "watch"]
   {{- end }}
 
   {{- if or .Values.rbac.viewWebhooks (ne .Values.auth.mode "none") .Values.cloud.enabled }}
@@ -436,6 +443,13 @@ rules:
     resources: ["*"]
     verbs: ["get", "list", "watch"]
   {{- end }}
+  {{- if .Values.rbac.crdGroups.multus }}
+  # Pod details link each secondary network to its NetworkAttachmentDefinition;
+  # nothing else in the group is read.
+  - apiGroups: ["k8s.cni.cncf.io"]
+    resources: ["network-attachment-definitions"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
   {{- if .Values.rbac.crdGroups.networkPolicyApi }}
   # SIG-network out-of-tree Network Policy API; ClusterNetworkPolicy is
   # cluster-scoped and surfaced in topology.
@@ -563,6 +577,11 @@ rules:
   {{- if .Values.rbac.crdGroups.sealedSecrets }}
   - apiGroups: ["bitnami.com"]
     resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  {{- end }}
+  {{- if .Values.rbac.crdGroups.secretsStoreCsi }}
+  - apiGroups: ["secrets-store.csi.x-k8s.io"]
+    resources: ["secretproviderclasses", "secretproviderclasspodstatuses"]
     verbs: ["get", "list", "watch"]
   {{- end }}
   {{- if .Values.rbac.crdGroups.strimzi }}
