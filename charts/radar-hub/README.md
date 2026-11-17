@@ -172,7 +172,7 @@ helm upgrade --install radar-hub radar/radar-hub --reuse-values \
 
 The two images together may be at most 256 KiB. Helm keeps each release, values included, in a Kubernetes Secret capped at 1 MiB, and the logos appear in it twice, so larger images would make `helm install` or `helm upgrade` fail; the chart refuses them with a clear message instead. An SVG or a compressed PNG is usually a few KiB.
 
-The chart stores them in a ConfigMap mounted into the hub and restarts the hub when they change. Without a white-label license the logo isn't shown and the hub logs a warning. Without a logo, a white-labeled hub shows a tile with the organization's first letter.
+The chart stores them in a ConfigMap mounted into the hub and restarts the hub when they change. Without a white-label license the logo isn't shown and the hub logs a warning. Without a logo, a white-labeled hub shows Radar's mark next to the organization's name.
 
 Requires a Hub release that reads `RADAR_HUB_BRAND_LOGO_FILE`; an older hub ignores these values.
 
