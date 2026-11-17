@@ -167,8 +167,10 @@ helm upgrade --install radar-hub radar/radar-hub --reuse-values \
   --set-file branding.logoDark=<(base64 < example-corp-logo-white.svg)
 ```
 
-- `branding.logo`: PNG, SVG, JPEG or WebP, at most 512 KiB. Used on light backgrounds, and on dark ones when `logoDark` is unset.
+- `branding.logo`: PNG, SVG, JPEG or WebP. Used on light backgrounds, and on dark ones when `logoDark` is unset.
 - `branding.logoDark` (optional): a variant for dark backgrounds. The sign-in page and loading screen are always dark; the sidebar follows the theme.
+
+The two images together may be at most 256 KiB. Helm keeps each release, values included, in a Kubernetes Secret capped at 1 MiB, and the logos appear in it twice, so larger images would make `helm install` or `helm upgrade` fail; the chart refuses them with a clear message instead. An SVG or a compressed PNG is usually a few KiB.
 
 The chart stores them in a ConfigMap mounted into the hub and restarts the hub when they change. Without a white-label license the logo isn't shown and the hub logs a warning. Without a logo, a white-labeled hub shows a tile with the organization's first letter.
 

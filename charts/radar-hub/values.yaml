@@ -764,8 +764,12 @@ branding:
   # the hub logs a warning.
   #
   # The image file, base64-encoded (line breaks are fine): PNG, SVG, JPEG or
-  # WebP, at most 512 KiB. Stored in a ConfigMap and mounted into the hub, so it
-  # works with no network access. Changing it restarts the hub. For example:
+  # WebP. logo and logoDark together may be at most 256 KiB: Helm stores the
+  # release, logos included, in one Kubernetes Secret capped at 1 MiB, so larger
+  # images make the install or upgrade fail (the chart refuses them first). An
+  # SVG or a compressed PNG is usually a few KiB. Stored in a ConfigMap and
+  # mounted into the hub, so it works with no network access. Changing it
+  # restarts the hub. For example:
   #   --set-file branding.logo=<(base64 < example-corp-logo.svg)
   logo: ""
   # Optional variant for dark backgrounds (the sign-in page and loading screen

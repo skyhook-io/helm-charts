@@ -628,7 +628,7 @@
         },
         "logo": {
           "type": "string",
-          "description": "Base64-encoded PNG, SVG, JPEG or WebP shown instead of Radar's mark when the license allows white-label. At most 512 KiB decoded."
+          "description": "Base64-encoded PNG, SVG, JPEG or WebP shown instead of Radar's mark when the license allows white-label. logo and logoDark together at most 256 KiB decoded (Helm release storage limit)."
         },
         "logoDark": {
           "type": "string",

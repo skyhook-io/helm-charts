@@ -2,12 +2,22 @@
 White-label logos, mounted into the hub as files (RADAR_HUB_BRAND_LOGO_FILE,
 RADAR_HUB_BRAND_LOGO_DARK_FILE). The hub serves them only while its license
 allows white-label, so they work with no network access. Rendered only when a
-logo is set. 512 KiB per image is the hub's limit; base64 makes that about
-700,000 characters, refused here so the mistake shows at install time rather
-than as a logged warning.
+logo is set.
+
+Size budget: 256 KiB for both images together (349,528 base64 characters).
+Helm stores every release in one Kubernetes Secret, capped at 1 MiB, and the
+logos are in it twice (in the values and in this rendered ConfigMap). Image
+data barely compresses, so 256 KiB of logos comes to about 0.8 MB of release
+and leaves room for the rest of it; much more and `helm install` / `helm
+upgrade` fails at the API server. Refused here so the mistake shows with a
+clear message at render time.
 */ -}}
 {{- if include "radar-hub.brandingLogos" . }}
-{{- $max := 699052 }}
+{{- $light := include "radar-hub.brandingLogo" . }}
+{{- $dark := include "radar-hub.brandingLogoDark" . }}
+{{- if gt (add (len $light) (len $dark)) 349528 }}
+{{- fail "branding.logo and branding.logoDark together are larger than 256 KiB (decoded). Helm stores the release in a Kubernetes Secret capped at 1 MiB, so use smaller images (an SVG or a compressed PNG)." }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,16 +26,10 @@ metadata:
     {{- include "radar-hub.labels" . | nindent 4 }}
     app.kubernetes.io/component: hub
 binaryData:
-  {{- with include "radar-hub.brandingLogo" . }}
-  {{- if gt (len .) $max }}
-  {{- fail "branding.logo is larger than 512 KiB (decoded); use a smaller image" }}
-  {{- end }}
+  {{- with $light }}
   logo: {{ . }}
   {{- end }}
-  {{- with include "radar-hub.brandingLogoDark" . }}
-  {{- if gt (len .) $max }}
-  {{- fail "branding.logoDark is larger than 512 KiB (decoded); use a smaller image" }}
-  {{- end }}
+  {{- with $dark }}
   logo-dark: {{ . }}
   {{- end }}
 {{- end }}
