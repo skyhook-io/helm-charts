@@ -91,28 +91,40 @@ tests:
           pattern: ^[0-9a-f]{64}$
 
   # The hub reads the files at startup, so a new logo must roll the pod. The
-  # value below is the checksum test A renders (helm template rh ... with the
-  # same values); test B asserts a different logo moves it.
+  # checksum covers the whole ConfigMap, labels included, so both renders pin
+  # the chart and app version: a release bump then can't change the value, and
+  # the only difference between A and B is the logo. render-matrix.sh also
+  # compares two live renders, with whatever version Chart.yaml carries.
   - it: changes the checksum when the logo changes (A)
     template: templates/deployment-hub.yaml
+    chart:
+      version: 0.0.0-test
+      appVersion: 0.0.0-test
     values:
       - values/required-base.yaml
     set:
       branding.logo: iVBORw0KGgoAAAANSUhEUg
     asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/branding"]
       - equal:
           path: spec.template.metadata.annotations["checksum/branding"]
-          value: b5ff8797d12966455a2936a630a94717f0cd84934965bb92cb1131ffcfef2bb6
+          value: 616810f80b55522f2c7783365fed4be29b032816f3a51976ef63ff0f68e6b28e
   - it: changes the checksum when the logo changes (B)
     template: templates/deployment-hub.yaml
+    chart:
+      version: 0.0.0-test
+      appVersion: 0.0.0-test
     values:
       - values/required-base.yaml
     set:
       branding.logo: iVBORw0KGgoAAAANSUhEUgAAAA
     asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/branding"]
       - notEqual:
           path: spec.template.metadata.annotations["checksum/branding"]
-          value: b5ff8797d12966455a2936a630a94717f0cd84934965bb92cb1131ffcfef2bb6
+          value: 616810f80b55522f2c7783365fed4be29b032816f3a51976ef63ff0f68e6b28e
 
   - it: renders only the dark logo when only that is set
     template: templates/deployment-hub.yaml

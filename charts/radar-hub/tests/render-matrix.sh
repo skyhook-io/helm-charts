@@ -455,6 +455,11 @@ has   "logo renders the ConfigMap"          'name: t-radar-hub-branding' --set b
 has   "logo is mounted"                     'mountPath: /etc/radar-hub-branding' --set branding.logo=$LOGO
 has   "logo rolls the pod"                  'checksum/branding: [0-9a-f]{64}' --set branding.logo=$LOGO
 check "logo without a license renders"      render --set branding.logo=$LOGO --set license.key=
+# Two live renders, so the check holds whatever version Chart.yaml carries.
+sum_a=$(render --set branding.logo=$LOGO | grep -E 'checksum/branding:' | awk '{print $2}')
+sum_b=$(render --set branding.logo=${LOGO}AAAA | grep -E 'checksum/branding:' | awk '{print $2}')
+if [ -n "$sum_a" ] && [ -n "$sum_b" ] && [ "$sum_a" != "$sum_b" ]; then printf '  ok    %-46s %s\n' "a new logo changes checksum/branding" changed
+else printf '  FAIL  %-46s %s vs %s\n' "a new logo changes checksum/branding" "${sum_a:-none}" "${sum_b:-none}"; fails=$((fails+1)); fi
 # Oversized logos go through a values file: a --set argument this long is
 # over Linux's per-argument limit, so helm would never run and the "refuse"
 # would be the failed exec. The chart's own message is checked too.
