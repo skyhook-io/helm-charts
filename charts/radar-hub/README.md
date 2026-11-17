@@ -155,6 +155,25 @@ web:
 
 Use a name other than `<fullname>-web-tls`, which the chart's own Secret would use. Keep `tls.key` out of Git. The `kubectl create ... | kubectl apply` form is safe to run again. To renew, run the steps again, then restart the web Deployment. With `web.tls.selfSigned=true`, the web pod's certificate serves the hub's public address, so the hub pod also gets its public half (never the key) at `/etc/radar-hub/web-tls/tls.crt` and can hand it to clusters that must trust it. Behind an Ingress, Gateway or load balancer with its own certificate, the hub gets no such file. Other tools that render without cluster access, such as `helm template` piped to `kubectl apply`, have the same limit.
 
+## White-label logo
+
+When the hub's license allows white-label (a license issued with the `whitelabel` feature on an Enterprise or Custom tier), the web app shows the license's organization name and your logo instead of Radar's: on the sign-in page, the loading screens, the sidebar and the browser tab. A small "Powered by Radar" line stays in the help menu. The name comes from the license and can't be changed on the hub; `branding.brandName` is ignored while white-labeled.
+
+The logo is set from values, base64-encoded, and works with no network access:
+
+```sh
+helm upgrade --install radar-hub radar/radar-hub --reuse-values \
+  --set-file branding.logo=<(base64 < example-corp-logo.svg) \
+  --set-file branding.logoDark=<(base64 < example-corp-logo-white.svg)
+```
+
+- `branding.logo`: PNG, SVG, JPEG or WebP, at most 512 KiB. Used on light backgrounds, and on dark ones when `logoDark` is unset.
+- `branding.logoDark` (optional): a variant for dark backgrounds. The sign-in page and loading screen are always dark; the sidebar follows the theme.
+
+The chart stores them in a ConfigMap mounted into the hub and restarts the hub when they change. Without a white-label license the logo isn't shown and the hub logs a warning. Without a logo, a white-labeled hub shows a tile with the organization's first letter.
+
+Requires a Hub release that reads `RADAR_HUB_BRAND_LOGO_FILE`; an older hub ignores these values.
+
 ## Values
 
 See [`values.yaml`](values.yaml) for the full set, and

@@ -1,0 +1,31 @@
+{{- /*
+White-label logos, mounted into the hub as files (RADAR_HUB_BRAND_LOGO_FILE,
+RADAR_HUB_BRAND_LOGO_DARK_FILE). The hub serves them only while its license
+allows white-label, so they work with no network access. Rendered only when a
+logo is set. 512 KiB per image is the hub's limit; base64 makes that about
+700,000 characters, refused here so the mistake shows at install time rather
+than as a logged warning.
+*/ -}}
+{{- if include "radar-hub.brandingLogos" . }}
+{{- $max := 699052 }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "radar-hub.brandingName" . }}
+  labels:
+    {{- include "radar-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hub
+binaryData:
+  {{- with include "radar-hub.brandingLogo" . }}
+  {{- if gt (len .) $max }}
+  {{- fail "branding.logo is larger than 512 KiB (decoded); use a smaller image" }}
+  {{- end }}
+  logo: {{ . }}
+  {{- end }}
+  {{- with include "radar-hub.brandingLogoDark" . }}
+  {{- if gt (len .) $max }}
+  {{- fail "branding.logoDark is larger than 512 KiB (decoded); use a smaller image" }}
+  {{- end }}
+  logo-dark: {{ . }}
+  {{- end }}
+{{- end }}

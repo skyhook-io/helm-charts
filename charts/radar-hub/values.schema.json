@@ -625,6 +625,14 @@
         },
         "feedbackEmail": {
           "type": "string"
+        },
+        "logo": {
+          "type": "string",
+          "description": "Base64-encoded PNG, SVG, JPEG or WebP shown instead of Radar's mark when the license allows white-label. At most 512 KiB decoded."
+        },
+        "logoDark": {
+          "type": "string",
+          "description": "Optional base64-encoded logo for dark backgrounds. Same format as logo."
         }
       },
       "additionalProperties": false

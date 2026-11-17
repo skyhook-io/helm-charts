@@ -444,6 +444,20 @@ if notes "${ING[@]}" | grep -qF "In-cluster agent address"; then printf '  FAIL 
 else printf '  ok    %-46s absent\n' "no in-cluster address without a listener"; fi
 rm -rf "$scratch"
 
+echo "white-label logos"
+LOGO=iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==
+envis "logo sets the file env"              RADAR_HUB_BRAND_LOGO_FILE /etc/radar-hub-branding/logo --set branding.logo=$LOGO
+envis "logoDark sets its file env"          RADAR_HUB_BRAND_LOGO_DARK_FILE /etc/radar-hub-branding/logo-dark --set branding.logoDark=$LOGO
+lacks "no logo env by default"              'RADAR_HUB_BRAND_LOGO' 
+lacks "no branding ConfigMap by default"    'name: t-radar-hub-branding'
+lacks "no branding checksum by default"     'checksum/branding'
+has   "logo renders the ConfigMap"          'name: t-radar-hub-branding' --set branding.logo=$LOGO --show-only templates/configmap-branding.yaml
+has   "logo is mounted"                     'mountPath: /etc/radar-hub-branding' --set branding.logo=$LOGO
+has   "logo rolls the pod"                  'checksum/branding: [0-9a-f]{64}' --set branding.logo=$LOGO
+check "logo without a license renders"      render --set branding.logo=$LOGO --set license.key=
+check "logo over 512 KiB is refused"        refuse --set branding.logo="$(head -c 700000 /dev/zero | tr '\0' 'A')"
+check "branding.logoo (typo) is refused"    refuse --set branding.logoo=$LOGO
+
 echo
 if [ $fails -eq 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; fi
 exit $fails

@@ -755,6 +755,23 @@ branding:
   docsURL: "https://radarhq.io/docs"
   supportEmail: "support@radarhq.io"
   feedbackEmail: "feedback@radarhq.io"
+  # White-label logo. Shown only when the hub's license allows white-label
+  # (a license issued with the whitelabel feature, Enterprise or Custom tier).
+  # Then the web app shows the license's organization name and this logo
+  # instead of Radar's on the sign-in page, loading screens, sidebar and
+  # browser tab, keeps a small "Powered by Radar" line in the help menu, and
+  # ignores brandName above. Without such a license the logo is not shown and
+  # the hub logs a warning.
+  #
+  # The image file, base64-encoded (line breaks are fine): PNG, SVG, JPEG or
+  # WebP, at most 512 KiB. Stored in a ConfigMap and mounted into the hub, so it
+  # works with no network access. Changing it restarts the hub. For example:
+  #   --set-file branding.logo=<(base64 < example-corp-logo.svg)
+  logo: ""
+  # Optional variant for dark backgrounds (the sign-in page and loading screen
+  # are always dark, the sidebar follows the theme). Same format. When unset,
+  # dark backgrounds use `logo`.
+  logoDark: ""
 
 # ---------------------------------------------------------------------------
 # Networking — expose the hub via traditional Ingress OR Gateway API.
