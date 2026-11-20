@@ -157,7 +157,7 @@ Use a name other than `<fullname>-web-tls`, which the chart's own Secret would u
 
 ## White-label logo
 
-When the hub's license allows white-label (a license issued with the `whitelabel` feature on an Enterprise or Custom tier), the web app shows the license's organization name and your logo instead of Radar's: on the sign-in page, the loading screens, the sidebar and the browser tab. A small "Powered by Radar" line stays in the help menu. The name comes from the license and can't be changed on the hub; `branding.brandName` is ignored while white-labeled.
+When the hub's license allows white-label (a license issued with the `whitelabel` feature on an Enterprise or Custom tier), the web app shows the license's organization name and your logo instead of Radar's: on the sign-in page, the loading screens, the sidebar and the browser tab. A small "Powered by Radar" credit stays at the foot of the sidebar. The name comes from the license and can't be changed on the hub; `branding.brandName` is ignored while white-labeled.
 
 The logo is set from values, base64-encoded, and works with no network access:
 
