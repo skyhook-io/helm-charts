@@ -17,6 +17,10 @@ spec:
         {{- /* Roll the pod when the chart-managed Secret changes (license,
                cookie password, OIDC client secret, break-glass creds). */}}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if include "radar-hub.brandingLogos" . }}
+        {{- /* The hub reads the logos at startup: roll it when they change. */}}
+        checksum/branding: {{ include (print $.Template.BasePath "/configmap-branding.yaml") . | sha256sum }}
+        {{- end }}
         {{- with .Values.hub.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -196,6 +200,14 @@ spec:
               value: {{ .Values.branding.supportEmail | quote }}
             - name: RADAR_HUB_BRAND_FEEDBACK_EMAIL
               value: {{ .Values.branding.feedbackEmail | quote }}
+            {{- if include "radar-hub.brandingLogo" . }}
+            - name: RADAR_HUB_BRAND_LOGO_FILE
+              value: /etc/radar-hub-branding/logo
+            {{- end }}
+            {{- if include "radar-hub.brandingLogoDark" . }}
+            - name: RADAR_HUB_BRAND_LOGO_DARK_FILE
+              value: /etc/radar-hub-branding/logo-dark
+            {{- end }}
             - name: RADAR_HUB_PUBLIC_URL
               value: {{ .Values.hub.publicURL | quote }}
             - name: HUB_FRONTEND_URL
@@ -502,7 +514,7 @@ spec:
             periodSeconds: {{ .Values.hub.readinessProbe.periodSeconds }}
           resources:
             {{- toYaml .Values.hub.resources | nindent 12 }}
-          {{- if or .Values.license.key .Values.license.existingSecret (include "radar-hub.webTLSIsPublic" .) }}
+          {{- if or .Values.license.key .Values.license.existingSecret (include "radar-hub.webTLSIsPublic" .) (include "radar-hub.brandingLogos" .) }}
           volumeMounts:
             {{- if or .Values.license.key .Values.license.existingSecret }}
             - name: license
@@ -514,8 +526,13 @@ spec:
               mountPath: /etc/radar-hub/web-tls
               readOnly: true
             {{- end }}
+            {{- if include "radar-hub.brandingLogos" . }}
+            - name: branding
+              mountPath: /etc/radar-hub-branding
+              readOnly: true
+            {{- end }}
           {{- end }}
-      {{- if or .Values.license.key .Values.license.existingSecret (include "radar-hub.webTLSIsPublic" .) }}
+      {{- if or .Values.license.key .Values.license.existingSecret (include "radar-hub.webTLSIsPublic" .) (include "radar-hub.brandingLogos" .) }}
       volumes:
         {{- if include "radar-hub.webTLSIsPublic" . }}
         - name: web-tls
@@ -536,6 +553,11 @@ spec:
             items:
               - key: {{ ternary "license" "license-key" (ne .Values.license.existingSecret "") | quote }}
                 path: license
+        {{- end }}
+        {{- if include "radar-hub.brandingLogos" . }}
+        - name: branding
+          configMap:
+            name: {{ include "radar-hub.brandingName" . | quote }}
         {{- end }}
       {{- end }}
       {{- with .Values.hub.nodeSelector }}
