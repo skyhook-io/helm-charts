@@ -369,6 +369,18 @@ spec:
             {{- /* Optional install key for automation. Keys made in the hub
                    work without it. */}}
             {{- $en := .Values.enrollment | default dict }}
+            {{- if $en.publicKeyEnabled }}
+            - name: HUB_PUBLIC_KEY_ENROLLMENT_ENABLED
+              value: "true"
+            {{- end }}
+            {{- with $en.publicKey }}
+            - name: HUB_ENROLLMENT_PUBLIC_KEY
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $en.allowedOrigins }}
+            - name: HUB_ENROLLMENT_AUDIENCES
+              value: {{ join "," . | quote }}
+            {{- end }}
             {{- if or $en.key $en.existingSecret }}
             - name: HUB_ENROLLMENT_KEY
               valueFrom:

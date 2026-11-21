@@ -12,6 +12,19 @@ Web image:      {{ include "radar-hub.webImage" . }}
 {{- $portForward := and $loopback (not (include "radar-hub.publicURLFronted" .)) }}
 Public URL:     {{ default "(not set - set hub.publicURL)" $publicURL }}{{ if $loopback }} (localhost: browser only, never given to agents){{ end }}
 Org name:       {{ .Values.hub.orgName }}
+{{- if (.Values.enrollment | default dict).publicKeyEnabled }}
+
+Public-key enrollment: enabled. All Hub replicas must run a supporting build.
+{{- if (.Values.enrollment | default dict).publicKey }}
+Install public key: configured. Radar agents keep the private key in their own
+  Secrets and use cloud.enrollment.organization=self-hosted. Agents wait until
+  the organization exists after first sign-in.
+{{- else }}
+Register public keys under Settings > Enrollment keys. Keep private keys only
+  in the Radar agents' Secrets.
+{{- end }}
+Revoking an enrollment key stops future joins, not existing tunnels.
+{{- end }}
 
 Services:
   web: {{ .Values.service.web.type }} :{{ .Values.service.web.port }}{{ if include "radar-hub.inClusterTLS" . }}, :{{ .Values.service.web.tlsPort | default 443 }} https (self-signed){{ end }} (public entrypoint; nginx proxies API, agent, and MCP traffic)
