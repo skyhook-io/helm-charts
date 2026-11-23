@@ -309,3 +309,24 @@ agent must trust to reach the hub. Returns "true" or "".
 true
 {{- end -}}
 {{- end }}
+
+{{/*
+White-label logos (branding.logo / branding.logoDark): base64 image data with
+any whitespace removed, so a value pasted from `base64` with line breaks works.
+*/}}
+{{- define "radar-hub.brandingLogo" -}}
+{{- .Values.branding.logo | default "" | nospace -}}
+{{- end }}
+
+{{- define "radar-hub.brandingLogoDark" -}}
+{{- .Values.branding.logoDark | default "" | nospace -}}
+{{- end }}
+
+{{/* "true" when either logo is set. */}}
+{{- define "radar-hub.brandingLogos" -}}
+{{- if or (include "radar-hub.brandingLogo" .) (include "radar-hub.brandingLogoDark" .) -}}true{{- end -}}
+{{- end }}
+
+{{- define "radar-hub.brandingName" -}}
+{{- printf "%s-branding" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}

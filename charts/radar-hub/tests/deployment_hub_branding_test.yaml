@@ -1,0 +1,145 @@
+# White-label logos: branding.logo / branding.logoDark.
+#
+# Cross-repo contract: the env NAMES asserted literally below are what the hub
+# reads (RADAR_HUB_BRAND_LOGO_FILE, RADAR_HUB_BRAND_LOGO_DARK_FILE), and the
+# paths are where this chart mounts the ConfigMap keys. A rename on either side
+# renders fine and the hub shows no logo.
+suite: hub white-label logos
+templates:
+  - templates/deployment-hub.yaml
+  - templates/configmap-branding.yaml
+  - templates/secret.yaml
+release:
+  name: rh
+tests:
+  # Upgrade safety: no logo values, no ConfigMap, env, mount or checksum.
+  - it: renders nothing for logos by default
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_BRAND_LOGO_FILE
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_BRAND_LOGO_DARK_FILE
+          any: true
+      - notExists:
+          path: spec.template.metadata.annotations["checksum/branding"]
+  - it: renders no ConfigMap by default
+    template: templates/configmap-branding.yaml
+    values:
+      - values/required-base.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: puts the logo in a ConfigMap
+    template: templates/configmap-branding.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      branding.logo: "iVBORw0KGgo AAAANSUhEUg\nAAAAEAAAAB"
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: rh-radar-hub-branding
+      - equal:
+          path: binaryData.logo
+          value: iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB
+      - notExists:
+          path: binaryData["logo-dark"]
+
+  - it: mounts the logos and points the hub at them
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      branding.logo: iVBORw0KGgoAAAANSUhEUg
+      branding.logoDark: PHN2ZyB4bWxucz0i
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_BRAND_LOGO_FILE
+            value: /etc/radar-hub-branding/logo
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_BRAND_LOGO_DARK_FILE
+            value: /etc/radar-hub-branding/logo-dark
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: branding
+            mountPath: /etc/radar-hub-branding
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: branding
+            configMap:
+              name: rh-radar-hub-branding
+      - matchRegex:
+          path: spec.template.metadata.annotations["checksum/branding"]
+          pattern: ^[0-9a-f]{64}$
+
+  # The hub reads the files at startup, so a new logo must roll the pod. The
+  # checksum covers the whole ConfigMap, labels included, so both renders pin
+  # the chart and app version: a release bump then can't change the value, and
+  # the only difference between A and B is the logo. render-matrix.sh also
+  # compares two live renders, with whatever version Chart.yaml carries.
+  - it: changes the checksum when the logo changes (A)
+    template: templates/deployment-hub.yaml
+    chart:
+      version: 0.0.0-test
+      appVersion: 0.0.0-test
+    values:
+      - values/required-base.yaml
+    set:
+      branding.logo: iVBORw0KGgoAAAANSUhEUg
+    asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/branding"]
+      - equal:
+          path: spec.template.metadata.annotations["checksum/branding"]
+          value: 616810f80b55522f2c7783365fed4be29b032816f3a51976ef63ff0f68e6b28e
+  - it: changes the checksum when the logo changes (B)
+    template: templates/deployment-hub.yaml
+    chart:
+      version: 0.0.0-test
+      appVersion: 0.0.0-test
+    values:
+      - values/required-base.yaml
+    set:
+      branding.logo: iVBORw0KGgoAAAANSUhEUgAAAA
+    asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/branding"]
+      - notEqual:
+          path: spec.template.metadata.annotations["checksum/branding"]
+          value: 616810f80b55522f2c7783365fed4be29b032816f3a51976ef63ff0f68e6b28e
+
+  - it: renders only the dark logo when only that is set
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      branding.logoDark: PHN2ZyB4bWxucz0i
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_BRAND_LOGO_FILE
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADAR_HUB_BRAND_LOGO_DARK_FILE
+            value: /etc/radar-hub-branding/logo-dark

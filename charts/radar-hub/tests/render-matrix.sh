@@ -444,6 +444,46 @@ if notes "${ING[@]}" | grep -qF "In-cluster agent address"; then printf '  FAIL 
 else printf '  ok    %-46s absent\n' "no in-cluster address without a listener"; fi
 rm -rf "$scratch"
 
+echo "white-label logos"
+LOGO=iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==
+envis "logo sets the file env"              RADAR_HUB_BRAND_LOGO_FILE /etc/radar-hub-branding/logo --set branding.logo=$LOGO
+envis "logoDark sets its file env"          RADAR_HUB_BRAND_LOGO_DARK_FILE /etc/radar-hub-branding/logo-dark --set branding.logoDark=$LOGO
+lacks "no logo env by default"              'RADAR_HUB_BRAND_LOGO' 
+lacks "no branding ConfigMap by default"    'name: t-radar-hub-branding'
+lacks "no branding checksum by default"     'checksum/branding'
+has   "logo renders the ConfigMap"          'name: t-radar-hub-branding' --set branding.logo=$LOGO --show-only templates/configmap-branding.yaml
+has   "logo is mounted"                     'mountPath: /etc/radar-hub-branding' --set branding.logo=$LOGO
+has   "logo rolls the pod"                  'checksum/branding: [0-9a-f]{64}' --set branding.logo=$LOGO
+check "logo without a license renders"      render --set branding.logo=$LOGO --set license.key=
+# Two live renders, so the check holds whatever version Chart.yaml carries.
+sum_a=$(render --set branding.logo=$LOGO | grep -E 'checksum/branding:' | awk '{print $2}')
+sum_b=$(render --set branding.logo=${LOGO}AAAA | grep -E 'checksum/branding:' | awk '{print $2}')
+if [ -n "$sum_a" ] && [ -n "$sum_b" ] && [ "$sum_a" != "$sum_b" ]; then printf '  ok    %-46s %s\n' "a new logo changes checksum/branding" changed
+else printf '  FAIL  %-46s %s vs %s\n' "a new logo changes checksum/branding" "${sum_a:-none}" "${sum_b:-none}"; fails=$((fails+1)); fi
+# Oversized logos go through a values file: a --set argument this long is
+# over Linux's per-argument limit, so helm would never run and the "refuse"
+# would be the failed exec. The chart's own message is checked too.
+bigvalues() { # bigvalues <light bytes> <dark bytes> -> path of a values file
+  local f="$scratch_logo/v-$1-$2.yaml"
+  { echo "branding:"
+    printf '  logo: "%s"\n' "$(head -c "$1" /dev/zero | base64 | tr -d '\n')"
+    [ "$2" -gt 0 ] && printf '  logoDark: "%s"\n' "$(head -c "$2" /dev/zero | base64 | tr -d '\n')"
+  } >"$f"
+  echo "$f"
+}
+scratch_logo=$(mktemp -d)
+refused_with() { # refused_with <description> <values file>
+  local out; out=$(helm template t . "${BASE[@]}" -f "$2" 2>&1)
+  if [ $? -ne 0 ] && grep -q 'together are larger than 256 KiB' <<<"$out"; then printf '  ok    %-46s %s\n' "$1" refuse
+  else printf '  FAIL  %-46s want the chart size refusal, got: %s\n' "$1" "$(head -c 160 <<<"$out")"; fails=$((fails+1)); fi
+}
+check "logo of 256 KiB renders"             render -f "$(bigvalues 262144 0)"
+check "logos of 128 + 128 KiB render"       render -f "$(bigvalues 131072 131072)"
+refused_with "logo over 256 KiB is refused"        "$(bigvalues 262147 0)"
+refused_with "logo + logoDark over 256 KiB refused" "$(bigvalues 131072 131075)"
+rm -rf "$scratch_logo"
+check "branding.logoo (typo) is refused"    refuse --set branding.logoo=$LOGO
+
 echo
 if [ $fails -eq 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; fi
 exit $fails
