@@ -45,6 +45,13 @@ entries:
     decision: withhold
     reason: "Canary webhooks and MetricTemplate provider headers can contain inline credentials. Native visibility adds no caller grants."
     source: "https://github.com/fluxcd/flagger/tree/c781cdc199d44cf84e21e90aedd8ff14c1df450e/pkg/apis/flagger/v1beta1"
+  - group: "helm.cattle.io"
+    resources: ["helmcharts", "helmchartconfigs"]
+    scope: Namespaced
+    collection: "k3sHelm"
+    decision: withhold
+    reason: "spec.valuesContent and spec.set can carry inline credentials. Native visibility adds no caller grants."
+    source: "https://github.com/k3s-io/helm-controller/tree/v0.17.9/pkg/apis/helm.cattle.io/v1"
   - group: "upgrade.cattle.io"
     resources: ["plans"]
     scope: Namespaced
@@ -899,6 +906,13 @@ entries:
     decision: grant
     reason: "Operational configuration and status. Credentials are referenced by Secret name only (secretRef, certSecretRef, proxySecretRef); no inline credential fields in source.toolkit.fluxcd.io/v1."
     source: "internal/k8s/dynamic_cache.go (supportedCRDFallbacks); source-controller v1.9 CRD schemas"
+  - group: "source.extensions.fluxcd.io"
+    resources: ["artifactgenerators"]
+    scope: Namespaced
+    collection: "flux"
+    decision: grant
+    reason: "Operational configuration and status; sources are referenced by name, no inline credentials."
+    source: "internal/k8s/dynamic_cache.go (supportedCRDFallbacks); source-watcher v1beta1 CRD schema"
   - group: "sources.knative.dev"
     resources: ["apiserversources","containersources","pingsources","sinkbindings"]
     scope: Namespaced
