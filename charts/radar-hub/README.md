@@ -185,9 +185,10 @@ values are rejected at install time rather than surfacing as a broken pod.
 ## GitHub connections
 
 A self-managed Hub can't use Radar Cloud's GitHub App, so it creates its own.
-GitHub connections are in preview: `hub.github.appSetup` is off by default, and
-turning it on also needs a web image built with GitHub connections enabled,
-which the published image isn't yet. With both, an owner of the Hub's organization opens **Settings → GitHub**, names the GitHub
+GitHub connections are in preview: `hub.github.appSetup` is off by default.
+Turning it on also needs a Hub release that reads it and a web image built with
+GitHub connections enabled. Neither published image has them yet, and until
+then a Hub ignores the setting. With both, an owner of the Hub's organization opens **Settings → GitHub**, names the GitHub
 organization (or personal account) that will own the App, and confirms on
 GitHub. GitHub registers a private App with Hub's callback, setup and (when
 GitHub can reach Hub over HTTPS) webhook URLs already filled in.
