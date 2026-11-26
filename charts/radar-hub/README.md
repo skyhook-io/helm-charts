@@ -204,10 +204,17 @@ Secrets, …) under the same name; the chart never renders or owns it.
 
 `hub.airGapped: true` turns this off, since GitHub is unreachable.
 
+GitHub returns to the hub's `/api/github/radar/app-manifest/callback` with a
+one-time code that can be exchanged for the new App's private key until the hub
+redeems it. The chart's web proxy never logs that request. If an ingress or load
+balancer in front of it logs query strings, exclude that path.
+
 **Replacing the App:** disconnect GitHub in Settings, replace the Secret (or
 delete it, which offers creating one again), restart the hub
-(`kubectl rollout restart deployment/<release fullname>-hub`) so every replica
-reads the new one, and only then delete the old App in GitHub's settings. A
+(`kubectl rollout restart deployment/<release fullname>-hub`), wait for
+`kubectl rollout status deployment/<release fullname>-hub` to report success so
+every replica reads the new one, and only then delete the old App in GitHub's
+settings. A
 running hub keeps the App it loaded until it restarts.
 
 ## AI agent
