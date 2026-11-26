@@ -1,0 +1,97 @@
+# hub.github: a self-managed hub creates its own GitHub App from Settings and
+# loads the Secret an operator applies afterwards.
+#
+# Cross-repo contract: the env NAMES asserted below are what the hub's
+# cmd/hub/main.go reads (HUB_GITHUB_APP_SETUP, HUB_GITHUB_APP_SECRET,
+# HUB_GITHUB_RADAR_CREDENTIALS_FILE), and the Secret name is the one the hub
+# prints in its kubectl instructions. The mount must stay optional: the
+# Secret doesn't exist until someone creates the App.
+suite: hub deployment GitHub App setup
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  - it: renders nothing for GitHub by default
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_APP_SETUP
+          any: true
+      - notExists:
+          path: spec.template.spec.volumes
+
+  - it: mounts the App's Secret as an optional file when enabled
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      hub.github.appSetup: true
+    release:
+      name: r
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_APP_SETUP
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_APP_SECRET
+            value: r-radar-hub-github-app
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_RADAR_CREDENTIALS_FILE
+            value: /etc/radar-hub-github/radar.json
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: github-app
+            mountPath: /etc/radar-hub-github
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: github-app
+            secret:
+              secretName: r-radar-hub-github-app
+              optional: true
+
+  - it: uses the named Secret beside the license
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      hub.github.appSetup: true
+      hub.github.existingSecret: my-github-app
+      license.key: placeholder
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_APP_SECRET
+            value: my-github-app
+      - lengthEqual:
+          path: spec.template.spec.volumes
+          count: 2
+
+  - it: stays off on an air-gapped hub, which can't reach GitHub
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      hub.github.appSetup: true
+      hub.airGapped: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_APP_SETUP
+          any: true
+      - notExists:
+          path: spec.template.spec.volumes

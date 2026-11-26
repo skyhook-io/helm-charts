@@ -182,6 +182,29 @@ See [`values.yaml`](values.yaml) for the full set, and
 [`values.schema.json`](values.schema.json) for the enforced schema. Invalid
 values are rejected at install time rather than surfacing as a broken pod.
 
+## GitHub connections
+
+A self-managed Hub can't use Radar Cloud's GitHub App, so it creates its own.
+With `hub.github.appSetup: true` (off while GitHub connections are in preview),
+an owner of the Hub's organization opens **Settings → GitHub**, names the GitHub
+organization (or personal account) that will own the App, and confirms on
+GitHub. GitHub registers a private App with Hub's callback, setup and (when
+GitHub can reach Hub over HTTPS) webhook URLs already filled in.
+
+Hub then shows a Kubernetes Secret holding the App's credentials, with a
+`kubectl apply` command, for whoever runs this deployment. The chart mounts that
+Secret (`<release fullname>-github-app`, or `hub.github.existingSecret`) as an
+optional volume, so the pod starts without it and the Hub loads the App within
+about a minute of the Secret being applied, without a restart. Under GitOps,
+commit the Secret the way you manage other secrets (Sealed Secrets, External
+Secrets, …) under the same name; the chart never renders or owns it.
+
+`hub.airGapped: true` turns this off, since GitHub is unreachable.
+
+**Replacing the App:** disconnect GitHub in Settings, replace the Secret (or
+delete it and restart the hub, which offers creating one again), then delete the
+old App in GitHub's settings.
+
 ## AI agent
 
 Release prerequisite: this feature requires a Hub release with Anthropic provider

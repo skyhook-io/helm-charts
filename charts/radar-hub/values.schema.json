@@ -372,6 +372,21 @@
         "latestRadarVersion": {
           "type": "string",
           "description": "Pin the Radar version the UI reports as latest. Empty means ask GitHub hourly; required for an air-gapped install to show a version at all."
+        },
+        "github": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitHub connections: a self-managed hub creates its own GitHub App from Settings and loads the Secret an operator applies.",
+          "properties": {
+            "appSetup": {
+              "type": "boolean",
+              "description": "Offer creating this hub's GitHub App in Settings → GitHub."
+            },
+            "existingSecret": {
+              "type": "string",
+              "description": "Secret holding the App's credentials (key radar.json). Empty: <fullname>-github-app."
+            }
+          }
         }
       },
       "additionalProperties": false

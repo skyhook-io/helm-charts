@@ -360,6 +360,22 @@ hub:
   latestRadarVersion: ""
 
 
+  # GitHub connections (Settings → GitHub). A self-managed hub can't use
+  # Radar Cloud's GitHub App, so it creates its own: an owner clicks "Create
+  # the app on GitHub" in Settings, GitHub registers a private App, and Radar
+  # shows a Kubernetes Secret holding its credentials for whoever runs this
+  # deployment to apply (kubectl apply). The hub picks the Secret up within
+  # about a minute, without a restart. Ignored when airGapped is true (GitHub
+  # is unreachable).
+  github:
+    # Offer creating the App in Settings (sets HUB_GITHUB_APP_SETUP and mounts
+    # the Secret below if and when it exists). Off while GitHub connections
+    # are in preview.
+    appSetup: false
+    # Name of the Secret holding the App's credentials (key radar.json). Empty:
+    # <release fullname>-github-app, the name Radar's instructions use.
+    existingSecret: ""
+
   # Where the hub asks for a renewed license. Cloud-managed installs only, and
   # the default is correct for every customer — override only if Skyhook has
   # given you a different endpoint. Ignored entirely when airGapped is true.
