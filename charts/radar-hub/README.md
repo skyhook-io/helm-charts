@@ -185,14 +185,17 @@ values are rejected at install time rather than surfacing as a broken pod.
 ## GitHub connections
 
 A self-managed Hub can't use Radar Cloud's GitHub App, so it creates its own.
-With `hub.github.appSetup: true` (off while GitHub connections are in preview),
-an owner of the Hub's organization opens **Settings → GitHub**, names the GitHub
+GitHub connections are in preview: `hub.github.appSetup` is off by default, and
+turning it on also needs a web image built with GitHub connections enabled,
+which the published image isn't yet. With both, an owner of the Hub's organization opens **Settings → GitHub**, names the GitHub
 organization (or personal account) that will own the App, and confirms on
 GitHub. GitHub registers a private App with Hub's callback, setup and (when
 GitHub can reach Hub over HTTPS) webhook URLs already filled in.
 
 Hub then shows a Kubernetes Secret holding the App's credentials, with a
-`kubectl apply` command, for whoever runs this deployment. The chart mounts that
+`kubectl create` command, for whoever runs this deployment. It creates rather
+than applies: it won't replace a Secret that already exists, and it leaves no
+copy of the private key in a last-applied annotation. The chart mounts that
 Secret (`<release fullname>-github-app`, or `hub.github.existingSecret`) as an
 optional volume, so the pod starts without it and the Hub loads the App within
 about a minute of the Secret being applied, without a restart. Under GitOps,
@@ -202,8 +205,10 @@ Secrets, …) under the same name; the chart never renders or owns it.
 `hub.airGapped: true` turns this off, since GitHub is unreachable.
 
 **Replacing the App:** disconnect GitHub in Settings, replace the Secret (or
-delete it and restart the hub, which offers creating one again), then delete the
-old App in GitHub's settings.
+delete it, which offers creating one again), restart the hub
+(`kubectl rollout restart deployment/<release fullname>-hub`) so every replica
+reads the new one, and only then delete the old App in GitHub's settings. A
+running hub keeps the App it loaded until it restarts.
 
 ## AI agent
 
