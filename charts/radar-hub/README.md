@@ -192,8 +192,9 @@ organization (or personal account) that will own the App, and confirms on
 GitHub. GitHub registers a private App with Hub's callback, setup and (when
 GitHub can reach Hub over HTTPS) webhook URLs already filled in.
 
-Hub then shows a Kubernetes Secret holding the App's credentials, with a
-`kubectl create` command, for whoever runs this deployment. It creates rather
+Hub then offers a Kubernetes Secret holding the App's credentials as a file,
+with the `kubectl create -f <file>` command, for whoever runs this deployment (a
+file, so the private key never passes through a shell's history). It creates rather
 than applies: it won't replace a Secret that already exists, and it leaves no
 copy of the private key in a last-applied annotation. The chart mounts that
 Secret (`<release fullname>-github-app`, or `hub.github.existingSecret`) as an

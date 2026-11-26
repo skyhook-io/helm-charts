@@ -363,8 +363,8 @@ hub:
   # GitHub connections (Settings → GitHub). A self-managed hub can't use
   # Radar Cloud's GitHub App, so it creates its own: an owner clicks "Create
   # the app on GitHub" in Settings, GitHub registers a private App, and Radar
-  # shows a Kubernetes Secret holding its credentials for whoever runs this
-  # deployment to apply (kubectl apply). The hub picks the Secret up within
+  # offers a Kubernetes Secret holding its credentials, as a file, for whoever
+  # runs this deployment to create (kubectl create -f). The hub picks it up within
   # about a minute, without a restart. Ignored when airGapped is true (GitHub
   # is unreachable).
   github:
