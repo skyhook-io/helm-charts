@@ -286,7 +286,7 @@ hub_has_no_key() { # the hub Deployment never references tls.key
 }
 hub_has_no_key "${SS[@]}"
 hub_has_no_key "${SS[@]}" --set web.tls.existingSecret=mine
-both=$(render "${SS[@]}" --set license.key=abc | grep -c 'mountPath: /etc/radar-hub')
+both=$(render "${SS[@]}" --set license.key=abc | grep -cE 'mountPath: /etc/radar-hub(/web-tls|/tls)?$')
 if [ "$both" -ge 3 ]; then printf '  ok    %-46s %s\n' "license and web-tls mounts coexist" "$both mounts"
 else printf '  FAIL  %-46s only %s mounts\n' "license and web-tls mounts coexist" "$both"; fails=$((fails+1)); fi
 envis "trustByDefault is wired"                 HUB_ENROLLMENT_TRUST_BY_DEFAULT true --set enrollment.key=$EK --set enrollment.trustByDefault=true --set image.hub.tag=1.14.0
@@ -368,12 +368,12 @@ lacks "Ingress alone: no in-cluster URL"         'name: RADAR_HUB_IN_CLUSTER_AGE
 
 echo "the licence reaches /etc/radar-hub either way"
 has   "license.key lands in the chart Secret"   'license-key: "eyJtest"'       --set license.key=eyJtest
-has   "license.key is mounted"                  'mountPath: /etc/radar-hub'    --set license.key=eyJtest
+has   "license.key is mounted"                  'mountPath: /etc/radar-hub$'    --set license.key=eyJtest
 has   "license.key volume uses the chart Secret" 'secretName: "t-radar-hub-config"'   --set license.key=eyJtest
-has   "existingSecret is mounted"               'mountPath: /etc/radar-hub'    --set license.existingSecret=my-lic
+has   "existingSecret is mounted"               'mountPath: /etc/radar-hub$'    --set license.existingSecret=my-lic
 has   "existingSecret volume names that Secret" 'secretName: "my-lic"'         --set license.existingSecret=my-lic
 lacks "existingSecret writes no key to the chart Secret" 'license-key:'        --set license.existingSecret=my-lic
-lacks "no licence, no mount"                    'mountPath: /etc/radar-hub'
+lacks "no licence, no mount"                    'mountPath: /etc/radar-hub$'
 
 # The restart command in the install notes must name the Deployment that
 # exists. The Deployment name is truncated to Kubernetes' limit; a notes line
