@@ -182,6 +182,43 @@ See [`values.yaml`](values.yaml) for the full set, and
 [`values.schema.json`](values.schema.json) for the enforced schema. Invalid
 values are rejected at install time rather than surfacing as a broken pod.
 
+## GitHub connections
+
+A self-managed Hub can't use Radar Cloud's GitHub App, so it creates its own.
+The chart always deploys the Hub ready to do so (except air-gapped). GitHub
+connections are in preview: Settings → GitHub shows only in a web image built
+with them enabled, and a Hub release from before them ignores the setup. Where
+it shows, an owner of the Hub's organization opens **Settings → GitHub**, names the GitHub
+organization (or personal account) that will own the App, and confirms on
+GitHub. GitHub registers a private App with Hub's callback, setup and (when
+GitHub can reach Hub over HTTPS) webhook URLs already filled in.
+
+Hub then offers a Kubernetes Secret holding the App's credentials as a file,
+with the `kubectl create -f <file>` command, for whoever runs this deployment (a
+file, so the private key never passes through a shell's history). It creates rather
+than applies: it won't replace a Secret that already exists, and it leaves no
+copy of the private key in a last-applied annotation. The chart mounts that
+Secret (`<release fullname>-github-app`) as an
+optional volume, so the pod starts without it and the Hub loads the App within
+about a minute of the Secret being applied, without a restart. Under GitOps,
+commit the Secret the way you manage other secrets (Sealed Secrets, External
+Secrets, …) under the same name; the chart never renders or owns it.
+
+`hub.airGapped: true` turns this off, since GitHub is unreachable.
+
+GitHub returns to the hub's `/api/github/app-manifest/callback` with a
+one-time code that can be exchanged for the new App's private key until the hub
+redeems it. The chart's web proxy never logs that request. If an ingress or load
+balancer in front of it logs query strings, exclude that path.
+
+**Replacing the App:** disconnect GitHub in Settings, replace the Secret (or
+delete it, which offers creating one again), restart the hub
+(`kubectl rollout restart deployment/<release fullname>-hub`), wait for
+`kubectl rollout status deployment/<release fullname>-hub` to report success so
+every replica reads the new one, and only then delete the old App in GitHub's
+settings. A
+running hub keeps the App it loaded until it restarts.
+
 ## AI agent
 
 Release prerequisite: this feature requires a Hub release with Anthropic provider

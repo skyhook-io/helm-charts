@@ -155,6 +155,15 @@ spec:
             - name: RADAR_HUB_AIR_GAPPED
               value: "true"
             {{- end }}
+            {{- /* The hub's own GitHub App: Settings → GitHub creates it and
+                   shows the Secret to apply; the hub reads this file once it
+                   exists, so the mount below is optional. */}}
+            {{- if not .Values.hub.airGapped }}
+            - name: HUB_GITHUB_APP_SECRET_NAME
+              value: {{ include "radar-hub.githubAppSecret" . | quote }}
+            - name: HUB_GITHUB_APP_CREDENTIALS_FILE
+              value: /etc/radar-hub-github/radar.json
+            {{- end }}
             {{- /* Only builds links into Cloud; the hub makes no calls to
                    it, so air-gapped leaves it alone. */}}
             {{- if .Values.hub.cloudAppURL }}
@@ -514,9 +523,11 @@ spec:
             periodSeconds: {{ .Values.hub.readinessProbe.periodSeconds }}
           resources:
             {{- toYaml .Values.hub.resources | nindent 12 }}
-          {{- if or .Values.license.key .Values.license.existingSecret (include "radar-hub.webTLSIsPublic" .) (include "radar-hub.brandingLogos" .) }}
+          {{- $license := or .Values.license.key .Values.license.existingSecret }}
+          {{- $githubApp := not .Values.hub.airGapped }}
+          {{- if or $license $githubApp (include "radar-hub.webTLSIsPublic" .) (include "radar-hub.brandingLogos" .) }}
           volumeMounts:
-            {{- if or .Values.license.key .Values.license.existingSecret }}
+            {{- if $license }}
             - name: license
               mountPath: /etc/radar-hub
               readOnly: true
@@ -531,8 +542,13 @@ spec:
               mountPath: /etc/radar-hub-branding
               readOnly: true
             {{- end }}
+            {{- if $githubApp }}
+            - name: github-app
+              mountPath: /etc/radar-hub-github
+              readOnly: true
+            {{- end }}
           {{- end }}
-      {{- if or .Values.license.key .Values.license.existingSecret (include "radar-hub.webTLSIsPublic" .) (include "radar-hub.brandingLogos" .) }}
+      {{- if or $license $githubApp (include "radar-hub.webTLSIsPublic" .) (include "radar-hub.brandingLogos" .) }}
       volumes:
         {{- if include "radar-hub.webTLSIsPublic" . }}
         - name: web-tls
@@ -542,7 +558,13 @@ spec:
               - key: tls.crt
                 path: tls.crt
         {{- end }}
-        {{- if or .Values.license.key .Values.license.existingSecret }}
+        {{- if $githubApp }}
+        - name: github-app
+          secret:
+            secretName: {{ include "radar-hub.githubAppSecret" . | quote }}
+            optional: true
+        {{- end }}
+        {{- if $license }}
         - name: license
           secret:
             {{- /* The chart's own Secret stores it under license-key; an

@@ -330,3 +330,12 @@ any whitespace removed, so a value pasted from `base64` with line breaks works.
 {{- define "radar-hub.brandingName" -}}
 {{- printf "%s-branding" (include "radar-hub.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
+
+{{/*
+The Secret holding the hub's own GitHub App credentials, which Settings →
+GitHub tells an owner to have applied.
+*/}}
+{{- define "radar-hub.githubAppSecret" -}}
+{{- printf "%s-github-app" (include "radar-hub.fullname" .) -}}
+{{- end }}
+

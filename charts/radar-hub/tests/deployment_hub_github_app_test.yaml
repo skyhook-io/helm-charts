@@ -1,0 +1,70 @@
+# A self-managed hub creates its own GitHub App from Settings and loads the
+# Secret an operator applies afterwards; the chart deploys every hub ready for
+# that, except an air-gapped one.
+#
+# Cross-repo contract: the env NAMES asserted below are what the hub's
+# cmd/hub/main.go reads (HUB_GITHUB_APP_SECRET_NAME, HUB_GITHUB_APP_CREDENTIALS_FILE),
+# and the Secret name is the one the hub prints in its kubectl instructions.
+# The mount must stay optional: the Secret doesn't exist until someone creates
+# the App.
+suite: hub deployment GitHub App setup
+templates:
+  - templates/deployment-hub.yaml
+  - templates/secret.yaml
+tests:
+  - it: mounts the App's Secret as an optional file
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    release:
+      name: r
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_APP_SECRET_NAME
+            value: r-radar-hub-github-app
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_APP_CREDENTIALS_FILE
+            value: /etc/radar-hub-github/radar.json
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: github-app
+            mountPath: /etc/radar-hub-github
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: github-app
+            secret:
+              secretName: r-radar-hub-github-app
+              optional: true
+
+  - it: sits beside the license volume
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      license.key: placeholder
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.volumes
+          count: 2
+
+  - it: stays off on an air-gapped hub, which can't reach GitHub
+    template: templates/deployment-hub.yaml
+    values:
+      - values/required-base.yaml
+    set:
+      hub.airGapped: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HUB_GITHUB_APP_SECRET_NAME
+          any: true
+      - notExists:
+          path: spec.template.spec.volumes
