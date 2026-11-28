@@ -206,7 +206,7 @@ Secrets, …) under the same name; the chart never renders or owns it.
 
 `hub.airGapped: true` turns this off, since GitHub is unreachable.
 
-GitHub returns to the hub's `/api/github/radar/app-manifest/callback` with a
+GitHub returns to the hub's `/api/github/app-manifest/callback` with a
 one-time code that can be exchanged for the new App's private key until the hub
 redeems it. The chart's web proxy never logs that request. If an ingress or load
 balancer in front of it logs query strings, exclude that path.
