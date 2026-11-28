@@ -3,7 +3,7 @@
 # that, except an air-gapped one.
 #
 # Cross-repo contract: the env NAMES asserted below are what the hub's
-# cmd/hub/main.go reads (HUB_GITHUB_APP_SECRET, HUB_GITHUB_APP_CREDENTIALS_FILE),
+# cmd/hub/main.go reads (HUB_GITHUB_APP_SECRET_NAME, HUB_GITHUB_APP_CREDENTIALS_FILE),
 # and the Secret name is the one the hub prints in its kubectl instructions.
 # The mount must stay optional: the Secret doesn't exist until someone creates
 # the App.
@@ -22,7 +22,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: HUB_GITHUB_APP_SECRET
+            name: HUB_GITHUB_APP_SECRET_NAME
             value: r-radar-hub-github-app
       - contains:
           path: spec.template.spec.containers[0].env
@@ -64,7 +64,7 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
-            name: HUB_GITHUB_APP_SECRET
+            name: HUB_GITHUB_APP_SECRET_NAME
           any: true
       - notExists:
           path: spec.template.spec.volumes

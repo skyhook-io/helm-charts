@@ -159,7 +159,7 @@ spec:
                    shows the Secret to apply; the hub reads this file once it
                    exists, so the mount below is optional. */}}
             {{- if not .Values.hub.airGapped }}
-            - name: HUB_GITHUB_APP_SECRET
+            - name: HUB_GITHUB_APP_SECRET_NAME
               value: {{ include "radar-hub.githubAppSecret" . | quote }}
             - name: HUB_GITHUB_APP_CREDENTIALS_FILE
               value: /etc/radar-hub-github/radar.json
