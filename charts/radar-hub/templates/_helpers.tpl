@@ -336,6 +336,6 @@ The Secret holding the hub's own GitHub App credentials, which Settings →
 GitHub tells an owner to have applied.
 */}}
 {{- define "radar-hub.githubAppSecret" -}}
-{{- default (printf "%s-github-app" (include "radar-hub.fullname" .)) .Values.hub.github.existingSecret -}}
+{{- printf "%s-github-app" (include "radar-hub.fullname" .) -}}
 {{- end }}
 

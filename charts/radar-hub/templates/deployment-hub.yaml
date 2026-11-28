@@ -158,9 +158,7 @@ spec:
             {{- /* The hub's own GitHub App: Settings → GitHub creates it and
                    shows the Secret to apply; the hub reads this file once it
                    exists, so the mount below is optional. */}}
-            {{- if and .Values.hub.github.appSetup (not .Values.hub.airGapped) }}
-            - name: HUB_GITHUB_APP_SETUP
-              value: "true"
+            {{- if not .Values.hub.airGapped }}
             - name: HUB_GITHUB_APP_SECRET
               value: {{ include "radar-hub.githubAppSecret" . | quote }}
             - name: HUB_GITHUB_APP_CREDENTIALS_FILE
@@ -526,7 +524,7 @@ spec:
           resources:
             {{- toYaml .Values.hub.resources | nindent 12 }}
           {{- $license := or .Values.license.key .Values.license.existingSecret }}
-          {{- $githubApp := and .Values.hub.github.appSetup (not .Values.hub.airGapped) }}
+          {{- $githubApp := not .Values.hub.airGapped }}
           {{- if or $license $githubApp (include "radar-hub.webTLSIsPublic" .) (include "radar-hub.brandingLogos" .) }}
           volumeMounts:
             {{- if $license }}

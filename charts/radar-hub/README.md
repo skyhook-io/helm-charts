@@ -185,10 +185,10 @@ values are rejected at install time rather than surfacing as a broken pod.
 ## GitHub connections
 
 A self-managed Hub can't use Radar Cloud's GitHub App, so it creates its own.
-GitHub connections are in preview: `hub.github.appSetup` is off by default.
-Turning it on also needs a Hub release that reads it and a web image built with
-GitHub connections enabled. Neither published image has them yet, and until
-then a Hub ignores the setting. With both, an owner of the Hub's organization opens **Settings → GitHub**, names the GitHub
+The chart always deploys the Hub ready to do so (except air-gapped). GitHub
+connections are in preview: Settings → GitHub shows only in a web image built
+with them enabled, and a Hub release from before them ignores the setup. Where
+it shows, an owner of the Hub's organization opens **Settings → GitHub**, names the GitHub
 organization (or personal account) that will own the App, and confirms on
 GitHub. GitHub registers a private App with Hub's callback, setup and (when
 GitHub can reach Hub over HTTPS) webhook URLs already filled in.
@@ -198,7 +198,7 @@ with the `kubectl create -f <file>` command, for whoever runs this deployment (a
 file, so the private key never passes through a shell's history). It creates rather
 than applies: it won't replace a Secret that already exists, and it leaves no
 copy of the private key in a last-applied annotation. The chart mounts that
-Secret (`<release fullname>-github-app`, or `hub.github.existingSecret`) as an
+Secret (`<release fullname>-github-app`) as an
 optional volume, so the pod starts without it and the Hub loads the App within
 about a minute of the Secret being applied, without a restart. Under GitOps,
 commit the Secret the way you manage other secrets (Sealed Secrets, External
